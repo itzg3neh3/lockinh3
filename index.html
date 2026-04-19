@@ -309,22 +309,37 @@ Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra te
 
 PLAYER NAMES: Each player has TWO lines next to their gamerpic. TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this only). Never duplicate players. 4v4 = exactly 4 per team. 2v2 = exactly 2 per team.
 
-READ COLUMN HEADERS — do not assume order. Match numbers to their labeled column:
-- "Kills" or "K" column → kills
-- "Deaths" or "D" column → deaths
-- "Assists" or "A" column → assists
-- "Score" column → NOT kills. Meaning varies by mode:
-  - Slayer: Score = Kills (use kills column value)
-  - Hardcore King / KOTH: Score = Hill Time in seconds → hillTime (NOT kills)
-  - Hardcore Ball / Oddball: Score = Ball Time in seconds → ballTime (NOT kills)
-  - CTF: Score = Flag Caps integer → flagCaps (NOT kills)
+SCOREBOARD COLUMN ORDER IS ALWAYS: SCORE | KILLS | ASSISTS | DEATHS
+Read each column strictly by its header label. Never assume a value belongs to a field based on position alone.
 
-EXAMPLE Hardcore King — Score=122, Kills=23, Assists=11, Deaths=27 means: kills=23, deaths=27, assists=11, hillTime=122. NOT kills=122.
+For Slayer: Score = Kills (same thing, just use the Kills column).
+For ALL other modes, Score is NOT kills:
+- Hardcore King / KOTH: Score column = Hill Time (seconds) → hillTime field
+- Hardcore Ball / Oddball: Score column = Ball Time (seconds) → ballTime field
+- CTF / Capture the Flag: Score column = Flag Caps (integer) → flagCaps field
 
+VERIFIED REAL EXAMPLE — CTF game (columns are SCORE | KILLS | ASSISTS | DEATHS):
+Player "Cranium" row shows: 1 | 10 | 5 | 7
+This means: flagCaps=1, kills=10, assists=5, deaths=7
+The number 1 is flag caps (Score column). The number 10 is kills (Kills column).
+DO NOT put 1 into kills. DO NOT put 10 into flagCaps.
+
+VERIFIED REAL EXAMPLE — Hardcore King game (columns are SCORE | KILLS | ASSISTS | DEATHS):
+Player row shows: 122 | 23 | 11 | 27
+This means: hillTime=122, kills=23, assists=11, deaths=27
+The number 122 is hill time (Score column). The number 23 is kills (Kills column).
+
+VERIFIED REAL EXAMPLE — Oddball game (columns are SCORE | KILLS | ASSISTS | DEATHS):
+Player row shows: 180 | 10 | 4 | 8
+This means: ballTime=180, kills=10, assists=4, deaths=8
+
+Rules:
 - winner: "Red" or "Blue"
-- hillTime: seconds integer for KOTH, null otherwise
-- ballTime: time string "1:23" for Oddball, null otherwise
-- flagCaps: integer for CTF, null otherwise` }
+- hillTime: seconds integer for KOTH only, null otherwise
+- ballTime: seconds integer for Oddball only, null otherwise
+- flagCaps: integer for CTF only, null otherwise
+- Include only real players — 4 per team for 4v4, 2 per team for 2v2. Never duplicate.
+- If a stat is not visible, use null` }
         ]
       }]
     })
@@ -409,13 +424,30 @@ function renderReport(games, errors) {
     </div>
   </div>`;
 
-  if (topKiller) {
+if (topKiller) {
     html += `<div class="mvp-strip">
       <div class="mvp-star">⭐</div>
       <div>
         <div class="mvp-eyebrow">Series Top Fragger</div>
         <div class="mvp-name">${topKiller.name}</div>
         <div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D &nbsp;·&nbsp; ${topKiller.assists} Assists</div>
+      </div>
+    </div>`;
+  }
+
+  const bottomFragger = [...players].filter(p => p.deaths > 0).sort((a,b) => {
+    const kdA = a.kills / a.deaths;
+    const kdB = b.kills / b.deaths;
+    return kdA - kdB;
+  })[0];
+
+  if (bottomFragger) {
+    html += `<div class="mvp-strip" style="background:linear-gradient(135deg,rgba(255,85,85,0.08),rgba(255,85,85,0.03));border-color:rgba(255,85,85,0.2);">
+      <div class="mvp-star">🍆</div>
+      <div>
+        <div class="mvp-eyebrow" style="color:var(--red);">Series Top Shitter</div>
+        <div class="mvp-name">${bottomFragger.name}</div>
+        <div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D &nbsp;·&nbsp; ${bottomFragger.assists} Assists</div>
       </div>
     </div>`;
   }
