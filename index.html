@@ -8,25 +8,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0c10;
-    --surface: #111318;
-    --surface2: #181c24;
-    --border: rgba(255,255,255,0.07);
-    --border2: rgba(255,255,255,0.12);
-    --text: #e8eaf0;
-    --muted: #6b7280;
-    --accent: #4a9eff;
-    --accent-dim: rgba(74,158,255,0.12);
-    --red: #ff5555;
-    --red-dim: rgba(255,85,85,0.12);
-    --red-border: rgba(255,85,85,0.25);
-    --blue: #4a9eff;
-    --blue-dim: rgba(74,158,255,0.12);
-    --blue-border: rgba(74,158,255,0.25);
-    --green: #4ade80;
-    --green-dim: rgba(74,222,128,0.1);
-    --yellow: #fbbf24;
-    --gold: #f59e0b;
+    --bg: #0a0c10; --surface: #111318; --surface2: #181c24;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0; --muted: #6b7280; --accent: #4a9eff;
+    --accent-dim: rgba(74,158,255,0.12); --red: #ff5555;
+    --red-dim: rgba(255,85,85,0.12); --red-border: rgba(255,85,85,0.25);
+    --blue: #4a9eff; --blue-dim: rgba(74,158,255,0.12);
+    --blue-border: rgba(74,158,255,0.25); --green: #4ade80;
+    --green-dim: rgba(74,222,128,0.1); --yellow: #fbbf24; --gold: #f59e0b;
+    --s1: #a78bfa; --s1-dim: rgba(167,139,250,0.12); --s1-border: rgba(167,139,250,0.25);
+    --s2: #fb923c; --s2-dim: rgba(251,146,60,0.12); --s2-border: rgba(251,146,60,0.25);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
@@ -65,15 +56,14 @@
   .report-title { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
   .series-score { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; margin-bottom: 2rem; }
   .team-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; position: relative; }
-  .team-card.winner-red { border-color: var(--red-border); background: var(--red-dim); }
-  .team-card.winner-blue { border-color: var(--blue-border); background: var(--blue-dim); }
+  .team-card.winner-s1 { border-color: var(--s1-border); background: var(--s1-dim); }
+  .team-card.winner-s2 { border-color: var(--s2-border); background: var(--s2-dim); }
   .winner-pill { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; background: var(--accent); color: #000; padding: 3px 12px; border-radius: 99px; white-space: nowrap; }
-  .team-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+  .team-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem; }
+  .team-players { font-size: 11px; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.4; }
   .team-wins { font-family: 'Barlow Condensed', sans-serif; font-size: 52px; font-weight: 800; line-height: 1; }
-  .team-card.winner-red .team-wins { color: var(--red); }
-  .team-card.winner-blue .team-wins { color: var(--blue); }
   .vs-sep { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; color: var(--muted); letter-spacing: 2px; text-align: center; }
-  .mvp-strip { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03)); border: 1px solid rgba(245,158,11,0.2); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+  .mvp-strip { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03)); border: 1px solid rgba(245,158,11,0.2); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
   .mvp-star { font-size: 28px; flex-shrink: 0; }
   .mvp-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 2px; }
   .mvp-name { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
@@ -88,10 +78,10 @@
   tbody td:not(:first-child) { text-align: center; }
   tbody tr:last-child td { border-bottom: none; }
   .team-divider td { padding: 7px 14px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
-  .divider-red td { color: var(--red); background: rgba(255,85,85,0.05); }
-  .divider-blue td { color: var(--blue); background: rgba(74,158,255,0.05); }
-  .row-red td { background: rgba(255,85,85,0.03); }
-  .row-blue td { background: rgba(74,158,255,0.03); }
+  .divider-s1 td { color: var(--s1); background: rgba(167,139,250,0.05); }
+  .divider-s2 td { color: var(--s2); background: rgba(251,146,60,0.05); }
+  .row-s1 td { background: rgba(167,139,250,0.03); }
+  .row-s2 td { background: rgba(251,146,60,0.03); }
   .player-name-cell { font-weight: 600; font-size: 14px; }
   .kd-pos { color: var(--green); font-weight: 600; }
   .kd-neg { color: var(--red); }
@@ -101,8 +91,11 @@
   .game-card-header { padding: 12px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
   .game-card-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
   .game-win-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 12px; border-radius: 4px; }
-  .badge-red { background: var(--red-dim); color: var(--red); border: 1px solid var(--red-border); }
-  .badge-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue-border); }
+  .badge-s1 { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
+  .badge-s2 { background: var(--s2-dim); color: var(--s2); border: 1px solid var(--s2-border); }
+  .color-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.5px; }
+  .color-tag-red { background: var(--red-dim); color: var(--red); }
+  .color-tag-blue { background: var(--blue-dim); color: var(--blue); }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (max-width: 600px) { .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; } .team-wins { font-size: 38px; } thead th, tbody td { padding: 8px 10px; font-size: 12px; } }
@@ -112,9 +105,8 @@
     header, .upload-zone, .file-list, .analyze-btn, .progress-wrap, .error-box, .export-btn-wrap, .share-btn-wrap { display: none !important; }
     .report { display: block !important; margin-top: 0; }
     .container { max-width: 100%; padding: 0 1rem; }
-    :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --blue: #185FA5; --blue-dim: #e6f1fb; --blue-border: rgba(24,95,165,0.3); --green: #1a7a3a; --gold: #b8860b; }
-    .report-title { font-size: 22px; }
-    .team-wins { font-size: 36px; }
+    :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --blue: #185FA5; --blue-dim: #e6f1fb; --blue-border: rgba(24,95,165,0.3); --green: #1a7a3a; --gold: #b8860b; --s1: #6d28d9; --s1-dim: #f3f0ff; --s1-border: rgba(109,40,217,0.3); --s2: #c2410c; --s2-dim: #fff7ed; --s2-border: rgba(194,65,12,0.3); }
+    .report-title { font-size: 22px; } .team-wins { font-size: 36px; }
     .stat-table-wrap, .game-card { border: 1px solid #ccc !important; break-inside: avoid; }
     .game-card { margin-bottom: 1rem; page-break-inside: avoid; }
     thead th { background: #ebebeb !important; color: #555 !important; }
@@ -151,32 +143,26 @@
     <div class="logo">Lock in <em>H3</em></div>
     <div class="header-tag">Halo 3 MCC · Stat Tracker</div>
   </header>
-
   <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
     <input type="file" id="fileInput" accept="image/*" multiple>
     <span class="upload-icon">🎮</span>
     <div class="upload-title">Drop scoreboard screenshots here</div>
     <div class="upload-hint-text">Click or drag & drop · JPG, PNG · 2v2 or 4v4 · up to best-of-5</div>
   </div>
-
   <div class="file-list" id="fileList"></div>
   <button class="analyze-btn" id="analyzeBtn" disabled>Analyze Series</button>
-
   <div class="progress-wrap" id="progressWrap">
     <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
     <div class="progress-text" id="progressText">Analyzing...</div>
   </div>
-
   <div class="error-box" id="errorBox"></div>
   <div class="report" id="report"></div>
-
   <div class="export-btn-wrap" id="exportWrap">
     <button class="export-btn" id="exportBtn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Export as PDF
     </button>
   </div>
-
   <div class="share-btn-wrap" id="shareBtnWrap">
     <button class="share-btn" id="shareBtn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -205,7 +191,6 @@ const progressFill = document.getElementById('progressFill');
 const progressText = document.getElementById('progressText');
 const errorBox = document.getElementById('errorBox');
 const reportEl = document.getElementById('report');
-
 let files = [];
 
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
@@ -262,10 +247,7 @@ analyzeBtn.addEventListener('click', async () => {
   analyzeBtn.innerHTML = '<span class="spinner"></span>Analyzing...';
   progressWrap.style.display = 'block';
   setProgress(0, 'Starting analysis...');
-
-  const results = [];
-  const errors = [];
-
+  const results = [], errors = [];
   for (let i = 0; i < files.length; i++) {
     setProgress(Math.round((i / files.length) * 90), `Analyzing game ${i+1} of ${files.length}...`);
     try {
@@ -273,20 +255,14 @@ analyzeBtn.addEventListener('click', async () => {
       const mt = files[i].type || 'image/jpeg';
       const data = await callClaude(b64, mt, i+1);
       results.push({...data, gameNumber: i+1});
-    } catch(err) {
-      errors.push({ gameNumber: i+1, message: err.message });
-    }
+    } catch(err) { errors.push({ gameNumber: i+1, message: err.message }); }
   }
-
   setProgress(100, 'Building report...');
   setTimeout(() => {
     progressWrap.style.display = 'none';
     analyzeBtn.innerHTML = 'Analyze Series';
     analyzeBtn.disabled = false;
-    if (!results.length) {
-      showError('Could not analyze any screenshots.\n\nErrors:\n' + errors.map(e=>`Game ${e.gameNumber}: ${e.message}`).join('\n'));
-      return;
-    }
+    if (!results.length) { showError('Could not analyze any screenshots.\n\nErrors:\n' + errors.map(e=>`Game ${e.gameNumber}: ${e.message}`).join('\n')); return; }
     renderReport(results, errors);
   }, 400);
 });
@@ -327,7 +303,6 @@ DO NOT put 1 into kills. DO NOT put 10 into flagCaps.
 VERIFIED REAL EXAMPLE — Hardcore King game (columns are SCORE | KILLS | ASSISTS | DEATHS):
 Player row shows: 122 | 23 | 11 | 27
 This means: hillTime=122, kills=23, assists=11, deaths=27
-The number 122 is hill time (Score column). The number 23 is kills (Kills column).
 
 VERIFIED REAL EXAMPLE — Oddball game (columns are SCORE | KILLS | ASSISTS | DEATHS):
 Player row shows: 180 | 10 | 4 | 8
@@ -344,17 +319,12 @@ Rules:
       }]
     })
   });
-
-  if (!response.ok) {
-    const t = await response.text().catch(() => '');
-    throw new Error(`API error ${response.status}: ${t.slice(0,200)}`);
-  }
+  if (!response.ok) { const t = await response.text().catch(() => ''); throw new Error(`API error ${response.status}: ${t.slice(0,200)}`); }
   const data = await response.json();
   const raw = (data.content || []).map(c => c.text || '').join('').trim();
   const cleaned = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
   let parsed;
-  try { parsed = JSON.parse(cleaned); }
-  catch(e) { throw new Error(`Could not parse response: ${raw.slice(0,200)}`); }
+  try { parsed = JSON.parse(cleaned); } catch(e) { throw new Error(`Could not parse response: ${raw.slice(0,200)}`); }
   return parsed;
 }
 
@@ -376,28 +346,58 @@ function fmtHillOrBall(val) {
 function kd(k,d) { return d===0 ? (k>0?k.toFixed(2):'0.00') : (k/d).toFixed(2); }
 function kdClass(k,d) { const r = d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
 
+function buildSquads(games) {
+  if (!games.length) return { squad1: new Set(), squad2: new Set() };
+  const g1 = games[0];
+  const squad1 = new Set((g1.redTeam||[]).map(p => p.name).filter(Boolean));
+  const squad2 = new Set((g1.blueTeam||[]).map(p => p.name).filter(Boolean));
+  return { squad1, squad2 };
+}
+
+function getSquad(playerName, squad1, squad2) {
+  if (squad1.has(playerName)) return 1;
+  if (squad2.has(playerName)) return 2;
+  for (const n of squad1) { if (n && playerName && n.toLowerCase() === playerName.toLowerCase()) return 1; }
+  for (const n of squad2) { if (n && playerName && n.toLowerCase() === playerName.toLowerCase()) return 2; }
+  return 1;
+}
+
 function renderReport(games, errors) {
-  let redWins=0, blueWins=0;
-  games.forEach(g => g.winner==='Red'?redWins++:blueWins++);
-  const winner = redWins>blueWins?'Red':blueWins>redWins?'Blue':'Tie';
+  const { squad1, squad2 } = buildSquads(games);
+
+  let s1Wins = 0, s2Wins = 0;
+  games.forEach(g => {
+    const winningTeam = g.winner === 'Red' ? (g.redTeam||[]) : (g.blueTeam||[]);
+    if (winningTeam.length > 0) {
+      if (getSquad(winningTeam[0].name, squad1, squad2) === 1) s1Wins++;
+      else s2Wins++;
+    }
+  });
+
+  const winner = s1Wins > s2Wins ? 1 : s2Wins > s1Wins ? 2 : 0;
 
   const agg = {};
   games.forEach(g => {
-    const all = [...(g.redTeam||[]).map(p=>({...p,team:'Red'})), ...(g.blueTeam||[]).map(p=>({...p,team:'Blue'}))];
+    const all = [...(g.redTeam||[]).map(p=>({...p})), ...(g.blueTeam||[]).map(p=>({...p}))];
     all.forEach(p => {
       if (!p.name) return;
-      if (!agg[p.name]) agg[p.name] = {name:p.name,team:p.team,kills:0,deaths:0,assists:0,ballSecs:0,flagCaps:0,hillSecs:0};
+      const sq = getSquad(p.name, squad1, squad2);
+      if (!agg[p.name]) agg[p.name] = {name:p.name,squad:sq,kills:0,deaths:0,assists:0,ballSecs:0,flagCaps:0,hillSecs:0};
       const a = agg[p.name];
       a.kills+=p.kills||0; a.deaths+=p.deaths||0; a.assists+=p.assists||0;
       a.ballSecs+=parseTimeSecs(p.ballTime); a.flagCaps+=p.flagCaps||0; a.hillSecs+=parseTimeSecs(p.hillTime);
     });
   });
+
   const players = Object.values(agg);
   const topKiller = [...players].sort((a,b)=>b.kills-a.kills)[0];
+  const bottomFragger = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   const hasOddball = games.some(g=>(g.gameType||'').toLowerCase().includes('oddball'));
   const hasCTF = games.some(g=>(g.gameType||'').toLowerCase().match(/ctf|flag/));
   const hasKOTH = games.some(g=>(g.gameType||'').toLowerCase().match(/king|hill|koth/));
 
+  const s1Players = [...squad1].join(', ');
+  const s2Players = [...squad2].join(', ');
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 
@@ -408,23 +408,25 @@ function renderReport(games, errors) {
   </div>
   <div class="report-header">
     <div class="report-eyebrow">Series Complete · ${games.length} Game${games.length!==1?'s':''}</div>
-    <div class="report-title">${winner==='Tie'?'Series Tied':winner+' Team Wins the Series'}</div>
+    <div class="report-title">${winner===0?'Series Tied':'Squad '+winner+' Wins the Series'}</div>
   </div>
   <div class="series-score">
-    <div class="team-card ${winner==='Red'?'winner-red':''}">
-      ${winner==='Red'?'<div class="winner-pill">Winner</div>':''}
-      <div class="team-label">Red Team</div>
-      <div class="team-wins">${redWins}</div>
+    <div class="team-card ${winner===1?'winner-s1':''}">
+      ${winner===1?'<div class="winner-pill">Winner</div>':''}
+      <div class="team-label">Squad 1</div>
+      <div class="team-players">${s1Players}</div>
+      <div class="team-wins" style="color:var(--s1)">${s1Wins}</div>
     </div>
     <div class="vs-sep">VS</div>
-    <div class="team-card ${winner==='Blue'?'winner-blue':''}">
-      ${winner==='Blue'?'<div class="winner-pill">Winner</div>':''}
-      <div class="team-label">Blue Team</div>
-      <div class="team-wins">${blueWins}</div>
+    <div class="team-card ${winner===2?'winner-s2':''}">
+      ${winner===2?'<div class="winner-pill">Winner</div>':''}
+      <div class="team-label">Squad 2</div>
+      <div class="team-players">${s2Players}</div>
+      <div class="team-wins" style="color:var(--s2)">${s2Wins}</div>
     </div>
   </div>`;
 
-if (topKiller) {
+  if (topKiller) {
     html += `<div class="mvp-strip">
       <div class="mvp-star">⭐</div>
       <div>
@@ -435,14 +437,8 @@ if (topKiller) {
     </div>`;
   }
 
-  const bottomFragger = [...players].filter(p => p.deaths > 0).sort((a,b) => {
-    const kdA = a.kills / a.deaths;
-    const kdB = b.kills / b.deaths;
-    return kdA - kdB;
-  })[0];
-
   if (bottomFragger) {
-    html += `<div class="mvp-strip" style="background:linear-gradient(135deg,rgba(255,85,85,0.08),rgba(255,85,85,0.03));border-color:rgba(255,85,85,0.2);">
+    html += `<div class="mvp-strip" style="background:linear-gradient(135deg,rgba(255,85,85,0.08),rgba(255,85,85,0.03));border-color:rgba(255,85,85,0.2);margin-bottom:2rem;">
       <div class="mvp-star">🍆</div>
       <div>
         <div class="mvp-eyebrow" style="color:var(--red);">Series Top Shitter</div>
@@ -458,10 +454,10 @@ if (topKiller) {
     ${hasOddball?'<th>Ball Time</th>':''}${hasCTF?'<th>Flag Caps</th>':''}${hasKOTH?'<th>Hill Time</th>':''}
   </tr></thead><tbody>`;
 
-  ['Red','Blue'].forEach(team => {
-    html += `<tr class="team-divider divider-${team.toLowerCase()}"><td colspan="20">${team} Team</td></tr>`;
-    players.filter(p=>p.team===team).forEach(p => {
-      html += `<tr class="row-${team.toLowerCase()}">
+  [1,2].forEach(sq => {
+    html += `<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq}</td></tr>`;
+    players.filter(p=>p.squad===sq).forEach(p => {
+      html += `<tr class="row-s${sq}">
         <td class="player-name-cell">${p.name}</td>
         <td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td>
         <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
@@ -478,21 +474,29 @@ if (topKiller) {
     const gOdd = (g.gameType||'').toLowerCase().includes('oddball');
     const gCTF = !!(g.gameType||'').toLowerCase().match(/ctf|flag/);
     const gKOTH = !!(g.gameType||'').toLowerCase().match(/king|hill|koth/);
-    const winClass = g.winner==='Red'?'badge-red':'badge-blue';
+    const winningTeam = g.winner === 'Red' ? (g.redTeam||[]) : (g.blueTeam||[]);
+    const winningSquad = winningTeam.length > 0 ? getSquad(winningTeam[0].name, squad1, squad2) : 1;
+    const winClass = winningSquad === 1 ? 'badge-s1' : 'badge-s2';
+    const redNames = new Set((g.redTeam||[]).map(p=>p.name));
+
     html += `<div class="game-card">
       <div class="game-card-header">
         <div class="game-card-title">Game ${g.gameNumber} &mdash; ${g.gameType||'Unknown'}</div>
-        <div class="game-win-badge ${winClass}">${g.winner||'?'} Team Wins</div>
+        <div class="game-win-badge ${winClass}">Squad ${winningSquad} Wins</div>
       </div>
       <table><thead><tr>
         <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th>
         ${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}
       </tr></thead><tbody>`;
-    ['Red','Blue'].forEach(team => {
-      const pts = team==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
-      html += `<tr class="team-divider divider-${team.toLowerCase()}"><td colspan="20">${team} Team</td></tr>`;
+
+    [1,2].forEach(sq => {
+      const sqPlayers = sq === 1 ? [...squad1] : [...squad2];
+      const sqColor = sqPlayers.some(n => redNames.has(n)) ? 'Red' : 'Blue';
+      const colorTag = `<span class="color-tag color-tag-${sqColor.toLowerCase()}">${sqColor}</span>`;
+      const pts = sqColor === 'Red' ? (g.redTeam||[]) : (g.blueTeam||[]);
+      html += `<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq} ${colorTag}</td></tr>`;
       pts.forEach(p => {
-        html += `<tr class="row-${team.toLowerCase()}">
+        html += `<tr class="row-s${sq}">
           <td class="player-name-cell">${p.name||'?'}</td>
           <td>${p.kills||0}</td><td>${p.deaths||0}</td><td>${p.assists||0}</td>
           <td class="${kdClass(p.kills||0,p.deaths||0)}">${kd(p.kills||0,p.deaths||0)}</td>
@@ -528,11 +532,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 });
 
 async function saveReport(games) {
-  const resp = await fetch(WORKER_URL + '/save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(games),
-  });
+  const resp = await fetch(WORKER_URL + '/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(games) });
   if (!resp.ok) throw new Error('Failed to save report');
   const { id } = await resp.json();
   return id;
@@ -577,24 +577,17 @@ document.getElementById('copyBtn').addEventListener('click', () => {
   const params = new URLSearchParams(window.location.search);
   const id = params.get('r');
   if (!id) return;
-
   document.querySelector('.upload-zone').style.display = 'none';
   document.querySelector('.analyze-btn').style.display = 'none';
-
   reportEl.style.display = 'block';
   reportEl.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;font-size:18px;letter-spacing:1px;text-transform:uppercase;">Loading report...</div>';
-
   const banner = document.createElement('div');
   banner.className = 'view-only-banner';
   banner.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>&nbsp; Viewing shared series report &mdash; <strong style="margin-left:4px">Lock in H3</strong>';
   document.querySelector('.container').insertBefore(banner, reportEl);
-
   try {
     const games = await loadReport(id);
-    if (!games) {
-      reportEl.innerHTML = '<div class="not-found-msg"><h2>Report not found</h2><p>This link may have expired — reports are stored for 90 days.</p></div>';
-      return;
-    }
+    if (!games) { reportEl.innerHTML = '<div class="not-found-msg"><h2>Report not found</h2><p>This link may have expired — reports are stored for 90 days.</p></div>'; return; }
     renderReport(games, []);
     document.getElementById('exportWrap').style.display = 'block';
     document.getElementById('shareBtnWrap').style.display = 'none';
