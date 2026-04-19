@@ -1,0 +1,7 @@
+name = "lockinh3"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "REPORTS"
+id = "c169e383eb3e4392abe19149be406650"
