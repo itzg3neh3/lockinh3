@@ -292,40 +292,41 @@ async function callClaude(b64, mediaType, gameNum) {
 Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra text:
 {"gameType":"Slayer","winner":"Red","redTeam":[{"name":"xXPlayerXx","kills":12,"deaths":8,"assists":3,"ballTime":null,"flagCaps":null,"hillTime":null}],"blueTeam":[{"name":"AnotherPlayer","kills":9,"deaths":11,"assists":1,"ballTime":null,"flagCaps":null,"hillTime":null}]}
 
-STEP 1 — READ THE GAME TYPE FIRST:
-Look at the title text at the top of the scoreboard (e.g. "RED TEAM WON HC NAR 30MIN"). Extract the game mode from that title exactly as written. Do NOT rename or reinterpret it.
+STEP 1 — READ THE GAME TYPE FROM THE TITLE:
+Look at the large title text at the top (e.g. "RED TEAM WON HC NAR 30MIN"). Copy the game mode exactly as written. Do NOT rename or reinterpret it.
 
-STEP 2 — IDENTIFY THE MODE:
-- If the title contains "30MIN" (e.g. "HC NAR 30MIN", "HC PIT 30MIN", "HC SNP 30MIN") → this is a CTF variant. Treat EXACTLY like CTF.
-- If the title contains "SLAYER" or "HC PIT" without 30MIN → Slayer
-- If the title contains "KING" or "KOTH" or "HILL" → King of the Hill
-- If the title contains "BALL" or "ODDBALL" → Oddball
-- If the title contains "CTF" or "FLAG" or "CAPTURE" → CTF
+STEP 2 — IDENTIFY THE MODE USING THIS SINGLE RULE:
+ANY game type title that contains the number "30" (e.g. "30MIN", "30 ONS/HERETIC", "HC NAR 30MIN", "HC PIT 30MIN", "30 SNP") is a CTF / Capture the Flag variant. No exceptions.
+- Contains "30" anywhere → CTF. Score = Flag Caps.
+- Contains "SLAYER" (and no "30") → Slayer. Score = Kills.
+- Contains "KING", "HILL", or "KOTH" (and no "30") → King of the Hill. Score = Hill Time.
+- Contains "BALL" or "ODDBALL" (and no "30") → Oddball. Score = Ball Time.
+- Contains "CTF", "FLAG", or "CAPTURE" (and no "30") → CTF. Score = Flag Caps.
 
 STEP 3 — READ COLUMNS (always in this order: SCORE | KILLS | ASSISTS | DEATHS):
-For Slayer only: Score = Kills (they match).
-For CTF / 30MIN games: Score = Flag Caps (small number 0-5, often 0 for most players). This is NOT kills. The KILLS column has the actual kill counts (larger numbers like 20-40).
+For Slayer only: Score = Kills.
+For CTF / any "30" game: Score = Flag Caps (small number 0-5, often 0 for most players). KILLS column has the actual kill counts (larger numbers 15-45). Do NOT confuse Score with Kills.
 For KOTH: Score = Hill Time in seconds.
-For Oddball/Ball: Score = Ball Time in seconds.
+For Oddball: Score = Ball Time in seconds.
 
-CRITICAL FOR 30MIN GAMES: The Score column will show mostly 0s and occasionally 1-3 for flag captures. This is NORMAL for CTF. Do NOT treat these as kills. The kills are in the separate KILLS column and will be much larger numbers (20-40 range).
+CRITICAL FOR CTF / "30" GAMES: The Score column will show mostly 0s and occasionally 1-3. This is NORMAL. These are flag caps. The kills are in the separate KILLS column with much larger numbers.
 
-REAL EXAMPLE — "HC NAR 30MIN" (CTF variant):
-Title says: "BLUE TEAM WON HC NAR 30MIN"
-Player "Purspiring": Score=1, Kills=20, Assists=19, Deaths=29
-→ flagCaps=1, kills=20, assists=19, deaths=29
-Player "BackOnMyBsss": Score=0, Kills=41, Assists=21, Deaths=22
-→ flagCaps=0, kills=41, assists=21, deaths=22
+REAL EXAMPLE — "HC NAR 30MIN" (contains "30" → CTF):
+Player "Purspiring": Score=1, Kills=20, Assists=19, Deaths=29 → flagCaps=1, kills=20, assists=19, deaths=29
+Player "BackOnMyBsss": Score=0, Kills=41, Assists=21, Deaths=22 → flagCaps=0, kills=41, assists=21, deaths=22
+
+REAL EXAMPLE — "30 ONS/HERETIC" (contains "30" → CTF):
+Same rule applies — Score = Flag Caps, Kills column = kills.
 
 PLAYER NAMES: Each player has TWO lines. TOP = clan tag (ignore). BOTTOM = real gamertag (use this).
 Never duplicate players. 4v4 = exactly 4 per team. 2v2 = exactly 2 per team.
 
 Rules:
-- gameType: copy the exact text from the scoreboard title (e.g. "HC NAR 30MIN", "HC PIT 30MIN")
+- gameType: copy exact text from the scoreboard title
 - winner: "Red" or "Blue"
-- flagCaps: integer for CTF and all 30MIN variants, null otherwise
+- flagCaps: integer for CTF and ALL games containing "30" in the title, null otherwise
 - hillTime: seconds integer for KOTH only, null otherwise
-- ballTime: seconds integer for Oddball/Ball only, null otherwise
+- ballTime: seconds integer for Oddball only, null otherwise
 - If a stat is not visible, use null` }
         ]
       }]
@@ -359,7 +360,7 @@ function kdClass(k,d) { const r = d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-n
 function pm(k,d) { const v=(k||0)-(d||0); return (v>0?'+':'')+v; }
 function pmClass(k,d) { const v=(k||0)-(d||0); return v>0?'pm-pos':v<0?'pm-neg':'pm-zero'; }
 function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|hardcore ball/); }
-function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30min/); }
+function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30/); }
 function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 
 function buildSquads(games) {
