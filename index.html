@@ -293,41 +293,46 @@ Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra te
 {"gameType":"Slayer","winner":"Red","redTeam":[{"name":"xXPlayerXx","kills":12,"deaths":8,"assists":3,"ballTime":null,"flagCaps":null,"hillTime":null}],"blueTeam":[{"name":"AnotherPlayer","kills":9,"deaths":11,"assists":1,"ballTime":null,"flagCaps":null,"hillTime":null}]}
 
 STEP 1 — READ THE GAME TYPE FROM THE TITLE:
-Look at the large title text at the top (e.g. "RED TEAM WON HC NAR 30MIN"). Copy the game mode exactly as written. Do NOT rename or reinterpret it.
+Look at the large title text at the top (e.g. "BLUE TEAM WON HARDCORE KING"). Copy the game mode exactly as written. Do NOT rename or reinterpret it.
 
-STEP 2 — IDENTIFY THE MODE USING THIS SINGLE RULE:
-ANY game type title that contains the number "30" (e.g. "30MIN", "30 ONS/HERETIC", "HC NAR 30MIN", "HC PIT 30MIN", "30 SNP") is a CTF / Capture the Flag variant. No exceptions.
-- Contains "30" anywhere → CTF. Score = Flag Caps.
-- Contains "SLAYER" (and no "30") → Slayer. Score = Kills.
-- Contains "KING", "HILL", or "KOTH" (and no "30") → King of the Hill. Score = Hill Time.
-- Contains "BALL" or "ODDBALL" (and no "30") → Oddball. Score = Ball Time.
-- Contains "CTF", "FLAG", or "CAPTURE" (and no "30") → CTF. Score = Flag Caps.
+STEP 2 — IDENTIFY THE MODE:
+- Contains "KING" or "HARDCORE KING" → King of the Hill. Score column = Hill Time in seconds. Store in hillTime. This is NOT kills.
+- Contains "30" anywhere (e.g. "30MIN", "GB 30", "30 ONS/HERETIC", "GB 30 HERETIC/O") → CTF. Score = Flag Caps. Store in flagCaps.
+- Contains "SLAYER" or "HARDCORE TS" or "TS" (and no "30", no "KING") → Slayer. Score = Kills.
+- Contains "BALL" or "ODDBALL" → Oddball. Score = Ball Time in seconds. Store in ballTime.
+- Contains "CTF" or "FLAG" or "CAPTURE" → CTF. Score = Flag Caps.
 
-STEP 3 — READ COLUMNS (always in this order: SCORE | KILLS | ASSISTS | DEATHS):
-For Slayer only: Score = Kills.
-For CTF / any "30" game: Score = Flag Caps (small number 0-5, often 0 for most players). KILLS column has the actual kill counts (larger numbers 15-45). Do NOT confuse Score with Kills.
-For KOTH: Score = Hill Time in seconds.
-For Oddball: Score = Ball Time in seconds.
+STEP 3 — READ COLUMNS (always: SCORE | KILLS | ASSISTS | DEATHS):
 
-CRITICAL FOR CTF / "30" GAMES: The Score column will show mostly 0s and occasionally 1-3. This is NORMAL. These are flag caps. The kills are in the separate KILLS column with much larger numbers.
+FOR HARDCORE KING / KING OF THE HILL:
+The Score column contains hill time in SECONDS (large numbers like 22, 32, 40, 60, 65, 76, 79).
+These MUST be stored in hillTime. They are NOT kills.
+The Kills column has the actual kill counts (also large numbers).
+REAL EXAMPLE from "HARDCORE KING" scoreboard:
+- Rights: Score=76, Kills=28, Assists=18, Deaths=29 → hillTime=76, kills=28, assists=18, deaths=29
+- Cranium: Score=65, Kills=35, Assists=19, Deaths=27 → hillTime=65, kills=35, assists=19, deaths=27
+- BackOnMyBsss: Score=79, Kills=24, Assists=30, Deaths=33 → hillTime=79, kills=24, assists=30, deaths=33
+hillTime must NEVER be null for a King of the Hill game. Every player has a score value — store it.
 
-REAL EXAMPLE — "HC NAR 30MIN" (contains "30" → CTF):
-Player "Purspiring": Score=1, Kills=20, Assists=19, Deaths=29 → flagCaps=1, kills=20, assists=19, deaths=29
-Player "BackOnMyBsss": Score=0, Kills=41, Assists=21, Deaths=22 → flagCaps=0, kills=41, assists=21, deaths=22
+FOR CTF / "30" GAMES:
+Score = Flag Caps (small: 0-5). Kills are in Kills column (larger: 10-45).
+REAL EXAMPLE from "GB 30 HERETIC/O":
+- Cranium: Score=3, Kills=11, Assists=13, Deaths=8 → flagCaps=3, kills=11, assists=13, deaths=8
+- Wensoar: Score=0, Kills=25, Assists=11, Deaths=11 → flagCaps=0, kills=25, assists=11, deaths=11
 
-REAL EXAMPLE — "30 ONS/HERETIC" (contains "30" → CTF):
-Same rule applies — Score = Flag Caps, Kills column = kills.
+FOR SLAYER / HARDCORE TS:
+Score = Kills (they match). Use the Kills column value.
 
 PLAYER NAMES: Each player has TWO lines. TOP = clan tag (ignore). BOTTOM = real gamertag (use this).
 Never duplicate players. 4v4 = exactly 4 per team. 2v2 = exactly 2 per team.
 
 Rules:
-- gameType: copy exact text from the scoreboard title
+- gameType: copy exact text from scoreboard title
 - winner: "Red" or "Blue"
-- flagCaps: integer for CTF and ALL games containing "30" in the title, null otherwise
-- hillTime: seconds integer for KOTH only, null otherwise
-- ballTime: seconds integer for Oddball only, null otherwise
-- If a stat is not visible, use null` }
+- hillTime: seconds integer for KOTH/Hardcore King — NEVER null for these games, every player has a value
+- flagCaps: integer for CTF and all "30" variants — can be 0 but not null
+- ballTime: seconds integer for Oddball only
+- If genuinely not visible, use null` }
         ]
       }]
     })
@@ -353,7 +358,7 @@ function fmtTime(sec) { const m = Math.floor(sec/60), s = sec%60; return `${m}:$
 function fmtHillOrBall(val) {
   if (val === null || val === undefined || val === 'null' || val === '') return '—';
   const secs = parseTimeSecs(val);
-  return secs === 0 ? '—' : fmtTime(secs);
+  return secs === 0 ? '0:00' : fmtTime(secs);
 }
 function kd(k,d) { return d===0 ? (k>0?k.toFixed(2):'0.00') : (k/d).toFixed(2); }
 function kdClass(k,d) { const r = d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
