@@ -301,9 +301,11 @@ For Slayer: Score = Kills (same thing, just use the Kills column).
 For ALL other modes, Score is NOT kills:
 - Hardcore King / KOTH: Score column = Hill Time (seconds) → hillTime field
 - Hardcore Ball / Oddball: Score column = Ball Time (seconds) → ballTime field
-- CTF / Capture the Flag: Score column = Flag Caps (integer) → flagCaps field
+- CTF / Capture the Flag / any game with "30MIN" in the name (e.g. "HC PIT 30MIN", "HC NAR 30MIN"): Score column = Flag Caps (integer) → flagCaps field
 
-VERIFIED REAL EXAMPLE — CTF game (columns are SCORE | KILLS | ASSISTS | DEATHS):
+IMPORTANT: Game types containing "30MIN" (like "HC PIT 30MIN", "HC NAR 30MIN", "HC SNP 30MIN" etc.) are CTF variants. Treat them exactly like CTF — Score = Flag Caps, NOT kills.
+
+VERIFIED REAL EXAMPLE — CTF / 30MIN game (columns are SCORE | KILLS | ASSISTS | DEATHS):
 Player "Cranium" row shows: 1 | 10 | 5 | 7
 This means: flagCaps=1, kills=10, assists=5, deaths=7
 DO NOT put 1 into kills. DO NOT put 10 into flagCaps.
@@ -321,7 +323,7 @@ Rules:
 - winner: "Red" or "Blue"
 - hillTime: seconds integer for KOTH only, null otherwise
 - ballTime: seconds integer for Hardcore Ball/Oddball only, null otherwise
-- flagCaps: integer for CTF only, null otherwise
+- flagCaps: integer for CTF and all 30MIN variants only, null otherwise
 - Include only real players — 4 per team for 4v4, 2 per team for 2v2. Never duplicate.
 - If a stat is not visible, use null` }
         ]
@@ -356,7 +358,7 @@ function kdClass(k,d) { const r = d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-n
 function pm(k,d) { const v=(k||0)-(d||0); return (v>0?'+':'')+v; }
 function pmClass(k,d) { const v=(k||0)-(d||0); return v>0?'pm-pos':v<0?'pm-neg':'pm-zero'; }
 function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|hardcore ball/); }
-function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag/); }
+function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30min/); }
 function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 
 function buildSquads(games) {
