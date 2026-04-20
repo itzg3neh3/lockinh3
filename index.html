@@ -63,9 +63,15 @@
   .team-players { font-size: 11px; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.4; }
   .team-wins { font-family: 'Barlow Condensed', sans-serif; font-size: 52px; font-weight: 800; line-height: 1; }
   .vs-sep { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; color: var(--muted); letter-spacing: 2px; text-align: center; }
-  .mvp-strip { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03)); border: 1px solid rgba(245,158,11,0.2); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+  .mvp-strip { border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+  .mvp-strip-gold { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03)); border: 1px solid rgba(245,158,11,0.2); }
+  .mvp-strip-red { background: linear-gradient(135deg,rgba(255,85,85,0.08),rgba(255,85,85,0.03)); border: 1px solid rgba(255,85,85,0.2); }
+  .mvp-strip-blue { background: linear-gradient(135deg,rgba(74,158,255,0.08),rgba(74,158,255,0.03)); border: 1px solid rgba(74,158,255,0.2); margin-bottom: 2rem; }
   .mvp-star { font-size: 28px; flex-shrink: 0; }
-  .mvp-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 2px; }
+  .mvp-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+  .eyebrow-gold { color: var(--gold); }
+  .eyebrow-red { color: var(--red); }
+  .eyebrow-blue { color: var(--accent); }
   .mvp-name { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
   .mvp-stats { font-size: 13px; color: var(--muted); margin-top: 2px; }
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
@@ -86,6 +92,9 @@
   .kd-pos { color: var(--green); font-weight: 600; }
   .kd-neg { color: var(--red); }
   .kd-neu { color: var(--muted); }
+  .pm-pos { color: var(--green); font-weight: 600; }
+  .pm-neg { color: var(--red); }
+  .pm-zero { color: var(--muted); }
   .games-grid { display: flex; flex-direction: column; gap: 1rem; }
   .game-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
   .game-card-header { padding: 12px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
@@ -297,21 +306,21 @@ For ALL other modes, Score is NOT kills:
 VERIFIED REAL EXAMPLE — CTF game (columns are SCORE | KILLS | ASSISTS | DEATHS):
 Player "Cranium" row shows: 1 | 10 | 5 | 7
 This means: flagCaps=1, kills=10, assists=5, deaths=7
-The number 1 is flag caps (Score column). The number 10 is kills (Kills column).
 DO NOT put 1 into kills. DO NOT put 10 into flagCaps.
 
 VERIFIED REAL EXAMPLE — Hardcore King game (columns are SCORE | KILLS | ASSISTS | DEATHS):
 Player row shows: 122 | 23 | 11 | 27
 This means: hillTime=122, kills=23, assists=11, deaths=27
 
-VERIFIED REAL EXAMPLE — Oddball game (columns are SCORE | KILLS | ASSISTS | DEATHS):
+VERIFIED REAL EXAMPLE — Hardcore Ball / Oddball game (columns are SCORE | KILLS | ASSISTS | DEATHS):
 Player row shows: 180 | 10 | 4 | 8
 This means: ballTime=180, kills=10, assists=4, deaths=8
+DO NOT put 180 into kills.
 
 Rules:
 - winner: "Red" or "Blue"
 - hillTime: seconds integer for KOTH only, null otherwise
-- ballTime: seconds integer for Oddball only, null otherwise
+- ballTime: seconds integer for Hardcore Ball/Oddball only, null otherwise
 - flagCaps: integer for CTF only, null otherwise
 - Include only real players — 4 per team for 4v4, 2 per team for 2v2. Never duplicate.
 - If a stat is not visible, use null` }
@@ -330,7 +339,6 @@ Rules:
 
 function setProgress(pct, label) { progressFill.style.width = pct + '%'; progressText.textContent = label; }
 function showError(msg) { errorBox.textContent = msg; errorBox.style.display = 'block'; }
-
 function parseTimeSecs(t) {
   if (t === null || t === undefined || t === 'null' || t === '') return 0;
   const s = String(t).trim();
@@ -345,41 +353,40 @@ function fmtHillOrBall(val) {
 }
 function kd(k,d) { return d===0 ? (k>0?k.toFixed(2):'0.00') : (k/d).toFixed(2); }
 function kdClass(k,d) { const r = d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
+function pm(k,d) { const v=(k||0)-(d||0); return (v>0?'+':'')+v; }
+function pmClass(k,d) { const v=(k||0)-(d||0); return v>0?'pm-pos':v<0?'pm-neg':'pm-zero'; }
+function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|hardcore ball/); }
+function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag/); }
+function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 
 function buildSquads(games) {
   if (!games.length) return { squad1: new Set(), squad2: new Set() };
   const g1 = games[0];
-  const squad1 = new Set((g1.redTeam||[]).map(p => p.name).filter(Boolean));
-  const squad2 = new Set((g1.blueTeam||[]).map(p => p.name).filter(Boolean));
+  const squad1 = new Set((g1.redTeam||[]).map(p=>p.name).filter(Boolean));
+  const squad2 = new Set((g1.blueTeam||[]).map(p=>p.name).filter(Boolean));
   return { squad1, squad2 };
 }
 
-function getSquad(playerName, squad1, squad2) {
-  if (squad1.has(playerName)) return 1;
-  if (squad2.has(playerName)) return 2;
-  for (const n of squad1) { if (n && playerName && n.toLowerCase() === playerName.toLowerCase()) return 1; }
-  for (const n of squad2) { if (n && playerName && n.toLowerCase() === playerName.toLowerCase()) return 2; }
+function getSquad(name, squad1, squad2) {
+  if (squad1.has(name)) return 1;
+  if (squad2.has(name)) return 2;
+  for (const n of squad1) { if (n&&name&&n.toLowerCase()===name.toLowerCase()) return 1; }
+  for (const n of squad2) { if (n&&name&&n.toLowerCase()===name.toLowerCase()) return 2; }
   return 1;
 }
 
 function renderReport(games, errors) {
   const { squad1, squad2 } = buildSquads(games);
-
-  let s1Wins = 0, s2Wins = 0;
+  let s1Wins=0, s2Wins=0;
   games.forEach(g => {
-    const winningTeam = g.winner === 'Red' ? (g.redTeam||[]) : (g.blueTeam||[]);
-    if (winningTeam.length > 0) {
-      if (getSquad(winningTeam[0].name, squad1, squad2) === 1) s1Wins++;
-      else s2Wins++;
-    }
+    const wt = g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
+    if (wt.length>0) { if (getSquad(wt[0].name,squad1,squad2)===1) s1Wins++; else s2Wins++; }
   });
-
-  const winner = s1Wins > s2Wins ? 1 : s2Wins > s1Wins ? 2 : 0;
+  const winner = s1Wins>s2Wins?1:s2Wins>s1Wins?2:0;
 
   const agg = {};
   games.forEach(g => {
-    const all = [...(g.redTeam||[]).map(p=>({...p})), ...(g.blueTeam||[]).map(p=>({...p}))];
-    all.forEach(p => {
+    [...(g.redTeam||[]).map(p=>({...p})), ...(g.blueTeam||[]).map(p=>({...p}))].forEach(p => {
       if (!p.name) return;
       const sq = getSquad(p.name, squad1, squad2);
       if (!agg[p.name]) agg[p.name] = {name:p.name,squad:sq,kills:0,deaths:0,assists:0,ballSecs:0,flagCaps:0,hillSecs:0};
@@ -392,14 +399,13 @@ function renderReport(games, errors) {
   const players = Object.values(agg);
   const topKiller = [...players].sort((a,b)=>b.kills-a.kills)[0];
   const bottomFragger = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
-  const hasOddball = games.some(g=>(g.gameType||'').toLowerCase().includes('oddball'));
-  const hasCTF = games.some(g=>(g.gameType||'').toLowerCase().match(/ctf|flag/));
-  const hasKOTH = games.some(g=>(g.gameType||'').toLowerCase().match(/king|hill|koth/));
-
+  const assistKing = [...players].sort((a,b)=>b.assists-a.assists)[0];
+  const hasOddball = games.some(g=>isOddball(g.gameType));
+  const hasCTF = games.some(g=>isCTF(g.gameType));
+  const hasKOTH = games.some(g=>isKOTH(g.gameType));
   const s1Players = [...squad1].join(', ');
   const s2Players = [...squad2].join(', ');
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  const dateStr = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
   let html = `
   <div class="print-header">
@@ -426,95 +432,43 @@ function renderReport(games, errors) {
     </div>
   </div>`;
 
-  if (topKiller) {
-    html += `<div class="mvp-strip">
-      <div class="mvp-star">⭐</div>
-      <div>
-        <div class="mvp-eyebrow">Series Top Fragger</div>
-        <div class="mvp-name">${topKiller.name}</div>
-        <div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D &nbsp;·&nbsp; ${topKiller.assists} Assists</div>
-      </div>
-    </div>`;
-  }
+  if (topKiller) html += `<div class="mvp-strip mvp-strip-gold"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Series Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D &nbsp;·&nbsp; ${pm(topKiller.kills,topKiller.deaths)} +/-</div></div></div>`;
+  if (bottomFragger) html += `<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Series Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D &nbsp;·&nbsp; ${pm(bottomFragger.kills,bottomFragger.deaths)} +/-</div></div></div>`;
+  if (assistKing) html += `<div class="mvp-strip mvp-strip-blue"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Series Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.deaths} Deaths &nbsp;·&nbsp; ${kd(assistKing.kills,assistKing.deaths)} K/D</div></div></div>`;
 
-  if (bottomFragger) {
-    html += `<div class="mvp-strip" style="background:linear-gradient(135deg,rgba(255,85,85,0.08),rgba(255,85,85,0.03));border-color:rgba(255,85,85,0.2);margin-bottom:2rem;">
-      <div class="mvp-star">🍆</div>
-      <div>
-        <div class="mvp-eyebrow" style="color:var(--red);">Series Top Shitter</div>
-        <div class="mvp-name">${bottomFragger.name}</div>
-        <div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D &nbsp;·&nbsp; ${bottomFragger.assists} Assists</div>
-      </div>
-    </div>`;
-  }
-
-  html += `<div class="section-title">Overall Player Stats</div>
-  <div class="stat-table-wrap"><table><thead><tr>
-    <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th>
+  html += `<div class="section-title">Overall Player Stats</div><div class="stat-table-wrap"><table><thead><tr>
+    <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>
     ${hasOddball?'<th>Ball Time</th>':''}${hasCTF?'<th>Flag Caps</th>':''}${hasKOTH?'<th>Hill Time</th>':''}
   </tr></thead><tbody>`;
-
   [1,2].forEach(sq => {
     html += `<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq}</td></tr>`;
     players.filter(p=>p.squad===sq).forEach(p => {
-      html += `<tr class="row-s${sq}">
-        <td class="player-name-cell">${p.name}</td>
-        <td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td>
-        <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
-        ${hasOddball?`<td>${fmtHillOrBall(p.ballSecs)}</td>`:''}
-        ${hasCTF?`<td>${p.flagCaps||'—'}</td>`:''}
-        ${hasKOTH?`<td>${fmtHillOrBall(p.hillSecs)}</td>`:''}
-      </tr>`;
+      html += `<tr class="row-s${sq}"><td class="player-name-cell">${p.name}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td><td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td><td class="${pmClass(p.kills,p.deaths)}">${pm(p.kills,p.deaths)}</td>${hasOddball?`<td>${fmtHillOrBall(p.ballSecs)}</td>`:''}${hasCTF?`<td>${p.flagCaps||'—'}</td>`:''}${hasKOTH?`<td>${fmtHillOrBall(p.hillSecs)}</td>`:''}</tr>`;
     });
   });
   html += `</tbody></table></div>`;
 
   html += `<div class="section-title">Game-by-Game Breakdown</div><div class="games-grid">`;
   games.forEach(g => {
-    const gOdd = (g.gameType||'').toLowerCase().includes('oddball');
-    const gCTF = !!(g.gameType||'').toLowerCase().match(/ctf|flag/);
-    const gKOTH = !!(g.gameType||'').toLowerCase().match(/king|hill|koth/);
-    const winningTeam = g.winner === 'Red' ? (g.redTeam||[]) : (g.blueTeam||[]);
-    const winningSquad = winningTeam.length > 0 ? getSquad(winningTeam[0].name, squad1, squad2) : 1;
-    const winClass = winningSquad === 1 ? 'badge-s1' : 'badge-s2';
+    const gOdd=isOddball(g.gameType), gCTF=isCTF(g.gameType), gKOTH=isKOTH(g.gameType);
+    const wt = g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
+    const ws = wt.length>0?getSquad(wt[0].name,squad1,squad2):1;
     const redNames = new Set((g.redTeam||[]).map(p=>p.name));
-
-    html += `<div class="game-card">
-      <div class="game-card-header">
-        <div class="game-card-title">Game ${g.gameNumber} &mdash; ${g.gameType||'Unknown'}</div>
-        <div class="game-win-badge ${winClass}">Squad ${winningSquad} Wins</div>
-      </div>
-      <table><thead><tr>
-        <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th>
-        ${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}
-      </tr></thead><tbody>`;
-
+    html += `<div class="game-card"><div class="game-card-header"><div class="game-card-title">Game ${g.gameNumber} &mdash; ${g.gameType||'Unknown'}</div><div class="game-win-badge badge-s${ws}">Squad ${ws} Wins</div></div><table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}</tr></thead><tbody>`;
     [1,2].forEach(sq => {
-      const sqPlayers = sq === 1 ? [...squad1] : [...squad2];
-      const sqColor = sqPlayers.some(n => redNames.has(n)) ? 'Red' : 'Blue';
-      const colorTag = `<span class="color-tag color-tag-${sqColor.toLowerCase()}">${sqColor}</span>`;
-      const pts = sqColor === 'Red' ? (g.redTeam||[]) : (g.blueTeam||[]);
-      html += `<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq} ${colorTag}</td></tr>`;
+      const sqP = sq===1?[...squad1]:[...squad2];
+      const sqColor = sqP.some(n=>redNames.has(n))?'Red':'Blue';
+      const pts = sqColor==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
+      html += `<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq} <span class="color-tag color-tag-${sqColor.toLowerCase()}">${sqColor}</span></td></tr>`;
       pts.forEach(p => {
-        html += `<tr class="row-s${sq}">
-          <td class="player-name-cell">${p.name||'?'}</td>
-          <td>${p.kills||0}</td><td>${p.deaths||0}</td><td>${p.assists||0}</td>
-          <td class="${kdClass(p.kills||0,p.deaths||0)}">${kd(p.kills||0,p.deaths||0)}</td>
-          ${gOdd?`<td>${fmtHillOrBall(p.ballTime)}</td>`:''}
-          ${gCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}
-          ${gKOTH?`<td>${fmtHillOrBall(p.hillTime)}</td>`:''}
-        </tr>`;
+        html += `<tr class="row-s${sq}"><td class="player-name-cell">${p.name||'?'}</td><td>${p.kills||0}</td><td>${p.deaths||0}</td><td>${p.assists||0}</td><td class="${kdClass(p.kills||0,p.deaths||0)}">${kd(p.kills||0,p.deaths||0)}</td><td class="${pmClass(p.kills||0,p.deaths||0)}">${pm(p.kills||0,p.deaths||0)}</td>${gOdd?`<td>${fmtHillOrBall(p.ballTime)}</td>`:''}${gCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}${gKOTH?`<td>${fmtHillOrBall(p.hillTime)}</td>`:''}</tr>`;
       });
     });
     html += `</tbody></table></div>`;
   });
   html += `</div>`;
 
-  if (errors.length) {
-    html += `<div style="background:rgba(255,85,85,0.1);border:1px solid rgba(255,85,85,0.25);border-radius:8px;padding:12px 16px;font-size:13px;color:#ff5555;margin-top:1rem">
-      Could not read: ${errors.map(e=>`Game ${e.gameNumber}`).join(', ')} — try re-uploading with clearer screenshots.
-    </div>`;
-  }
+  if (errors.length) html += `<div style="background:rgba(255,85,85,0.1);border:1px solid rgba(255,85,85,0.25);border-radius:8px;padding:12px 16px;font-size:13px;color:#ff5555;margin-top:1rem">Could not read: ${errors.map(e=>`Game ${e.gameNumber}`).join(', ')} — try re-uploading with clearer screenshots.</div>`;
 
   reportEl.innerHTML = html;
   reportEl.style.display = 'block';
@@ -525,22 +479,22 @@ function renderReport(games, errors) {
 }
 
 document.getElementById('exportBtn').addEventListener('click', () => {
-  const origTitle = document.title;
+  const t = document.title;
   document.title = 'Lock in H3 — Series Report';
   window.print();
-  document.title = origTitle;
+  document.title = t;
 });
 
 async function saveReport(games) {
-  const resp = await fetch(WORKER_URL + '/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(games) });
+  const resp = await fetch(WORKER_URL+'/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(games)});
   if (!resp.ok) throw new Error('Failed to save report');
-  const { id } = await resp.json();
+  const {id} = await resp.json();
   return id;
 }
 
 async function loadReport(id) {
-  const resp = await fetch(WORKER_URL + '/report?id=' + encodeURIComponent(id));
-  if (resp.status === 404) return null;
+  const resp = await fetch(WORKER_URL+'/report?id='+encodeURIComponent(id));
+  if (resp.status===404) return null;
   if (!resp.ok) throw new Error('Failed to load report');
   return await resp.json();
 }
@@ -548,52 +502,46 @@ async function loadReport(id) {
 document.getElementById('shareBtn').addEventListener('click', async () => {
   const panel = document.getElementById('sharePanel');
   const btn = document.getElementById('shareBtn');
-  if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+  if (panel.style.display==='block') { panel.style.display='none'; return; }
   if (!window._lastGames) return;
-  panel.style.display = 'block';
-  document.getElementById('shareUrlInput').value = 'Saving report...';
-  document.getElementById('copyBtn').disabled = true;
-  btn.disabled = true;
+  panel.style.display='block';
+  document.getElementById('shareUrlInput').value='Saving report...';
+  document.getElementById('copyBtn').disabled=true;
+  btn.disabled=true;
   try {
     const id = await saveReport(window._lastGames);
-    document.getElementById('shareUrlInput').value = BASE_URL + '?r=' + id;
-    document.getElementById('copyBtn').disabled = false;
-  } catch(err) {
-    document.getElementById('shareUrlInput').value = 'Error — check Worker is deployed with KV binding';
-  }
-  btn.disabled = false;
+    document.getElementById('shareUrlInput').value=BASE_URL+'?r='+id;
+    document.getElementById('copyBtn').disabled=false;
+  } catch(err) { document.getElementById('shareUrlInput').value='Error — check Worker is deployed with KV binding'; }
+  btn.disabled=false;
 });
 
 document.getElementById('copyBtn').addEventListener('click', () => {
   const input = document.getElementById('shareUrlInput');
   const btn = document.getElementById('copyBtn');
-  navigator.clipboard.writeText(input.value).catch(() => { input.select(); document.execCommand('copy'); });
-  btn.textContent = 'Copied!';
-  btn.classList.add('copied');
-  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  navigator.clipboard.writeText(input.value).catch(()=>{input.select();document.execCommand('copy');});
+  btn.textContent='Copied!'; btn.classList.add('copied');
+  setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},2000);
 });
 
 (async function() {
-  const params = new URLSearchParams(window.location.search);
-  const id = params.get('r');
+  const id = new URLSearchParams(window.location.search).get('r');
   if (!id) return;
-  document.querySelector('.upload-zone').style.display = 'none';
-  document.querySelector('.analyze-btn').style.display = 'none';
-  reportEl.style.display = 'block';
-  reportEl.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;font-size:18px;letter-spacing:1px;text-transform:uppercase;">Loading report...</div>';
+  document.querySelector('.upload-zone').style.display='none';
+  document.querySelector('.analyze-btn').style.display='none';
+  reportEl.style.display='block';
+  reportEl.innerHTML='<div style="text-align:center;padding:3rem;color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;font-size:18px;letter-spacing:1px;text-transform:uppercase;">Loading report...</div>';
   const banner = document.createElement('div');
-  banner.className = 'view-only-banner';
-  banner.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>&nbsp; Viewing shared series report &mdash; <strong style="margin-left:4px">Lock in H3</strong>';
-  document.querySelector('.container').insertBefore(banner, reportEl);
+  banner.className='view-only-banner';
+  banner.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>&nbsp; Viewing shared series report &mdash; <strong style="margin-left:4px">Lock in H3</strong>';
+  document.querySelector('.container').insertBefore(banner,reportEl);
   try {
     const games = await loadReport(id);
-    if (!games) { reportEl.innerHTML = '<div class="not-found-msg"><h2>Report not found</h2><p>This link may have expired — reports are stored for 90 days.</p></div>'; return; }
-    renderReport(games, []);
-    document.getElementById('exportWrap').style.display = 'block';
-    document.getElementById('shareBtnWrap').style.display = 'none';
-  } catch(err) {
-    reportEl.innerHTML = '<div class="not-found-msg"><h2>Could not load report</h2><p>' + err.message + '</p></div>';
-  }
+    if (!games) { reportEl.innerHTML='<div class="not-found-msg"><h2>Report not found</h2><p>This link may have expired — reports are stored for 90 days.</p></div>'; return; }
+    renderReport(games,[]);
+    document.getElementById('exportWrap').style.display='block';
+    document.getElementById('shareBtnWrap').style.display='none';
+  } catch(err) { reportEl.innerHTML='<div class="not-found-msg"><h2>Could not load report</h2><p>'+err.message+'</p></div>'; }
 })();
 </script>
 </body>
