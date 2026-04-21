@@ -292,47 +292,46 @@ async function callClaude(b64, mediaType, gameNum) {
 Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra text:
 {"gameType":"Slayer","winner":"Red","redTeam":[{"name":"xXPlayerXx","kills":12,"deaths":8,"assists":3,"ballTime":null,"flagCaps":null,"hillTime":null}],"blueTeam":[{"name":"AnotherPlayer","kills":9,"deaths":11,"assists":1,"ballTime":null,"flagCaps":null,"hillTime":null}]}
 
-STEP 1 — READ THE GAME TYPE FROM THE TITLE:
-Look at the large title text at the top (e.g. "BLUE TEAM WON HARDCORE KING"). Copy the game mode exactly as written. Do NOT rename or reinterpret it.
+STEP 1 — READ THE EXACT GAME TYPE FROM THE TITLE TEXT at the top of the scoreboard.
 
-STEP 2 — IDENTIFY THE MODE:
-- Contains "KING" or "HARDCORE KING" → King of the Hill. Score column = Hill Time in seconds. Store in hillTime. This is NOT kills.
-- Contains "30" anywhere (e.g. "30MIN", "GB 30", "30 ONS/HERETIC", "GB 30 HERETIC/O") → CTF. Score = Flag Caps. Store in flagCaps.
-- Contains "SLAYER" or "HARDCORE TS" or "TS" (and no "30", no "KING") → Slayer. Score = Kills.
-- Contains "BALL" or "ODDBALL" → Oddball. Score = Ball Time in seconds. Store in ballTime.
-- Contains "CTF" or "FLAG" or "CAPTURE" → CTF. Score = Flag Caps.
+STEP 2 — THE GOLDEN RULE: The scoreboard ALWAYS has 4 columns in this order: SCORE | KILLS | ASSISTS | DEATHS. The SCORE column is NEVER kills except in Slayer. Read every column by its header label, not its position.
 
-STEP 3 — READ COLUMNS (always: SCORE | KILLS | ASSISTS | DEATHS):
+STEP 3 — IDENTIFY MODE AND MAP SCORE COLUMN:
 
-FOR HARDCORE KING / KING OF THE HILL:
-The Score column contains hill time in SECONDS (large numbers like 22, 32, 40, 60, 65, 76, 79).
-These MUST be stored in hillTime. They are NOT kills.
-The Kills column has the actual kill counts (also large numbers).
-REAL EXAMPLE from "HARDCORE KING" scoreboard:
-- Rights: Score=76, Kills=28, Assists=18, Deaths=29 → hillTime=76, kills=28, assists=18, deaths=29
-- Cranium: Score=65, Kills=35, Assists=19, Deaths=27 → hillTime=65, kills=35, assists=19, deaths=27
-- BackOnMyBsss: Score=79, Kills=24, Assists=30, Deaths=33 → hillTime=79, kills=24, assists=30, deaths=33
-hillTime must NEVER be null for a King of the Hill game. Every player has a score value — store it.
+HARDCORE BALL / ODDBALL (title contains "BALL" or "ODDBALL"):
+Score column = Ball Time in SECONDS → store in ballTime. NEVER store in kills.
+ballTime must NEVER be null for these games.
+REAL EXAMPLE from actual "HARDCORE BALL" scoreboard:
+- Plague NYC: Score=71, Kills=21, Assists=20, Deaths=23 → ballTime=71, kills=21, assists=20, deaths=23
+- WindyAlarm8216: Score=64, Kills=21, Assists=18, Deaths=27 → ballTime=64, kills=21, assists=18, deaths=27
+- BionicalDNA: Score=45, Kills=21, Assists=21, Deaths=24 → ballTime=45, kills=21, assists=21, deaths=24
+- eL Romin: Score=35, Kills=30, Assists=12, Deaths=19 → ballTime=35, kills=30, assists=12, deaths=19
+The number 71 is ball time NOT kills. The number 21 is kills NOT ball time.
 
-FOR CTF / "30" GAMES:
-Score = Flag Caps (small: 0-5). Kills are in Kills column (larger: 10-45).
-REAL EXAMPLE from "GB 30 HERETIC/O":
-- Cranium: Score=3, Kills=11, Assists=13, Deaths=8 → flagCaps=3, kills=11, assists=13, deaths=8
-- Wensoar: Score=0, Kills=25, Assists=11, Deaths=11 → flagCaps=0, kills=25, assists=11, deaths=11
+HARDCORE KING / KING OF THE HILL (title contains "KING" or "HILL" or "KOTH"):
+Score column = Hill Time in SECONDS → store in hillTime. NEVER store in kills.
+hillTime must NEVER be null for these games.
+REAL EXAMPLE from actual "HARDCORE KING" scoreboard:
+- Rights: Score=76, Kills=28 → hillTime=76, kills=28
+- Cranium: Score=65, Kills=35 → hillTime=65, kills=35
+- BackOnMyBsss: Score=79, Kills=24 → hillTime=79, kills=24
 
-FOR SLAYER / HARDCORE TS:
-Score = Kills (they match). Use the Kills column value.
+CTF / FLAG CAPS (title contains "30" OR "CTF" OR "FLAG"):
+Score column = Flag Caps (small integer 0-5) → store in flagCaps. NEVER store in kills.
+REAL EXAMPLE: Score=3, Kills=11 → flagCaps=3, kills=11
 
-PLAYER NAMES: Each player has TWO lines. TOP = clan tag (ignore). BOTTOM = real gamertag (use this).
-Never duplicate players. 4v4 = exactly 4 per team. 2v2 = exactly 2 per team.
+SLAYER / HARDCORE TS (title contains "SLAYER" or "TS", no "30", no "KING", no "BALL"):
+Score column = Kills (they match). Use the Kills column.
 
-Rules:
-- gameType: copy exact text from scoreboard title
+PLAYER NAMES: TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this).
+Never duplicate. 4v4 = exactly 4 per team. 2v2 = exactly 2 per team.
+
+- gameType: exact title text
 - winner: "Red" or "Blue"
-- hillTime: seconds integer for KOTH/Hardcore King — NEVER null for these games, every player has a value
-- flagCaps: integer for CTF and all "30" variants — can be 0 but not null
-- ballTime: seconds integer for Oddball only
-- If genuinely not visible, use null` }
+- ballTime: seconds integer for BALL/ODDBALL only — NEVER null for these games
+- hillTime: seconds integer for KING/HILL/KOTH only — NEVER null for these games
+- flagCaps: integer for CTF/"30" games — can be 0 but use null only for non-CTF games
+- kills: the KILLS column value — always separate from Score` }
         ]
       }]
     })
@@ -364,7 +363,7 @@ function kd(k,d) { return d===0 ? (k>0?k.toFixed(2):'0.00') : (k/d).toFixed(2); 
 function kdClass(k,d) { const r = d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
 function pm(k,d) { const v=(k||0)-(d||0); return (v>0?'+':'')+v; }
 function pmClass(k,d) { const v=(k||0)-(d||0); return v>0?'pm-pos':v<0?'pm-neg':'pm-zero'; }
-function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|hardcore ball/); }
+function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|ball/); }
 function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30/); }
 function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 
