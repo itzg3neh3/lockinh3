@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lock in H3 — Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10; --surface: #111318; --surface2: #181c24;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0; --muted: #6b7280; --accent: #4a9eff;
+    --accent-dim: rgba(74,158,255,0.12); --red: #ff5555;
+    --red-dim: rgba(255,85,85,0.12); --red-border: rgba(255,85,85,0.25);
+    --blue: #4a9eff; --blue-dim: rgba(74,158,255,0.12);
+    --blue-border: rgba(74,158,255,0.25); --green: #4ade80;
+    --green-dim: rgba(74,222,128,0.1); --gold: #f59e0b;
+    --s1: #a78bfa; --s2: #fb923c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 1000; }
+  .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+  header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
+  .logo em { font-style: normal; color: var(--accent); }
+  .nav-links { display: flex; align-items: center; gap: 1rem; }
+  .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
+  .nav-link:hover { color: var(--accent); border-color: var(--accent); }
+  .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+  .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 2rem; }
+  .loading { text-align: center; padding: 4rem; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
+  .empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+  .empty h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 0.5rem; }
+
+  /* All-time callouts */
+  .alltime-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 2.5rem; }
+  .callout-card { border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; }
+  .callout-gold { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03)); border: 1px solid rgba(245,158,11,0.2); }
+  .callout-red { background: linear-gradient(135deg,rgba(255,85,85,0.08),rgba(255,85,85,0.03)); border: 1px solid rgba(255,85,85,0.2); }
+  .callout-blue { background: linear-gradient(135deg,rgba(74,158,255,0.08),rgba(74,158,255,0.03)); border: 1px solid rgba(74,158,255,0.2); }
+  .callout-green { background: linear-gradient(135deg,rgba(74,222,128,0.08),rgba(74,222,128,0.03)); border: 1px solid rgba(74,222,128,0.2); }
+  .callout-icon { font-size: 24px; flex-shrink: 0; }
+  .callout-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+  .ey-gold { color: var(--gold); }
+  .ey-red { color: var(--red); }
+  .ey-blue { color: var(--accent); }
+  .ey-green { color: var(--green); }
+  .callout-name { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  .callout-stat { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Sort tabs */
+  .sort-wrap { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .sort-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border2); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .sort-btn:hover { color: var(--text); border-color: var(--border2); }
+  .sort-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  /* Leaderboard table */
+  .lb-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  thead th { padding: 10px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
+  thead th:hover { color: var(--text); }
+  thead th.sorted { color: var(--accent); }
+  thead th:not(:first-child) { text-align: center; }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; white-space: nowrap; }
+  tbody td:not(:first-child) { text-align: center; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .rank-cell { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; color: var(--muted); width: 36px; }
+  .rank-1 { color: #f59e0b; }
+  .rank-2 { color: #9ca3af; }
+  .rank-3 { color: #b45309; }
+  .player-cell { font-weight: 600; font-size: 14px; }
+  .kd-pos { color: var(--green); font-weight: 600; }
+  .kd-neg { color: var(--red); }
+  .kd-neu { color: var(--muted); }
+  .win-pct { font-size: 12px; color: var(--muted); }
+  .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  @media (max-width: 600px) { .alltime-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Lock in <em>H3</em></div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Report</a>
+      <a href="leaderboard.html" class="nav-link active">Leaderboard</a>
+    </div>
+  </header>
+
+  <div class="page-title">All-Time Leaderboard</div>
+  <div class="page-sub">Cumulative stats across all series — updated automatically after each report</div>
+
+  <div id="content"><div class="loading">Loading leaderboard...</div></div>
+</div>
+
+<script>
+const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
+
+function fmtTime(sec) {
+  if (!sec) return '—';
+  const m = Math.floor(sec/60), s = sec%60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function kd(k,d) { return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2); }
+function kdClass(k,d) { const r=d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
+
+function calcObjScore(p, totals) {
+  const shares = [];
+  if (totals.ball > 0) shares.push(p.ballSecs / totals.ball);
+  if (totals.caps > 0) shares.push(p.flagCaps / totals.caps);
+  if (totals.hill > 0) shares.push(p.hillSecs / totals.hill);
+  if (!shares.length) return 0;
+  return shares.reduce((a,b)=>a+b,0) / shares.length;
+}
+
+let currentSort = 'kills';
+let leaderboardData = [];
+
+async function load() {
+  try {
+    const resp = await fetch(WORKER_URL + '/leaderboard');
+    if (!resp.ok) throw new Error('Failed to load');
+    const raw = await resp.json();
+    const players = Object.values(raw);
+    if (!players.length) {
+      document.getElementById('content').innerHTML = `<div class="empty"><h2>No data yet</h2><p>Run your first series report to start building the leaderboard.</p></div>`;
+      return;
+    }
+    leaderboardData = players;
+    render();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;
+  }
+}
+
+function render() {
+  const players = leaderboardData;
+  if (!players.length) return;
+
+  // Totals for OBJ scoring
+  const totals = {
+    ball: players.reduce((s,p)=>s+p.ballSecs,0),
+    caps: players.reduce((s,p)=>s+p.flagCaps,0),
+    hill: players.reduce((s,p)=>s+p.hillSecs,0),
+  };
+  const hasObj = totals.ball > 0 || totals.caps > 0 || totals.hill > 0;
+
+  // All-time callouts
+  const topFragger = [...players].sort((a,b)=>b.kills-a.kills)[0];
+  const topShitter = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
+  const assistKing = [...players].sort((a,b)=>b.assists-a.assists)[0];
+  const objMVP = hasObj ? [...players].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0] : null;
+
+  // Sort players
+  const sorted = [...players].sort((a,b) => {
+    switch(currentSort) {
+      case 'kills': return b.kills - a.kills;
+      case 'kd': return (b.deaths?b.kills/b.deaths:b.kills) - (a.deaths?a.kills/a.deaths:a.kills);
+      case 'assists': return b.assists - a.assists;
+      case 'deaths': return b.deaths - a.deaths;
+      case 'wins': return b.seriesWon - a.seriesWon;
+      case 'caps': return b.flagCaps - a.flagCaps;
+      case 'hill': return b.hillSecs - a.hillSecs;
+      case 'ball': return b.ballSecs - a.ballSecs;
+      default: return b.kills - a.kills;
+    }
+  });
+
+  const hasCaps = totals.caps > 0;
+  const hasHill = totals.hill > 0;
+  const hasBall = totals.ball > 0;
+
+  let html = `<div class="alltime-grid">
+    <div>
+      <div class="callout-card callout-gold" style="margin-bottom:0.75rem">
+        <div class="callout-icon">⭐</div>
+        <div>
+          <div class="callout-eyebrow ey-gold">All-Time Top Fragger</div>
+          <div class="callout-name">${topFragger.displayName}</div>
+          <div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div>
+        </div>
+      </div>
+      <div class="callout-card callout-red">
+        <div class="callout-icon">🍆</div>
+        <div>
+          <div class="callout-eyebrow ey-red">All-Time Top Shitter</div>
+          <div class="callout-name">${topShitter.displayName}</div>
+          <div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="callout-card callout-blue" style="margin-bottom:0.75rem">
+        <div class="callout-icon">🤝</div>
+        <div>
+          <div class="callout-eyebrow ey-blue">All-Time Assist King</div>
+          <div class="callout-name">${assistKing.displayName}</div>
+          <div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div>
+        </div>
+      </div>
+      ${objMVP ? `<div class="callout-card callout-green">
+        <div class="callout-icon">🎯</div>
+        <div>
+          <div class="callout-eyebrow ey-green">All-Time OBJ MVP</div>
+          <div class="callout-name">${objMVP.displayName}</div>
+          <div class="callout-stat">${objMVP.flagCaps>0?objMVP.flagCaps+' Caps':''} ${objMVP.hillSecs>0?fmtTime(objMVP.hillSecs)+' Hill':''} ${objMVP.ballSecs>0?fmtTime(objMVP.ballSecs)+' Ball':''}</div>
+        </div>
+      </div>` : ''}
+    </div>
+  </div>
+
+  <div class="section-title">Player Stats</div>
+  <div class="sort-wrap">
+    <button class="sort-btn ${currentSort==='kills'?'active':''}" onclick="setSort('kills')">Kills</button>
+    <button class="sort-btn ${currentSort==='kd'?'active':''}" onclick="setSort('kd')">K/D</button>
+    <button class="sort-btn ${currentSort==='assists'?'active':''}" onclick="setSort('assists')">Assists</button>
+    <button class="sort-btn ${currentSort==='deaths'?'active':''}" onclick="setSort('deaths')">Deaths</button>
+    <button class="sort-btn ${currentSort==='wins'?'active':''}" onclick="setSort('wins')">Series Wins</button>
+    ${hasCaps?`<button class="sort-btn ${currentSort==='caps'?'active':''}" onclick="setSort('caps')">Flag Caps</button>`:''}
+    ${hasHill?`<button class="sort-btn ${currentSort==='hill'?'active':''}" onclick="setSort('hill')">Hill Time</button>`:''}
+    ${hasBall?`<button class="sort-btn ${currentSort==='ball'?'active':''}" onclick="setSort('ball')">Ball Time</button>`:''}
+  </div>
+
+  <div class="lb-table-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th>
+        <th>Player</th>
+        <th class="${currentSort==='wins'?'sorted':''}" onclick="setSort('wins')">W / L</th>
+        <th>Played</th>
+        <th class="${currentSort==='kills'?'sorted':''}" onclick="setSort('kills')">Kills</th>
+        <th class="${currentSort==='deaths'?'sorted':''}" onclick="setSort('deaths')">Deaths</th>
+        <th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th>
+        <th class="${currentSort==='kd'?'sorted':''}" onclick="setSort('kd')">K/D</th>
+        ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th>`:''}
+        ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th>`:''}
+        ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th>`:''}
+      </tr></thead>
+      <tbody>`;
+
+  sorted.forEach((p, i) => {
+    const rank = i + 1;
+    const rankClass = rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
+    const winPct = p.seriesPlayed > 0 ? Math.round((p.seriesWon/p.seriesPlayed)*100) : 0;
+    html += `<tr>
+      <td class="rank-cell ${rankClass}">${rank}</td>
+      <td class="player-cell">${p.displayName}</td>
+      <td>${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span></td>
+      <td>${p.seriesPlayed}</td>
+      <td>${p.kills}</td>
+      <td>${p.deaths}</td>
+      <td>${p.assists}</td>
+      <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
+      ${hasCaps?`<td>${p.flagCaps||0}</td>`:''}
+      ${hasHill?`<td>${fmtTime(p.hillSecs)}</td>`:''}
+      ${hasBall?`<td>${fmtTime(p.ballSecs)}</td>`:''}
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  document.getElementById('content').innerHTML = html;
+}
+
+function setSort(col) {
+  currentSort = col;
+  render();
+}
+
+load();
+</script>
+</body>
+</html>
