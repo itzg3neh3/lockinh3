@@ -1,6 +1,4 @@
 // Lock in H3 — Cloudflare Worker
-// Handles: Anthropic API proxy + report save/load via KV + leaderboard
-
 const ALLOWED_ORIGIN = 'https://itzg3neh3.github.io';
 
 function cors(origin) {
@@ -28,13 +26,11 @@ function randomId(len = 6) {
   return id;
 }
 
-// Normalize player name for deduplication and leaderboard matching
 function normalizeName(name) {
   return (name || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 }
 
-// Create a fingerprint for a series to prevent duplicate leaderboard entries
-function createFingerprint(games) {
+async function createFingerprint(games) {
   const parts = games.map(g => {
     const allPlayers = [...(g.redTeam || []), ...(g.blueTeam || [])];
     const playerStr = allPlayers
@@ -46,13 +42,22 @@ function createFingerprint(games) {
   return parts.sort().join('||');
 }
 
-// Simple hash function for fingerprint
 async function hashString(str) {
   const encoder = new TextEncoder();
   const data = encoder.encode(str);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
+function parseTimeSecs(t) {
+  if (t === null || t === undefined || t === 'null' || t === '') return 0;
+  const s = String(t).trim();
+  if (s.includes(':')) {
+    const parts = s.split(':');
+    return parseInt(parts[0] || 0) * 60 + parseInt(parts[1] || 0);
+  }
+  return parseInt(s) || 0;
 }
 
 export default {
@@ -68,7 +73,7 @@ export default {
       return new Response('Forbidden', { status: 403 });
     }
 
-    // ── POST /analyze — proxy to Anthropic ──────────────────────────────
+    // ── POST /analyze ────────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/analyze') {
       try {
         const body = await request.json();
@@ -88,14 +93,13 @@ export default {
       }
     }
 
-    // ── POST /save — save report data, return short ID ──────────────────
+    // ── POST /save ───────────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/save') {
       try {
         const body = await request.text();
         const parsed = JSON.parse(body);
         if (!Array.isArray(parsed)) throw new Error('Invalid data');
         if (body.length > 512 * 1024) throw new Error('Data too large');
-
         let id, attempts = 0;
         do {
           id = randomId(6);
@@ -103,7 +107,6 @@ export default {
           if (!existing) break;
           attempts++;
         } while (attempts < 5);
-
         await env.REPORTS.put(id, body, { expirationTtl: 60 * 60 * 24 * 90 });
         return jsonResponse({ id }, 200, origin);
       } catch (err) {
@@ -111,7 +114,7 @@ export default {
       }
     }
 
-    // ── GET /report?id=xxx — load report data by ID ─────────────────────
+    // ── GET /report ──────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/report') {
       const id = url.searchParams.get('id');
       if (!id || !/^[a-z2-9]{4,10}$/.test(id)) {
@@ -126,14 +129,13 @@ export default {
       }
     }
 
-    // ── POST /leaderboard/save — merge series into all-time leaderboard ──
+    // ── POST /leaderboard/save ───────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/save') {
       try {
         const { games, seriesWinner } = await request.json();
         if (!Array.isArray(games)) throw new Error('Invalid data');
 
-        // Check for duplicate using fingerprint
-        const fingerprint = createFingerprint(games);
+        const fingerprint = await createFingerprint(games);
         const hash = await hashString(fingerprint);
         const fpKey = `fp:${hash}`;
 
@@ -142,24 +144,17 @@ export default {
           return jsonResponse({ status: 'duplicate', message: 'Series already counted' }, 200, origin);
         }
 
-        // Mark fingerprint as seen (keep for 2 years)
         await env.REPORTS.put(fpKey, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
 
-        // Load existing leaderboard
         const lbRaw = await env.REPORTS.get('leaderboard:alltime');
         const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
 
-        // Build squad membership from game 1
         const g1 = games[0];
         const squad1Names = new Set((g1.redTeam || []).map(p => normalizeName(p.name)).filter(Boolean));
         const squad2Names = new Set((g1.blueTeam || []).map(p => normalizeName(p.name)).filter(Boolean));
-
-        // Determine which squad won the series
-        // seriesWinner is 1 or 2
         const winningSquadNames = seriesWinner === 1 ? squad1Names : squad2Names;
         const losingSquadNames = seriesWinner === 1 ? squad2Names : squad1Names;
 
-        // Aggregate per-player stats across all games
         const playerStats = {};
         games.forEach(g => {
           const allPlayers = [
@@ -184,7 +179,6 @@ export default {
           });
         });
 
-        // Merge into leaderboard
         Object.entries(playerStats).forEach(([key, stats]) => {
           if (!leaderboard[key]) {
             leaderboard[key] = {
@@ -195,7 +189,6 @@ export default {
             };
           }
           const lb = leaderboard[key];
-          // Update display name to most recent version
           lb.displayName = stats.displayName;
           lb.seriesPlayed += 1;
           if (winningSquadNames.has(key)) lb.seriesWon += 1;
@@ -208,16 +201,14 @@ export default {
           lb.ballSecs += stats.ballSecs;
         });
 
-        // Save updated leaderboard (no expiry — permanent)
         await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
-
         return jsonResponse({ status: 'saved' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
 
-    // ── GET /leaderboard — fetch all-time leaderboard ───────────────────
+    // ── GET /leaderboard ─────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/leaderboard') {
       try {
         const data = await env.REPORTS.get('leaderboard:alltime');
@@ -228,17 +219,67 @@ export default {
       }
     }
 
+    // ── POST /leaderboard/merge ──────────────────────────────────────────
+    // Merges "fromKey" into "toKey", combining all stats, then deletes fromKey
+    // Protected by admin password check on the client side (password: fixme)
+    if (request.method === 'POST' && url.pathname === '/leaderboard/merge') {
+      try {
+        const { fromKey, toKey } = await request.json();
+        if (!fromKey || !toKey) throw new Error('fromKey and toKey required');
+        if (fromKey === toKey) throw new Error('Cannot merge a player into themselves');
+
+        const lbRaw = await env.REPORTS.get('leaderboard:alltime');
+        if (!lbRaw) throw new Error('Leaderboard is empty');
+        const leaderboard = JSON.parse(lbRaw);
+
+        const from = leaderboard[fromKey];
+        const to = leaderboard[toKey];
+        if (!from) throw new Error(`Player "${fromKey}" not found`);
+        if (!to) throw new Error(`Player "${toKey}" not found`);
+
+        // Merge all stats from → to
+        to.seriesPlayed += from.seriesPlayed;
+        to.seriesWon += from.seriesWon;
+        to.seriesLost += from.seriesLost;
+        to.kills += from.kills;
+        to.deaths += from.deaths;
+        to.assists += from.assists;
+        to.flagCaps += from.flagCaps;
+        to.hillSecs += from.hillSecs;
+        to.ballSecs += from.ballSecs;
+        // Keep the toKey's displayName (the correct one)
+
+        // Remove the bad entry
+        delete leaderboard[fromKey];
+
+        await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
+        return jsonResponse({ status: 'merged', message: `Merged "${fromKey}" into "${toKey}" and removed duplicate` }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── POST /leaderboard/delete ─────────────────────────────────────────
+    // Deletes a single player entry entirely
+    if (request.method === 'POST' && url.pathname === '/leaderboard/delete') {
+      try {
+        const { key } = await request.json();
+        if (!key) throw new Error('key required');
+
+        const lbRaw = await env.REPORTS.get('leaderboard:alltime');
+        if (!lbRaw) throw new Error('Leaderboard is empty');
+        const leaderboard = JSON.parse(lbRaw);
+
+        if (!leaderboard[key]) throw new Error(`Player "${key}" not found`);
+        delete leaderboard[key];
+
+        await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
+        return jsonResponse({ status: 'deleted' }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
     return new Response('Not found', { status: 404 });
   },
 };
-
-// Helper used in worker context
-function parseTimeSecs(t) {
-  if (t === null || t === undefined || t === 'null' || t === '') return 0;
-  const s = String(t).trim();
-  if (s.includes(':')) {
-    const parts = s.split(':');
-    return parseInt(parts[0] || 0) * 60 + parseInt(parts[1] || 0);
-  }
-  return parseInt(s) || 0;
-}
