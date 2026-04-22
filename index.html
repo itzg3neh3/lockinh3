@@ -111,14 +111,13 @@
   .color-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.5px; }
   .color-tag-red { background: var(--red-dim); color: var(--red); }
   .color-tag-blue { background: var(--blue-dim); color: var(--blue); }
-  .lb-saved-banner { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); border-radius: 8px; padding: 10px 16px; margin-top: 0.75rem; font-size: 13px; color: #4ade80; display: none; align-items: center; gap: 8px; }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (max-width: 600px) { .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; } .team-wins { font-size: 38px; } thead th, tbody td { padding: 8px 10px; font-size: 12px; } .callouts-grid { grid-template-columns: 1fr; } }
   @media print {
     body { background: #fff !important; color: #111 !important; font-size: 12px; }
     body::before { display: none; }
-    header, .upload-zone, .file-list, .analyze-btn, .progress-wrap, .error-box, .export-btn-wrap, .share-btn-wrap, .lb-saved-banner { display: none !important; }
+    header, .upload-zone, .file-list, .analyze-btn, .progress-wrap, .error-box, .export-btn-wrap, .share-btn-wrap, .lb-btn-wrap { display: none !important; }
     .report { display: block !important; margin-top: 0; }
     .container { max-width: 100%; padding: 0 1rem; }
     :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --blue: #185FA5; --blue-dim: #e6f1fb; --blue-border: rgba(24,95,165,0.3); --green: #1a7a3a; --gold: #b8860b; --s1: #6d28d9; --s1-dim: #f3f0ff; --s1-border: rgba(109,40,217,0.3); --s2: #c2410c; --s2-dim: #fff7ed; --s2-border: rgba(194,65,12,0.3); }
@@ -148,6 +147,15 @@
   .copy-btn { padding: 9px 16px; background: #4ade80; color: #000; border: none; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
   .copy-btn:hover { background: #86efac; }
   .copy-btn.copied { background: var(--surface2); color: var(--muted); }
+
+  /* Leaderboard button */
+  .lb-btn-wrap { margin-top: 0.75rem; display: none; }
+  .lb-btn { width: 100%; padding: 13px; background: transparent; color: var(--gold); border: 1.5px solid var(--gold); border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .lb-btn:hover { background: rgba(245,158,11,0.08); }
+  .lb-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .lb-btn.saved { background: rgba(74,222,128,0.08); color: #4ade80; border-color: #4ade80; cursor: default; }
+  .lb-btn.duplicate { background: rgba(107,114,128,0.1); color: var(--muted); border-color: var(--muted); cursor: default; }
+
   .view-only-banner { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); border-radius: 8px; padding: 10px 16px; margin-bottom: 1.5rem; font-size: 13px; color: #4ade80; display: flex; align-items: center; gap: 10px; }
   .not-found-msg { text-align: center; padding: 4rem 1rem; color: var(--muted); }
   .not-found-msg h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text); margin-bottom: 0.5rem; }
@@ -195,9 +203,11 @@
       </div>
     </div>
   </div>
-  <div class="lb-saved-banner" id="lbSavedBanner">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-    <span id="lbSavedMsg">Series saved to leaderboard</span>
+  <div class="lb-btn-wrap" id="lbBtnWrap">
+    <button class="lb-btn" id="lbBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      Add to Leaderboard Stats
+    </button>
   </div>
 </div>
 
@@ -266,7 +276,11 @@ analyzeBtn.addEventListener('click', async () => {
   errorBox.style.display = 'none';
   reportEl.style.display = 'none';
   reportEl.innerHTML = '';
-  document.getElementById('lbSavedBanner').style.display = 'none';
+  document.getElementById('lbBtnWrap').style.display = 'none';
+  const lbBtn = document.getElementById('lbBtn');
+  lbBtn.className = 'lb-btn';
+  lbBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Add to Leaderboard Stats';
+  lbBtn.disabled = false;
   analyzeBtn.disabled = true;
   analyzeBtn.innerHTML = '<span class="spinner"></span>Analyzing...';
   progressWrap.style.display = 'block';
@@ -373,8 +387,8 @@ function fmtHillOrBall(val) {
   const secs = parseTimeSecs(val);
   return secs === 0 ? '0:00' : fmtTime(secs);
 }
-function kd(k,d) { return d===0 ? (k>0?k.toFixed(2):'0.00') : (k/d).toFixed(2); }
-function kdClass(k,d) { const r = d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
+function kd(k,d) { return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2); }
+function kdClass(k,d) { const r=d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
 function pm(k,d) { const v=(k||0)-(d||0); return (v>0?'+':'')+v; }
 function pmClass(k,d) { const v=(k||0)-(d||0); return v>0?'pm-pos':v<0?'pm-neg':'pm-zero'; }
 function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|ball/); }
@@ -384,9 +398,9 @@ function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 function calcObjMVP(players, games) {
   const hasObj = games.some(g => isOddball(g.gameType) || isCTF(g.gameType) || isKOTH(g.gameType));
   if (!hasObj) return null;
-  const totalBall = players.reduce((s,p) => s + p.ballSecs, 0);
-  const totalCaps = players.reduce((s,p) => s + p.flagCaps, 0);
-  const totalHill = players.reduce((s,p) => s + p.hillSecs, 0);
+  const totalBall = players.reduce((s,p)=>s+p.ballSecs,0);
+  const totalCaps = players.reduce((s,p)=>s+p.flagCaps,0);
+  const totalHill = players.reduce((s,p)=>s+p.hillSecs,0);
   let best = null, bestScore = -1;
   players.forEach(p => {
     const shares = [];
@@ -394,7 +408,7 @@ function calcObjMVP(players, games) {
     if (totalCaps > 0) shares.push(p.flagCaps / totalCaps);
     if (totalHill > 0) shares.push(p.hillSecs / totalHill);
     if (!shares.length) return;
-    const score = shares.reduce((a,b) => a+b, 0) / shares.length;
+    const score = shares.reduce((a,b)=>a+b,0) / shares.length;
     if (score > bestScore) { bestScore = score; best = p; }
   });
   return best;
@@ -416,15 +430,38 @@ function getSquad(name, squad1, squad2) {
   return 1;
 }
 
-async function saveToLeaderboard(games, seriesWinner) {
+// Leaderboard button handler
+document.getElementById('lbBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('lbBtn');
+  if (!window._lastGames || !window._seriesWinner) return;
+  if (window._seriesWinner === 0) {
+    btn.className = 'lb-btn duplicate';
+    btn.innerHTML = '— Tied series not added to leaderboard';
+    btn.disabled = true;
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="border-top-color:currentColor"></span> Saving...';
   try {
-    await fetch(WORKER_URL + '/leaderboard/save', {
+    const resp = await fetch(WORKER_URL + '/leaderboard/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ games, seriesWinner }),
+      body: JSON.stringify({ games: window._lastGames, seriesWinner: window._seriesWinner }),
     });
-  } catch(e) { console.warn('Leaderboard save failed:', e.message); }
-}
+    const result = await resp.json();
+    if (result.status === 'duplicate') {
+      btn.className = 'lb-btn duplicate';
+      btn.innerHTML = '✓ Already in leaderboard — not counted twice';
+    } else {
+      btn.className = 'lb-btn saved';
+      btn.innerHTML = '✓ Added to leaderboard successfully';
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '⚠ Save failed — try again';
+    btn.className = 'lb-btn';
+  }
+});
 
 function renderReport(games, errors) {
   const { squad1, squad2 } = buildSquads(games);
@@ -540,19 +577,10 @@ function renderReport(games, errors) {
   reportEl.style.display = 'block';
   document.getElementById('exportWrap').style.display = 'block';
   document.getElementById('shareBtnWrap').style.display = 'block';
+  document.getElementById('lbBtnWrap').style.display = winner !== 0 ? 'block' : 'none';
   window._lastGames = games;
   window._seriesWinner = winner;
   reportEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-  // Auto-save to leaderboard
-  if (winner !== 0) {
-    saveToLeaderboard(games, winner).then(() => {
-      const banner = document.getElementById('lbSavedBanner');
-      const msg = document.getElementById('lbSavedMsg');
-      msg.textContent = 'Series saved to leaderboard';
-      banner.style.display = 'flex';
-    });
-  }
 }
 
 document.getElementById('exportBtn').addEventListener('click', () => {
@@ -618,6 +646,7 @@ document.getElementById('copyBtn').addEventListener('click', () => {
     renderReport(games,[]);
     document.getElementById('exportWrap').style.display='block';
     document.getElementById('shareBtnWrap').style.display='none';
+    document.getElementById('lbBtnWrap').style.display='none';
   } catch(err) { reportEl.innerHTML='<div class="not-found-msg"><h2>Could not load report</h2><p>'+err.message+'</p></div>'; }
 })();
 </script>
