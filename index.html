@@ -26,7 +26,10 @@
   header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; }
   .logo { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
   .logo em { font-style: normal; color: var(--accent); }
-  .header-tag { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border2); padding: 4px 10px; border-radius: 3px; }
+  .nav-links { display: flex; align-items: center; gap: 1rem; }
+  .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
+  .nav-link:hover { color: var(--accent); border-color: var(--accent); }
+  .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
   .upload-zone { border: 1.5px dashed var(--border2); border-radius: 10px; padding: 3rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface); margin-bottom: 1rem; }
   .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
   .upload-zone input { display: none; }
@@ -63,8 +66,6 @@
   .team-players { font-size: 11px; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.4; }
   .team-wins { font-family: 'Barlow Condensed', sans-serif; font-size: 52px; font-weight: 800; line-height: 1; }
   .vs-sep { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; color: var(--muted); letter-spacing: 2px; text-align: center; }
-
-  /* 2x2 callout grid */
   .callouts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 2rem; }
   .mvp-strip { border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; }
   .mvp-strip-gold { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03)); border: 1px solid rgba(245,158,11,0.2); }
@@ -79,7 +80,6 @@
   .eyebrow-green { color: var(--green); }
   .mvp-name { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
   .mvp-stats { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
-
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .stat-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; }
@@ -111,18 +111,14 @@
   .color-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.5px; }
   .color-tag-red { background: var(--red-dim); color: var(--red); }
   .color-tag-blue { background: var(--blue-dim); color: var(--blue); }
+  .lb-saved-banner { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); border-radius: 8px; padding: 10px 16px; margin-top: 0.75rem; font-size: 13px; color: #4ade80; display: none; align-items: center; gap: 8px; }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @media (max-width: 600px) {
-    .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; }
-    .team-wins { font-size: 38px; }
-    thead th, tbody td { padding: 8px 10px; font-size: 12px; }
-    .callouts-grid { grid-template-columns: 1fr; }
-  }
+  @media (max-width: 600px) { .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; } .team-wins { font-size: 38px; } thead th, tbody td { padding: 8px 10px; font-size: 12px; } .callouts-grid { grid-template-columns: 1fr; } }
   @media print {
     body { background: #fff !important; color: #111 !important; font-size: 12px; }
     body::before { display: none; }
-    header, .upload-zone, .file-list, .analyze-btn, .progress-wrap, .error-box, .export-btn-wrap, .share-btn-wrap { display: none !important; }
+    header, .upload-zone, .file-list, .analyze-btn, .progress-wrap, .error-box, .export-btn-wrap, .share-btn-wrap, .lb-saved-banner { display: none !important; }
     .report { display: block !important; margin-top: 0; }
     .container { max-width: 100%; padding: 0 1rem; }
     :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --blue: #185FA5; --blue-dim: #e6f1fb; --blue-border: rgba(24,95,165,0.3); --green: #1a7a3a; --gold: #b8860b; --s1: #6d28d9; --s1-dim: #f3f0ff; --s1-border: rgba(109,40,217,0.3); --s2: #c2410c; --s2-dim: #fff7ed; --s2-border: rgba(194,65,12,0.3); }
@@ -161,7 +157,10 @@
 <div class="container">
   <header>
     <div class="logo">Lock in <em>H3</em></div>
-    <div class="header-tag">Halo 3 MCC · Stat Tracker</div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link active">Report</a>
+      <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+    </div>
   </header>
   <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
     <input type="file" id="fileInput" accept="image/*" multiple>
@@ -195,6 +194,10 @@
         <button class="copy-btn" id="copyBtn">Copy</button>
       </div>
     </div>
+  </div>
+  <div class="lb-saved-banner" id="lbSavedBanner">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="lbSavedMsg">Series saved to leaderboard</span>
   </div>
 </div>
 
@@ -263,6 +266,7 @@ analyzeBtn.addEventListener('click', async () => {
   errorBox.style.display = 'none';
   reportEl.style.display = 'none';
   reportEl.innerHTML = '';
+  document.getElementById('lbSavedBanner').style.display = 'none';
   analyzeBtn.disabled = true;
   analyzeBtn.innerHTML = '<span class="spinner"></span>Analyzing...';
   progressWrap.style.display = 'block';
@@ -316,7 +320,6 @@ REAL EXAMPLE from actual "HARDCORE BALL" scoreboard:
 - Plague NYC: Score=71, Kills=21, Assists=20, Deaths=23 → ballTime=71, kills=21, assists=20, deaths=23
 - WindyAlarm8216: Score=64, Kills=21, Assists=18, Deaths=27 → ballTime=64, kills=21, assists=18, deaths=27
 - BionicalDNA: Score=45, Kills=21, Assists=21, Deaths=24 → ballTime=45, kills=21, assists=21, deaths=24
-- eL Romin: Score=35, Kills=30, Assists=12, Deaths=19 → ballTime=35, kills=30, assists=12, deaths=19
 The number 71 is ball time NOT kills. The number 21 is kills NOT ball time.
 
 HARDCORE KING / KING OF THE HILL (title contains "KING" or "HILL" or "KOTH"):
@@ -379,27 +382,21 @@ function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30/); }
 function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 
 function calcObjMVP(players, games) {
-  // Only run if there are any objective games
   const hasObj = games.some(g => isOddball(g.gameType) || isCTF(g.gameType) || isKOTH(g.gameType));
   if (!hasObj) return null;
-
-  // Calculate totals across all players for each category
   const totalBall = players.reduce((s,p) => s + p.ballSecs, 0);
   const totalCaps = players.reduce((s,p) => s + p.flagCaps, 0);
   const totalHill = players.reduce((s,p) => s + p.hillSecs, 0);
-
-  // Score each player: average their share across active categories only
   let best = null, bestScore = -1;
   players.forEach(p => {
     const shares = [];
     if (totalBall > 0) shares.push(p.ballSecs / totalBall);
     if (totalCaps > 0) shares.push(p.flagCaps / totalCaps);
     if (totalHill > 0) shares.push(p.hillSecs / totalHill);
-    if (shares.length === 0) return;
+    if (!shares.length) return;
     const score = shares.reduce((a,b) => a+b, 0) / shares.length;
     if (score > bestScore) { bestScore = score; best = p; }
   });
-
   return best;
 }
 
@@ -417,6 +414,16 @@ function getSquad(name, squad1, squad2) {
   for (const n of squad1) { if (n&&name&&n.toLowerCase()===name.toLowerCase()) return 1; }
   for (const n of squad2) { if (n&&name&&n.toLowerCase()===name.toLowerCase()) return 2; }
   return 1;
+}
+
+async function saveToLeaderboard(games, seriesWinner) {
+  try {
+    await fetch(WORKER_URL + '/leaderboard/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ games, seriesWinner }),
+    });
+  } catch(e) { console.warn('Leaderboard save failed:', e.message); }
 }
 
 function renderReport(games, errors) {
@@ -452,7 +459,6 @@ function renderReport(games, errors) {
   const s2Players = [...squad2].join(', ');
   const dateStr = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  // Build OBJ MVP stat line showing what they contributed
   function objMVPStats(p) {
     const parts = [];
     if (p.flagCaps > 0) parts.push(`${p.flagCaps} Flag Caps`);
@@ -487,12 +493,12 @@ function renderReport(games, errors) {
   </div>
   <div class="callouts-grid">
     <div>
-      ${topKiller ? `<div class="mvp-strip mvp-strip-gold" style="margin-bottom:0.75rem"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Series Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D &nbsp;·&nbsp; ${pm(topKiller.kills,topKiller.deaths)} +/-</div></div></div>` : ''}
-      ${bottomFragger ? `<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Series Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D &nbsp;·&nbsp; ${pm(bottomFragger.kills,bottomFragger.deaths)} +/-</div></div></div>` : ''}
+      ${topKiller?`<div class="mvp-strip mvp-strip-gold" style="margin-bottom:0.75rem"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Series Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D &nbsp;·&nbsp; ${pm(topKiller.kills,topKiller.deaths)} +/-</div></div></div>`:''}
+      ${bottomFragger?`<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Series Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D &nbsp;·&nbsp; ${pm(bottomFragger.kills,bottomFragger.deaths)} +/-</div></div></div>`:''}
     </div>
     <div>
-      ${assistKing ? `<div class="mvp-strip mvp-strip-blue" style="margin-bottom:0.75rem"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Series Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.deaths} Deaths &nbsp;·&nbsp; ${kd(assistKing.kills,assistKing.deaths)} K/D</div></div></div>` : ''}
-      ${objMVP ? `<div class="mvp-strip mvp-strip-green"><div class="mvp-star">🎯</div><div><div class="mvp-eyebrow eyebrow-green">Series OBJ MVP</div><div class="mvp-name">${objMVP.name}</div><div class="mvp-stats">${objMVPStats(objMVP)}</div></div></div>` : ''}
+      ${assistKing?`<div class="mvp-strip mvp-strip-blue" style="margin-bottom:0.75rem"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Series Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.deaths} Deaths &nbsp;·&nbsp; ${kd(assistKing.kills,assistKing.deaths)} K/D</div></div></div>`:''}
+      ${objMVP?`<div class="mvp-strip mvp-strip-green"><div class="mvp-star">🎯</div><div><div class="mvp-eyebrow eyebrow-green">Series OBJ MVP</div><div class="mvp-name">${objMVP.name}</div><div class="mvp-stats">${objMVPStats(objMVP)}</div></div></div>`:''}
     </div>
   </div>`;
 
@@ -535,7 +541,18 @@ function renderReport(games, errors) {
   document.getElementById('exportWrap').style.display = 'block';
   document.getElementById('shareBtnWrap').style.display = 'block';
   window._lastGames = games;
+  window._seriesWinner = winner;
   reportEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Auto-save to leaderboard
+  if (winner !== 0) {
+    saveToLeaderboard(games, winner).then(() => {
+      const banner = document.getElementById('lbSavedBanner');
+      const msg = document.getElementById('lbSavedMsg');
+      msg.textContent = 'Series saved to leaderboard';
+      banner.style.display = 'flex';
+    });
+  }
 }
 
 document.getElementById('exportBtn').addEventListener('click', () => {
