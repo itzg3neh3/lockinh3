@@ -63,17 +63,23 @@
   .team-players { font-size: 11px; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.4; }
   .team-wins { font-family: 'Barlow Condensed', sans-serif; font-size: 52px; font-weight: 800; line-height: 1; }
   .vs-sep { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; color: var(--muted); letter-spacing: 2px; text-align: center; }
-  .mvp-strip { border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+
+  /* 2x2 callout grid */
+  .callouts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 2rem; }
+  .mvp-strip { border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; }
   .mvp-strip-gold { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03)); border: 1px solid rgba(245,158,11,0.2); }
   .mvp-strip-red { background: linear-gradient(135deg,rgba(255,85,85,0.08),rgba(255,85,85,0.03)); border: 1px solid rgba(255,85,85,0.2); }
-  .mvp-strip-blue { background: linear-gradient(135deg,rgba(74,158,255,0.08),rgba(74,158,255,0.03)); border: 1px solid rgba(74,158,255,0.2); margin-bottom: 2rem; }
-  .mvp-star { font-size: 28px; flex-shrink: 0; }
+  .mvp-strip-blue { background: linear-gradient(135deg,rgba(74,158,255,0.08),rgba(74,158,255,0.03)); border: 1px solid rgba(74,158,255,0.2); }
+  .mvp-strip-green { background: linear-gradient(135deg,rgba(74,222,128,0.08),rgba(74,222,128,0.03)); border: 1px solid rgba(74,222,128,0.2); }
+  .mvp-star { font-size: 24px; flex-shrink: 0; }
   .mvp-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
   .eyebrow-gold { color: var(--gold); }
   .eyebrow-red { color: var(--red); }
   .eyebrow-blue { color: var(--accent); }
-  .mvp-name { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-  .mvp-stats { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .eyebrow-green { color: var(--green); }
+  .mvp-name { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  .mvp-stats { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .stat-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; }
@@ -107,7 +113,12 @@
   .color-tag-blue { background: var(--blue-dim); color: var(--blue); }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @media (max-width: 600px) { .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; } .team-wins { font-size: 38px; } thead th, tbody td { padding: 8px 10px; font-size: 12px; } }
+  @media (max-width: 600px) {
+    .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; }
+    .team-wins { font-size: 38px; }
+    thead th, tbody td { padding: 8px 10px; font-size: 12px; }
+    .callouts-grid { grid-template-columns: 1fr; }
+  }
   @media print {
     body { background: #fff !important; color: #111 !important; font-size: 12px; }
     body::before { display: none; }
@@ -367,6 +378,31 @@ function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|ball/); 
 function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30/); }
 function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 
+function calcObjMVP(players, games) {
+  // Only run if there are any objective games
+  const hasObj = games.some(g => isOddball(g.gameType) || isCTF(g.gameType) || isKOTH(g.gameType));
+  if (!hasObj) return null;
+
+  // Calculate totals across all players for each category
+  const totalBall = players.reduce((s,p) => s + p.ballSecs, 0);
+  const totalCaps = players.reduce((s,p) => s + p.flagCaps, 0);
+  const totalHill = players.reduce((s,p) => s + p.hillSecs, 0);
+
+  // Score each player: average their share across active categories only
+  let best = null, bestScore = -1;
+  players.forEach(p => {
+    const shares = [];
+    if (totalBall > 0) shares.push(p.ballSecs / totalBall);
+    if (totalCaps > 0) shares.push(p.flagCaps / totalCaps);
+    if (totalHill > 0) shares.push(p.hillSecs / totalHill);
+    if (shares.length === 0) return;
+    const score = shares.reduce((a,b) => a+b, 0) / shares.length;
+    if (score > bestScore) { bestScore = score; best = p; }
+  });
+
+  return best;
+}
+
 function buildSquads(games) {
   if (!games.length) return { squad1: new Set(), squad2: new Set() };
   const g1 = games[0];
@@ -408,12 +444,22 @@ function renderReport(games, errors) {
   const topKiller = [...players].sort((a,b)=>b.kills-a.kills)[0];
   const bottomFragger = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   const assistKing = [...players].sort((a,b)=>b.assists-a.assists)[0];
+  const objMVP = calcObjMVP(players, games);
   const hasOddball = games.some(g=>isOddball(g.gameType));
   const hasCTF = games.some(g=>isCTF(g.gameType));
   const hasKOTH = games.some(g=>isKOTH(g.gameType));
   const s1Players = [...squad1].join(', ');
   const s2Players = [...squad2].join(', ');
   const dateStr = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Build OBJ MVP stat line showing what they contributed
+  function objMVPStats(p) {
+    const parts = [];
+    if (p.flagCaps > 0) parts.push(`${p.flagCaps} Flag Caps`);
+    if (p.hillSecs > 0) parts.push(`${fmtTime(p.hillSecs)} Hill Time`);
+    if (p.ballSecs > 0) parts.push(`${fmtTime(p.ballSecs)} Ball Time`);
+    return parts.join(' &nbsp;·&nbsp; ') || 'Objective contributor';
+  }
 
   let html = `
   <div class="print-header">
@@ -438,11 +484,17 @@ function renderReport(games, errors) {
       <div class="team-players">${s2Players}</div>
       <div class="team-wins" style="color:var(--s2)">${s2Wins}</div>
     </div>
+  </div>
+  <div class="callouts-grid">
+    <div>
+      ${topKiller ? `<div class="mvp-strip mvp-strip-gold" style="margin-bottom:0.75rem"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Series Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D &nbsp;·&nbsp; ${pm(topKiller.kills,topKiller.deaths)} +/-</div></div></div>` : ''}
+      ${bottomFragger ? `<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Series Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D &nbsp;·&nbsp; ${pm(bottomFragger.kills,bottomFragger.deaths)} +/-</div></div></div>` : ''}
+    </div>
+    <div>
+      ${assistKing ? `<div class="mvp-strip mvp-strip-blue" style="margin-bottom:0.75rem"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Series Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.deaths} Deaths &nbsp;·&nbsp; ${kd(assistKing.kills,assistKing.deaths)} K/D</div></div></div>` : ''}
+      ${objMVP ? `<div class="mvp-strip mvp-strip-green"><div class="mvp-star">🎯</div><div><div class="mvp-eyebrow eyebrow-green">Series OBJ MVP</div><div class="mvp-name">${objMVP.name}</div><div class="mvp-stats">${objMVPStats(objMVP)}</div></div></div>` : ''}
+    </div>
   </div>`;
-
-  if (topKiller) html += `<div class="mvp-strip mvp-strip-gold"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Series Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D &nbsp;·&nbsp; ${pm(topKiller.kills,topKiller.deaths)} +/-</div></div></div>`;
-  if (bottomFragger) html += `<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Series Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D &nbsp;·&nbsp; ${pm(bottomFragger.kills,bottomFragger.deaths)} +/-</div></div></div>`;
-  if (assistKing) html += `<div class="mvp-strip mvp-strip-blue"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Series Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.deaths} Deaths &nbsp;·&nbsp; ${kd(assistKing.kills,assistKing.deaths)} K/D</div></div></div>`;
 
   html += `<div class="section-title">Overall Player Stats</div><div class="stat-table-wrap"><table><thead><tr>
     <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>
