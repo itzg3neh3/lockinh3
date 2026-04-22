@@ -12,10 +12,7 @@
     --text: #e8eaf0; --muted: #6b7280; --accent: #4a9eff;
     --accent-dim: rgba(74,158,255,0.12); --red: #ff5555;
     --red-dim: rgba(255,85,85,0.12); --red-border: rgba(255,85,85,0.25);
-    --blue: #4a9eff; --blue-dim: rgba(74,158,255,0.12);
-    --blue-border: rgba(74,158,255,0.25); --green: #4ade80;
-    --green-dim: rgba(74,222,128,0.1); --gold: #f59e0b;
-    --s1: #a78bfa; --s2: #fb923c;
+    --green: #4ade80; --gold: #f59e0b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
@@ -33,8 +30,6 @@
   .loading { text-align: center; padding: 4rem; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
   .empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
   .empty h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 0.5rem; }
-
-  /* All-time callouts */
   .alltime-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 2.5rem; }
   .callout-card { border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; }
   .callout-gold { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03)); border: 1px solid rgba(245,158,11,0.2); }
@@ -43,20 +38,13 @@
   .callout-green { background: linear-gradient(135deg,rgba(74,222,128,0.08),rgba(74,222,128,0.03)); border: 1px solid rgba(74,222,128,0.2); }
   .callout-icon { font-size: 24px; flex-shrink: 0; }
   .callout-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
-  .ey-gold { color: var(--gold); }
-  .ey-red { color: var(--red); }
-  .ey-blue { color: var(--accent); }
-  .ey-green { color: var(--green); }
+  .ey-gold { color: var(--gold); } .ey-red { color: var(--red); } .ey-blue { color: var(--accent); } .ey-green { color: var(--green); }
   .callout-name { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
   .callout-stat { font-size: 12px; color: var(--muted); margin-top: 2px; }
-
-  /* Sort tabs */
   .sort-wrap { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
   .sort-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border2); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
-  .sort-btn:hover { color: var(--text); border-color: var(--border2); }
+  .sort-btn:hover { color: var(--text); }
   .sort-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
-
-  /* Leaderboard table */
   .lb-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; min-width: 700px; }
   thead th { padding: 10px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
@@ -68,9 +56,7 @@
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover td { background: rgba(255,255,255,0.02); }
   .rank-cell { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; color: var(--muted); width: 36px; }
-  .rank-1 { color: #f59e0b; }
-  .rank-2 { color: #9ca3af; }
-  .rank-3 { color: #b45309; }
+  .rank-1 { color: #f59e0b; } .rank-2 { color: #9ca3af; } .rank-3 { color: #b45309; }
   .player-cell { font-weight: 600; font-size: 14px; }
   .kd-pos { color: var(--green); font-weight: 600; }
   .kd-neg { color: var(--red); }
@@ -78,7 +64,44 @@
   .win-pct { font-size: 12px; color: var(--muted); }
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-  @media (max-width: 600px) { .alltime-grid { grid-template-columns: 1fr; } }
+
+  /* Admin panel */
+  .admin-toggle { margin-top: 3rem; text-align: center; }
+  .admin-toggle-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; cursor: pointer; transition: all 0.15s; }
+  .admin-toggle-btn:hover { color: var(--text); border-color: var(--border2); }
+  .admin-panel { display: none; margin-top: 1.5rem; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 1.5rem; }
+  .admin-panel.visible { display: block; }
+  .admin-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; color: var(--red); }
+  .admin-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+  .admin-password-wrap { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+  .admin-input { flex: 1; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 9px 12px; color: var(--text); font-family: monospace; font-size: 14px; outline: none; }
+  .admin-input:focus { border-color: var(--accent); }
+  .admin-btn { padding: 9px 18px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+  .admin-btn:hover { background: #74b4ff; }
+  .admin-btn-red { background: var(--red); color: #fff; }
+  .admin-btn-red:hover { background: #ff7777; }
+  .admin-locked { text-align: center; color: var(--muted); font-size: 13px; padding: 1rem; }
+  .admin-unlocked { display: none; }
+  .admin-unlocked.visible { display: block; }
+  .admin-section { margin-bottom: 2rem; }
+  .admin-section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+  .admin-player-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; max-height: 300px; overflow-y: auto; }
+  .admin-player-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; gap: 12px; }
+  .admin-player-info { flex: 1; }
+  .admin-player-name { font-weight: 600; font-size: 14px; }
+  .admin-player-key { font-size: 11px; color: var(--muted); font-family: monospace; }
+  .admin-player-stats { font-size: 12px; color: var(--muted); }
+  .admin-delete-btn { background: none; border: 1px solid var(--red-border); color: var(--red); border-radius: 4px; padding: 3px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+  .admin-delete-btn:hover { background: var(--red-dim); }
+  .merge-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+  .merge-form label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px; text-transform: uppercase; }
+  .merge-select { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; cursor: pointer; }
+  .merge-select:focus { border-color: var(--accent); }
+  .admin-msg { margin-top: 0.75rem; font-size: 13px; padding: 8px 12px; border-radius: 6px; display: none; }
+  .admin-msg.success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: var(--green); display: block; }
+  .admin-msg.error { background: var(--red-dim); border: 1px solid var(--red-border); color: var(--red); display: block; }
+
+  @media (max-width: 600px) { .alltime-grid { grid-template-columns: 1fr; } .merge-form { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -92,13 +115,64 @@
   </header>
 
   <div class="page-title">All-Time Leaderboard</div>
-  <div class="page-sub">Cumulative stats across all series — updated automatically after each report</div>
+  <div class="page-sub">Cumulative stats across all series — updated manually after each verified report</div>
 
   <div id="content"><div class="loading">Loading leaderboard...</div></div>
+
+  <!-- Admin Panel -->
+  <div class="admin-toggle">
+    <button class="admin-toggle-btn" onclick="toggleAdmin()">⚙ Manage Players</button>
+  </div>
+  <div class="admin-panel" id="adminPanel">
+    <div class="admin-title">⚠ Player Management</div>
+    <div class="admin-sub">Use this to fix duplicate or misspelled player names. Enter the password to unlock.</div>
+
+    <div id="adminLocked">
+      <div class="admin-password-wrap">
+        <input type="password" class="admin-input" id="adminPwInput" placeholder="Enter password..." onkeydown="if(event.key==='Enter')checkPassword()">
+        <button class="admin-btn" onclick="checkPassword()">Unlock</button>
+      </div>
+      <div class="admin-locked" id="adminPwError" style="display:none;color:var(--red)">Incorrect password.</div>
+    </div>
+
+    <div class="admin-unlocked" id="adminUnlocked">
+
+      <!-- Merge section -->
+      <div class="admin-section">
+        <div class="admin-section-title">Merge Duplicate Players</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect (duplicate) name and the correct name to merge into. All stats will be combined under the correct name and the duplicate will be removed.</p>
+        <div class="merge-form">
+          <div>
+            <label>Duplicate / Wrong Name</label>
+            <select class="merge-select" id="mergeFrom"></select>
+          </div>
+          <div>
+            <label>Correct Name (merge into)</label>
+            <select class="merge-select" id="mergeTo"></select>
+          </div>
+          <button class="admin-btn" onclick="doMerge()" style="margin-bottom:0">Merge</button>
+        </div>
+        <div class="admin-msg" id="mergeMsg"></div>
+      </div>
+
+      <!-- Delete section -->
+      <div class="admin-section">
+        <div class="admin-section-title">All Players — Delete Entry</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Only delete entries that are completely invalid (e.g. test data). Use Merge for duplicates instead.</p>
+        <div class="admin-player-list" id="adminPlayerList"></div>
+        <div class="admin-msg" id="deleteMsg"></div>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <script>
 const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
+const ADMIN_PASSWORD = 'fixme';
+
+let adminUnlocked = false;
+let allPlayersData = {};
 
 function fmtTime(sec) {
   if (!sec) return '—';
@@ -125,13 +199,15 @@ async function load() {
     const resp = await fetch(WORKER_URL + '/leaderboard');
     if (!resp.ok) throw new Error('Failed to load');
     const raw = await resp.json();
+    allPlayersData = raw;
     const players = Object.values(raw);
     if (!players.length) {
-      document.getElementById('content').innerHTML = `<div class="empty"><h2>No data yet</h2><p>Run your first series report to start building the leaderboard.</p></div>`;
+      document.getElementById('content').innerHTML = `<div class="empty"><h2>No data yet</h2><p>Run your first series report and add it to the leaderboard to get started.</p></div>`;
       return;
     }
     leaderboardData = players;
     render();
+    if (adminUnlocked) populateAdminPanel(raw);
   } catch(e) {
     document.getElementById('content').innerHTML = `<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;
   }
@@ -141,7 +217,6 @@ function render() {
   const players = leaderboardData;
   if (!players.length) return;
 
-  // Totals for OBJ scoring
   const totals = {
     ball: players.reduce((s,p)=>s+p.ballSecs,0),
     caps: players.reduce((s,p)=>s+p.flagCaps,0),
@@ -149,13 +224,11 @@ function render() {
   };
   const hasObj = totals.ball > 0 || totals.caps > 0 || totals.hill > 0;
 
-  // All-time callouts
   const topFragger = [...players].sort((a,b)=>b.kills-a.kills)[0];
   const topShitter = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   const assistKing = [...players].sort((a,b)=>b.assists-a.assists)[0];
   const objMVP = hasObj ? [...players].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0] : null;
 
-  // Sort players
   const sorted = [...players].sort((a,b) => {
     switch(currentSort) {
       case 'kills': return b.kills - a.kills;
@@ -207,7 +280,7 @@ function render() {
         <div>
           <div class="callout-eyebrow ey-green">All-Time OBJ MVP</div>
           <div class="callout-name">${objMVP.displayName}</div>
-          <div class="callout-stat">${objMVP.flagCaps>0?objMVP.flagCaps+' Caps':''} ${objMVP.hillSecs>0?fmtTime(objMVP.hillSecs)+' Hill':''} ${objMVP.ballSecs>0?fmtTime(objMVP.ballSecs)+' Ball':''}</div>
+          <div class="callout-stat">${objMVP.flagCaps>0?objMVP.flagCaps+' Caps &nbsp;·&nbsp; ':''} ${objMVP.hillSecs>0?fmtTime(objMVP.hillSecs)+' Hill &nbsp;·&nbsp; ':''} ${objMVP.ballSecs>0?fmtTime(objMVP.ballSecs)+' Ball':''}</div>
         </div>
       </div>` : ''}
     </div>
@@ -225,22 +298,21 @@ function render() {
     ${hasBall?`<button class="sort-btn ${currentSort==='ball'?'active':''}" onclick="setSort('ball')">Ball Time</button>`:''}
   </div>
 
-  <div class="lb-table-wrap">
-    <table>
-      <thead><tr>
-        <th>#</th>
-        <th>Player</th>
-        <th class="${currentSort==='wins'?'sorted':''}" onclick="setSort('wins')">W / L</th>
-        <th>Played</th>
-        <th class="${currentSort==='kills'?'sorted':''}" onclick="setSort('kills')">Kills</th>
-        <th class="${currentSort==='deaths'?'sorted':''}" onclick="setSort('deaths')">Deaths</th>
-        <th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th>
-        <th class="${currentSort==='kd'?'sorted':''}" onclick="setSort('kd')">K/D</th>
-        ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th>`:''}
-        ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th>`:''}
-        ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th>`:''}
-      </tr></thead>
-      <tbody>`;
+  <div class="lb-table-wrap"><table>
+    <thead><tr>
+      <th>#</th>
+      <th>Player</th>
+      <th class="${currentSort==='wins'?'sorted':''}" onclick="setSort('wins')">W / L</th>
+      <th>Played</th>
+      <th class="${currentSort==='kills'?'sorted':''}" onclick="setSort('kills')">Kills</th>
+      <th class="${currentSort==='deaths'?'sorted':''}" onclick="setSort('deaths')">Deaths</th>
+      <th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th>
+      <th class="${currentSort==='kd'?'sorted':''}" onclick="setSort('kd')">K/D</th>
+      ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th>`:''}
+      ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th>`:''}
+      ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th>`:''}
+    </tr></thead>
+    <tbody>`;
 
   sorted.forEach((p, i) => {
     const rank = i + 1;
@@ -265,9 +337,109 @@ function render() {
   document.getElementById('content').innerHTML = html;
 }
 
-function setSort(col) {
-  currentSort = col;
-  render();
+function setSort(col) { currentSort = col; render(); }
+
+function toggleAdmin() {
+  const panel = document.getElementById('adminPanel');
+  panel.classList.toggle('visible');
+}
+
+function checkPassword() {
+  const input = document.getElementById('adminPwInput').value;
+  const errEl = document.getElementById('adminPwError');
+  if (input === ADMIN_PASSWORD) {
+    document.getElementById('adminLocked').style.display = 'none';
+    document.getElementById('adminUnlocked').classList.add('visible');
+    adminUnlocked = true;
+    populateAdminPanel(allPlayersData);
+  } else {
+    errEl.style.display = 'block';
+    document.getElementById('adminPwInput').value = '';
+  }
+}
+
+function populateAdminPanel(raw) {
+  const entries = Object.entries(raw).sort((a,b) => a[1].displayName.localeCompare(b[1].displayName));
+
+  // Populate merge dropdowns
+  const fromSel = document.getElementById('mergeFrom');
+  const toSel = document.getElementById('mergeTo');
+  [fromSel, toSel].forEach(sel => {
+    sel.innerHTML = entries.map(([key, p]) =>
+      `<option value="${key}">${p.displayName} (${key})</option>`
+    ).join('');
+  });
+
+  // Populate player list with delete buttons
+  const listEl = document.getElementById('adminPlayerList');
+  listEl.innerHTML = entries.map(([key, p]) => `
+    <div class="admin-player-row" id="row-${key}">
+      <div class="admin-player-info">
+        <div class="admin-player-name">${p.displayName}</div>
+        <div class="admin-player-key">key: ${key}</div>
+        <div class="admin-player-stats">${p.seriesPlayed} series · ${p.kills}K / ${p.deaths}D / ${p.assists}A</div>
+      </div>
+      <button class="admin-delete-btn" onclick="doDelete('${key}', '${p.displayName.replace(/'/g,"\\'")}')">Delete</button>
+    </div>
+  `).join('');
+}
+
+async function doMerge() {
+  const fromKey = document.getElementById('mergeFrom').value;
+  const toKey = document.getElementById('mergeTo').value;
+  const msgEl = document.getElementById('mergeMsg');
+  msgEl.className = 'admin-msg';
+  msgEl.style.display = 'none';
+
+  if (fromKey === toKey) {
+    msgEl.textContent = 'Cannot merge a player into themselves — select two different players.';
+    msgEl.className = 'admin-msg error';
+    return;
+  }
+
+  const fromName = document.getElementById('mergeFrom').options[document.getElementById('mergeFrom').selectedIndex].text;
+  const toName = document.getElementById('mergeTo').options[document.getElementById('mergeTo').selectedIndex].text;
+  if (!confirm(`Merge "${fromName}" INTO "${toName}"?\n\nThis will combine all stats under the correct name and permanently delete the duplicate. This cannot be undone.`)) return;
+
+  try {
+    const resp = await fetch(WORKER_URL + '/leaderboard/merge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fromKey, toKey }),
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    msgEl.textContent = `✓ Successfully merged! Refreshing...`;
+    msgEl.className = 'admin-msg success';
+    setTimeout(() => load(), 1500);
+  } catch(e) {
+    msgEl.textContent = `Error: ${e.message}`;
+    msgEl.className = 'admin-msg error';
+  }
+}
+
+async function doDelete(key, displayName) {
+  const msgEl = document.getElementById('deleteMsg');
+  msgEl.className = 'admin-msg';
+  msgEl.style.display = 'none';
+
+  if (!confirm(`Permanently delete "${displayName}" from the leaderboard?\n\nThis cannot be undone. Use Merge instead if this is a duplicate.`)) return;
+
+  try {
+    const resp = await fetch(WORKER_URL + '/leaderboard/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key }),
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    msgEl.textContent = `✓ "${displayName}" deleted. Refreshing...`;
+    msgEl.className = 'admin-msg success';
+    setTimeout(() => load(), 1500);
+  } catch(e) {
+    msgEl.textContent = `Error: ${e.message}`;
+    msgEl.className = 'admin-msg error';
+  }
 }
 
 load();
