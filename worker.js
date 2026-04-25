@@ -60,6 +60,66 @@ function parseTimeSecs(t) {
   return parseInt(s) || 0;
 }
 
+async function mergeSeriesIntoLeaderboard(games, seriesWinner, env) {
+  const lbRaw = await env.REPORTS.get('leaderboard:alltime');
+  const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
+
+  const g1 = games[0];
+  const squad1Names = new Set((g1.redTeam || []).map(p => normalizeName(p.name)).filter(Boolean));
+  const squad2Names = new Set((g1.blueTeam || []).map(p => normalizeName(p.name)).filter(Boolean));
+  const winningSquadNames = seriesWinner === 1 ? squad1Names : squad2Names;
+  const losingSquadNames = seriesWinner === 1 ? squad2Names : squad1Names;
+
+  const playerStats = {};
+  games.forEach(g => {
+    const allPlayers = [
+      ...(g.redTeam || []).map(p => ({ ...p })),
+      ...(g.blueTeam || []).map(p => ({ ...p }))
+    ];
+    allPlayers.forEach(p => {
+      if (!p.name) return;
+      const key = normalizeName(p.name);
+      if (!playerStats[key]) playerStats[key] = {
+        displayName: p.name,
+        kills: 0, deaths: 0, assists: 0,
+        flagCaps: 0, hillSecs: 0, ballSecs: 0
+      };
+      const s = playerStats[key];
+      s.kills += p.kills || 0;
+      s.deaths += p.deaths || 0;
+      s.assists += p.assists || 0;
+      s.flagCaps += p.flagCaps || 0;
+      s.hillSecs += parseTimeSecs(p.hillTime);
+      s.ballSecs += parseTimeSecs(p.ballTime);
+    });
+  });
+
+  Object.entries(playerStats).forEach(([key, stats]) => {
+    if (!leaderboard[key]) {
+      leaderboard[key] = {
+        displayName: stats.displayName,
+        seriesPlayed: 0, seriesWon: 0, seriesLost: 0,
+        kills: 0, deaths: 0, assists: 0,
+        flagCaps: 0, hillSecs: 0, ballSecs: 0
+      };
+    }
+    const lb = leaderboard[key];
+    lb.displayName = stats.displayName;
+    lb.seriesPlayed += 1;
+    if (winningSquadNames.has(key)) lb.seriesWon += 1;
+    else if (losingSquadNames.has(key)) lb.seriesLost += 1;
+    lb.kills += stats.kills;
+    lb.deaths += stats.deaths;
+    lb.assists += stats.assists;
+    lb.flagCaps += stats.flagCaps;
+    lb.hillSecs += stats.hillSecs;
+    lb.ballSecs += stats.ballSecs;
+  });
+
+  await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
+  return leaderboard;
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
@@ -132,76 +192,27 @@ export default {
     // ── POST /leaderboard/save ───────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/save') {
       try {
-        const { games, seriesWinner } = await request.json();
+        const { games, seriesWinner, force } = await request.json();
         if (!Array.isArray(games)) throw new Error('Invalid data');
 
         const fingerprint = await createFingerprint(games);
         const hash = await hashString(fingerprint);
         const fpKey = `fp:${hash}`;
 
-        const existing = await env.REPORTS.get(fpKey);
-        if (existing) {
-          return jsonResponse({ status: 'duplicate', message: 'Series already counted' }, 200, origin);
+        // Check for duplicate — unless force flag is set
+        if (!force) {
+          const existing = await env.REPORTS.get(fpKey);
+          if (existing) {
+            return jsonResponse({ status: 'duplicate', message: 'Series already counted' }, 200, origin);
+          }
         }
 
+        // Merge stats FIRST — only mark fingerprint as seen if this succeeds
+        await mergeSeriesIntoLeaderboard(games, seriesWinner, env);
+
+        // Now safe to mark fingerprint as seen
         await env.REPORTS.put(fpKey, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
 
-        const lbRaw = await env.REPORTS.get('leaderboard:alltime');
-        const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
-
-        const g1 = games[0];
-        const squad1Names = new Set((g1.redTeam || []).map(p => normalizeName(p.name)).filter(Boolean));
-        const squad2Names = new Set((g1.blueTeam || []).map(p => normalizeName(p.name)).filter(Boolean));
-        const winningSquadNames = seriesWinner === 1 ? squad1Names : squad2Names;
-        const losingSquadNames = seriesWinner === 1 ? squad2Names : squad1Names;
-
-        const playerStats = {};
-        games.forEach(g => {
-          const allPlayers = [
-            ...(g.redTeam || []).map(p => ({ ...p })),
-            ...(g.blueTeam || []).map(p => ({ ...p }))
-          ];
-          allPlayers.forEach(p => {
-            if (!p.name) return;
-            const key = normalizeName(p.name);
-            if (!playerStats[key]) playerStats[key] = {
-              displayName: p.name,
-              kills: 0, deaths: 0, assists: 0,
-              flagCaps: 0, hillSecs: 0, ballSecs: 0
-            };
-            const s = playerStats[key];
-            s.kills += p.kills || 0;
-            s.deaths += p.deaths || 0;
-            s.assists += p.assists || 0;
-            s.flagCaps += p.flagCaps || 0;
-            s.hillSecs += parseTimeSecs(p.hillTime);
-            s.ballSecs += parseTimeSecs(p.ballTime);
-          });
-        });
-
-        Object.entries(playerStats).forEach(([key, stats]) => {
-          if (!leaderboard[key]) {
-            leaderboard[key] = {
-              displayName: stats.displayName,
-              seriesPlayed: 0, seriesWon: 0, seriesLost: 0,
-              kills: 0, deaths: 0, assists: 0,
-              flagCaps: 0, hillSecs: 0, ballSecs: 0
-            };
-          }
-          const lb = leaderboard[key];
-          lb.displayName = stats.displayName;
-          lb.seriesPlayed += 1;
-          if (winningSquadNames.has(key)) lb.seriesWon += 1;
-          else if (losingSquadNames.has(key)) lb.seriesLost += 1;
-          lb.kills += stats.kills;
-          lb.deaths += stats.deaths;
-          lb.assists += stats.assists;
-          lb.flagCaps += stats.flagCaps;
-          lb.hillSecs += stats.hillSecs;
-          lb.ballSecs += stats.ballSecs;
-        });
-
-        await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
         return jsonResponse({ status: 'saved' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
@@ -220,8 +231,6 @@ export default {
     }
 
     // ── POST /leaderboard/merge ──────────────────────────────────────────
-    // Merges "fromKey" into "toKey", combining all stats, then deletes fromKey
-    // Protected by admin password check on the client side (password: fixme)
     if (request.method === 'POST' && url.pathname === '/leaderboard/merge') {
       try {
         const { fromKey, toKey } = await request.json();
@@ -237,7 +246,6 @@ export default {
         if (!from) throw new Error(`Player "${fromKey}" not found`);
         if (!to) throw new Error(`Player "${toKey}" not found`);
 
-        // Merge all stats from → to
         to.seriesPlayed += from.seriesPlayed;
         to.seriesWon += from.seriesWon;
         to.seriesLost += from.seriesLost;
@@ -247,20 +255,16 @@ export default {
         to.flagCaps += from.flagCaps;
         to.hillSecs += from.hillSecs;
         to.ballSecs += from.ballSecs;
-        // Keep the toKey's displayName (the correct one)
 
-        // Remove the bad entry
         delete leaderboard[fromKey];
-
         await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
-        return jsonResponse({ status: 'merged', message: `Merged "${fromKey}" into "${toKey}" and removed duplicate` }, 200, origin);
+        return jsonResponse({ status: 'merged' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
 
     // ── POST /leaderboard/delete ─────────────────────────────────────────
-    // Deletes a single player entry entirely
     if (request.method === 'POST' && url.pathname === '/leaderboard/delete') {
       try {
         const { key } = await request.json();
