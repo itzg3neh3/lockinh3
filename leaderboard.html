@@ -235,7 +235,18 @@ function render() {
       case 'kd': return (b.deaths?b.kills/b.deaths:b.kills) - (a.deaths?a.kills/a.deaths:a.kills);
       case 'assists': return b.assists - a.assists;
       case 'deaths': return b.deaths - a.deaths;
-      case 'wins': return b.seriesWon - a.seriesWon;
+      case 'wins': {
+  const diff = b.seriesWon - a.seriesWon;
+  if (diff !== 0) return diff;
+  // Tiebreak 1: win percentage
+  const aPct = a.seriesPlayed > 0 ? a.seriesWon / a.seriesPlayed : 0;
+  const bPct = b.seriesPlayed > 0 ? b.seriesWon / b.seriesPlayed : 0;
+  if (bPct !== aPct) return bPct - aPct;
+  // Tiebreak 2: K/D
+  const aKD = a.deaths > 0 ? a.kills / a.deaths : a.kills;
+  const bKD = b.deaths > 0 ? b.kills / b.deaths : b.kills;
+  return bKD - aKD;
+}
       case 'caps': return b.flagCaps - a.flagCaps;
       case 'hill': return b.hillSecs - a.hillSecs;
       case 'ball': return b.ballSecs - a.ballSecs;
