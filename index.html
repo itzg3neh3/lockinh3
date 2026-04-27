@@ -498,10 +498,27 @@ document.getElementById('lbForceBtn').addEventListener('click', async () => {
 function renderReport(games, errors) {
   const { squad1, squad2 } = buildSquads(games);
   let s1Wins=0, s2Wins=0;
-  games.forEach(g => {
-    const wt = g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
-    if (wt.length>0) { if (getSquad(wt[0].name,squad1,squad2)===1) s1Wins++; else s2Wins++; }
-  });
+games.forEach(g => {
+  // For CTF games, verify winner using flag caps since Claude sometimes swaps team colors
+  let winner = g.winner;
+  if (isCTF(g.gameType)) {
+    const redCaps = (g.redTeam||[]).reduce((s,p)=>s+(p.flagCaps||0),0);
+    const blueCaps = (g.blueTeam||[]).reduce((s,p)=>s+(p.flagCaps||0),0);
+    if (redCaps !== blueCaps) winner = redCaps > blueCaps ? 'Red' : 'Blue';
+  }
+  if (isKOTH(g.gameType)) {
+    const redHill = (g.redTeam||[]).reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);
+    const blueHill = (g.blueTeam||[]).reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);
+    if (redHill !== blueHill) winner = redHill > blueHill ? 'Red' : 'Blue';
+  }
+  if (isOddball(g.gameType)) {
+    const redBall = (g.redTeam||[]).reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);
+    const blueBall = (g.blueTeam||[]).reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);
+    if (redBall !== blueBall) winner = redBall > blueBall ? 'Red' : 'Blue';
+  }
+  const wt = winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
+  if (wt.length>0) { if (getSquad(wt[0].name,squad1,squad2)===1) s1Wins++; else s2Wins++; }
+});
   const winner = s1Wins>s2Wins?1:s2Wins>s1Wins?2:0;
 
   const agg = {};
