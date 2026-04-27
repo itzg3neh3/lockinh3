@@ -325,7 +325,7 @@ async function callClaude(b64, mediaType, gameNum) {
 Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra text:
 {"gameType":"Slayer","winner":"Red","redTeam":[{"name":"xXPlayerXx","kills":12,"deaths":8,"assists":3,"ballTime":null,"flagCaps":null,"hillTime":null}],"blueTeam":[{"name":"AnotherPlayer","kills":9,"deaths":11,"assists":1,"ballTime":null,"flagCaps":null,"hillTime":null}]}
 
-STEP 1 — READ THE EXACT GAME TYPE FROM THE TITLE TEXT at the top of the scoreboard.
+STEP 1 — READ THE GAME TYPE FROM THE TITLE TEXT at the top of the scoreboard.
 
 STEP 2 — THE GOLDEN RULE: The scoreboard ALWAYS has 4 columns in this order: SCORE | KILLS | ASSISTS | DEATHS. The SCORE column is NEVER kills except in Slayer. Read every column by its header label, not its position.
 
@@ -334,45 +334,42 @@ STEP 3 — IDENTIFY MODE AND MAP SCORE COLUMN:
 HARDCORE BALL / ODDBALL (title contains "BALL" or "ODDBALL"):
 Score column = Ball Time in SECONDS → store in ballTime. NEVER store in kills.
 ballTime must NEVER be null for these games.
-REAL EXAMPLE from actual "HARDCORE BALL" scoreboard:
-- Plague NYC: Score=71, Kills=21, Assists=20, Deaths=23 → ballTime=71, kills=21, assists=20, deaths=23
-- WindyAlarm8216: Score=64, Kills=21, Assists=18, Deaths=27 → ballTime=64, kills=21, assists=18, deaths=27
-The number 71 is ball time NOT kills. The number 21 is kills NOT ball time.
+REAL EXAMPLE: Plague NYC: Score=71, Kills=21 → ballTime=71, kills=21
 
 HARDCORE KING / KING OF THE HILL (title contains "KING" or "HILL" or "KOTH"):
 Score column = Hill Time in SECONDS → store in hillTime. NEVER store in kills.
 hillTime must NEVER be null for these games.
-REAL EXAMPLE from actual "HARDCORE KING" scoreboard:
-- Rights: Score=76, Kills=28 → hillTime=76, kills=28
-- Cranium: Score=65, Kills=35 → hillTime=65, kills=35
+REAL EXAMPLE: Rights: Score=76, Kills=28 → hillTime=76, kills=28
 
 CTF / FLAG CAPS (title contains "30" OR "CTF" OR "FLAG" OR "5FLAG"):
 Score column = Flag Caps (small integer 0-5) → store in flagCaps. NEVER store in kills.
 REAL EXAMPLE: Score=3, Kills=11 → flagCaps=3, kills=11
 
 SLAYER / HARDCORE TS (title contains "SLAYER" or "TS", no "30", no "KING", no "BALL", no "CTF", no "FLAG"):
-Score column = Kills (they match). Use the Kills column.
+Score column = Kills. Use the Kills column value.
 
-TEAM COLORS: The scoreboard background color of each player row tells you which team they are on.
-BLUE/dark blue background rows = blueTeam.
-RED/dark red background rows = redTeam.
-This is critical — never guess team assignment from player order. Read the row background color.
-The winner field must match which color team actually has the highlighted/winning color banner at the top.
-TEAM COLOR ASSIGNMENT — CRITICAL RULE:
-Each player row has a colored background. Read the background color of every row carefully.
-BLUE/dark blue background rows → put in blueTeam array.
-RED/dark red background rows → put in redTeam array.
-The team listed FIRST at the top of the scoreboard is NOT always redTeam. Do NOT assume top = red, bottom = blue.
-Only use row background color to assign players to teams. Never use row order or position.
+STEP 4 — READ TEAM COLORS:
+Every player row has a colored background. Look carefully at each row's background color.
+BLUE background rows → these players go in blueTeam array.
+RED background rows → these players go in redTeam array.
+IMPORTANT: The team listed first at the TOP of the scoreboard is NOT always redTeam.
+Do NOT assume position in the list determines team color. ONLY use the row background color.
+
+STEP 5 — VERIFY THE WINNER USING SCORES (do not rely solely on the title):
+For CTF/"30" games: Add up flagCaps for redTeam and blueTeam separately. The team with MORE caps wins. Set winner to "Red" or "Blue" accordingly.
+For KOTH games: Add up hillTime for each team. Higher total wins.
+For BALL games: Add up ballTime for each team. Higher total wins.
+For Slayer/TS: The team with more kills wins. Trust the title.
+The "RED TEAM WON" / "BLUE TEAM WON" title can occasionally be wrong — always verify with the actual scores for objective modes.
 
 PLAYER NAMES: TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this).
 Never duplicate. 4v4 = exactly 4 per team. 2v2 = exactly 2 per team.
 
 - gameType: exact title text
-- winner: "Red" or "Blue"
+- winner: "Red" or "Blue" — verified by score totals for objective modes
 - ballTime: seconds integer for BALL/ODDBALL only — NEVER null for these games
 - hillTime: seconds integer for KING/HILL/KOTH only — NEVER null for these games
-- flagCaps: integer for CTF/"30"/"5FLAG" games — can be 0 but use null only for non-CTF games
+- flagCaps: integer for CTF/"30"/"5FLAG" games — can be 0 but null only for non-CTF games
 - kills: the KILLS column value — always separate from Score` }
         ]
       }]
@@ -408,6 +405,30 @@ function pmClass(k,d) { const v=(k||0)-(d||0); return v>0?'pm-pos':v<0?'pm-neg':
 function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|ball/); }
 function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30/); }
 function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
+
+// Verify winner from actual scores — overrides Claude's winner if scores say otherwise
+function verifyWinner(game) {
+  const gt = game.gameType || '';
+  const red = game.redTeam || [];
+  const blue = game.blueTeam || [];
+  if (isCTF(gt)) {
+    const redCaps = red.reduce((s,p) => s + (p.flagCaps||0), 0);
+    const blueCaps = blue.reduce((s,p) => s + (p.flagCaps||0), 0);
+    if (redCaps !== blueCaps) return redCaps > blueCaps ? 'Red' : 'Blue';
+  }
+  if (isKOTH(gt)) {
+    const redHill = red.reduce((s,p) => s + parseTimeSecs(p.hillTime), 0);
+    const blueHill = blue.reduce((s,p) => s + parseTimeSecs(p.hillTime), 0);
+    if (redHill !== blueHill) return redHill > blueHill ? 'Red' : 'Blue';
+  }
+  if (isOddball(gt)) {
+    const redBall = red.reduce((s,p) => s + parseTimeSecs(p.ballTime), 0);
+    const blueBall = blue.reduce((s,p) => s + parseTimeSecs(p.ballTime), 0);
+    if (redBall !== blueBall) return redBall > blueBall ? 'Red' : 'Blue';
+  }
+  // For Slayer or if scores are tied, trust Claude's winner
+  return game.winner;
+}
 
 function calcObjMVP(players, games) {
   const hasObj = games.some(g => isOddball(g.gameType) || isCTF(g.gameType) || isKOTH(g.gameType));
@@ -469,7 +490,6 @@ async function submitToLeaderboard(force = false) {
       btn.className = 'lb-btn duplicate';
       btn.innerHTML = '— Already in leaderboard · not counted twice';
       btn.disabled = true;
-      // Show force button so user can recover if stats were actually missing
       forceBtn.style.display = 'flex';
     } else {
       btn.className = 'lb-btn saved';
@@ -496,29 +516,20 @@ document.getElementById('lbForceBtn').addEventListener('click', async () => {
 });
 
 function renderReport(games, errors) {
+  // Apply score-based winner verification for every game before building the report
+  games = games.map(g => ({ ...g, winner: verifyWinner(g) }));
+
   const { squad1, squad2 } = buildSquads(games);
+
   let s1Wins=0, s2Wins=0;
-games.forEach(g => {
-  // For CTF games, verify winner using flag caps since Claude sometimes swaps team colors
-  let winner = g.winner;
-  if (isCTF(g.gameType)) {
-    const redCaps = (g.redTeam||[]).reduce((s,p)=>s+(p.flagCaps||0),0);
-    const blueCaps = (g.blueTeam||[]).reduce((s,p)=>s+(p.flagCaps||0),0);
-    if (redCaps !== blueCaps) winner = redCaps > blueCaps ? 'Red' : 'Blue';
-  }
-  if (isKOTH(g.gameType)) {
-    const redHill = (g.redTeam||[]).reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);
-    const blueHill = (g.blueTeam||[]).reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);
-    if (redHill !== blueHill) winner = redHill > blueHill ? 'Red' : 'Blue';
-  }
-  if (isOddball(g.gameType)) {
-    const redBall = (g.redTeam||[]).reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);
-    const blueBall = (g.blueTeam||[]).reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);
-    if (redBall !== blueBall) winner = redBall > blueBall ? 'Red' : 'Blue';
-  }
-  const wt = winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
-  if (wt.length>0) { if (getSquad(wt[0].name,squad1,squad2)===1) s1Wins++; else s2Wins++; }
-});
+  games.forEach(g => {
+    const wt = g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
+    if (wt.length>0) {
+      let s1Votes=0, s2Votes=0;
+      wt.forEach(p => { if (getSquad(p.name,squad1,squad2)===1) s1Votes++; else s2Votes++; });
+      if (s1Votes > s2Votes) s1Wins++; else s2Wins++;
+    }
+  });
   const winner = s1Wins>s2Wins?1:s2Wins>s1Wins?2:0;
 
   const agg = {};
@@ -604,7 +615,9 @@ games.forEach(g => {
   games.forEach(g => {
     const gOdd=isOddball(g.gameType), gCTF=isCTF(g.gameType), gKOTH=isKOTH(g.gameType);
     const wt = g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
-    const ws = wt.length>0?getSquad(wt[0].name,squad1,squad2):1;
+    let ws1Votes=0, ws2Votes=0;
+    wt.forEach(p => { if (getSquad(p.name,squad1,squad2)===1) ws1Votes++; else ws2Votes++; });
+    const ws = ws1Votes >= ws2Votes ? 1 : 2;
     const redNames = new Set((g.redTeam||[]).map(p=>p.name));
     html += `<div class="game-card"><div class="game-card-header"><div class="game-card-title">Game ${g.gameNumber} &mdash; ${g.gameType||'Unknown'}</div><div class="game-win-badge badge-s${ws}">Squad ${ws} Wins</div></div><table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}</tr></thead><tbody>`;
     [1,2].forEach(sq => {
