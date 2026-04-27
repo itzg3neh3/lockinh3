@@ -358,6 +358,13 @@ BLUE/dark blue background rows = blueTeam.
 RED/dark red background rows = redTeam.
 This is critical — never guess team assignment from player order. Read the row background color.
 The winner field must match which color team actually has the highlighted/winning color banner at the top.
+TEAM COLOR ASSIGNMENT — CRITICAL RULE:
+Each player row has a colored background. Read the background color of every row carefully.
+BLUE/dark blue background rows → put in blueTeam array.
+RED/dark red background rows → put in redTeam array.
+The team listed FIRST at the top of the scoreboard is NOT always redTeam. Do NOT assume top = red, bottom = blue.
+Only use row background color to assign players to teams. Never use row order or position.
+
 PLAYER NAMES: TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this).
 Never duplicate. 4v4 = exactly 4 per team. 2v2 = exactly 2 per team.
 
