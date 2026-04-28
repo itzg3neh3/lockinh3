@@ -5,7 +5,7 @@ function cors(origin) {
   return {
     'Access-Control-Allow-Origin': origin || ALLOWED_ORIGIN,
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token, X-App-Token',
     'Access-Control-Max-Age': '86400',
   };
 }
@@ -48,6 +48,28 @@ async function hashString(str) {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
+async function generateAdminToken(env) {
+  return await hashString((env.ADMIN_PASSWORD || '') + ':mcc-admin-session-2026');
+}
+
+async function generateAppToken(env) {
+  return await hashString((env.APP_PASSWORD || '') + ':mcc-app-session-2026');
+}
+
+async function validateAdminToken(request, env) {
+  const token = request.headers.get('X-Admin-Token');
+  if (!token) return false;
+  const expected = await generateAdminToken(env);
+  return token === expected;
+}
+
+async function validateAppToken(request, env) {
+  const token = request.headers.get('X-App-Token');
+  if (!token) return false;
+  const expected = await generateAppToken(env);
+  return token === expected;
 }
 
 function parseTimeSecs(t) {
@@ -133,6 +155,36 @@ export default {
       return new Response('Forbidden', { status: 403 });
     }
 
+    // ── POST /app/auth — verify app password, return token ───────────────
+    if (request.method === 'POST' && url.pathname === '/app/auth') {
+      try {
+        const { password } = await request.json();
+        if (!password) return jsonResponse({ error: 'No password provided' }, 400, origin);
+        if (password !== env.APP_PASSWORD) {
+          return jsonResponse({ error: 'Incorrect password' }, 401, origin);
+        }
+        const token = await generateAppToken(env);
+        return jsonResponse({ token }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── POST /admin/auth — verify admin password, return token ───────────
+    if (request.method === 'POST' && url.pathname === '/admin/auth') {
+      try {
+        const { password } = await request.json();
+        if (!password) return jsonResponse({ error: 'No password provided' }, 400, origin);
+        if (password !== env.ADMIN_PASSWORD) {
+          return jsonResponse({ error: 'Incorrect password' }, 401, origin);
+        }
+        const token = await generateAdminToken(env);
+        return jsonResponse({ token }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
     // ── POST /analyze ────────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/analyze') {
       try {
@@ -199,7 +251,6 @@ export default {
         const hash = await hashString(fingerprint);
         const fpKey = `fp:${hash}`;
 
-        // Check for duplicate — unless force flag is set
         if (!force) {
           const existing = await env.REPORTS.get(fpKey);
           if (existing) {
@@ -207,12 +258,8 @@ export default {
           }
         }
 
-        // Merge stats FIRST — only mark fingerprint as seen if this succeeds
         await mergeSeriesIntoLeaderboard(games, seriesWinner, env);
-
-        // Now safe to mark fingerprint as seen
         await env.REPORTS.put(fpKey, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
-
         return jsonResponse({ status: 'saved' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
@@ -230,22 +277,50 @@ export default {
       }
     }
 
-    // ── POST /leaderboard/merge ──────────────────────────────────────────
+    // ── POST /leaderboard/edit — requires admin token ────────────────────
+    if (request.method === 'POST' && url.pathname === '/leaderboard/edit') {
+      if (!await validateAdminToken(request, env)) {
+        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      }
+      try {
+        const { key, stats } = await request.json();
+        if (!key || !stats) throw new Error('key and stats required');
+        const lbRaw = await env.REPORTS.get('leaderboard:alltime');
+        if (!lbRaw) throw new Error('Leaderboard is empty');
+        const leaderboard = JSON.parse(lbRaw);
+        if (!leaderboard[key]) throw new Error(`Player "${key}" not found`);
+        leaderboard[key].seriesPlayed = stats.seriesPlayed;
+        leaderboard[key].seriesWon = stats.seriesWon;
+        leaderboard[key].seriesLost = stats.seriesLost;
+        leaderboard[key].kills = stats.kills;
+        leaderboard[key].deaths = stats.deaths;
+        leaderboard[key].assists = stats.assists;
+        leaderboard[key].flagCaps = stats.flagCaps;
+        leaderboard[key].hillSecs = stats.hillSecs;
+        leaderboard[key].ballSecs = stats.ballSecs;
+        await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
+        return jsonResponse({ status: 'saved' }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── POST /leaderboard/merge — requires admin token ───────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/merge') {
+      if (!await validateAdminToken(request, env)) {
+        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      }
       try {
         const { fromKey, toKey } = await request.json();
         if (!fromKey || !toKey) throw new Error('fromKey and toKey required');
         if (fromKey === toKey) throw new Error('Cannot merge a player into themselves');
-
         const lbRaw = await env.REPORTS.get('leaderboard:alltime');
         if (!lbRaw) throw new Error('Leaderboard is empty');
         const leaderboard = JSON.parse(lbRaw);
-
         const from = leaderboard[fromKey];
         const to = leaderboard[toKey];
         if (!from) throw new Error(`Player "${fromKey}" not found`);
         if (!to) throw new Error(`Player "${toKey}" not found`);
-
         to.seriesPlayed += from.seriesPlayed;
         to.seriesWon += from.seriesWon;
         to.seriesLost += from.seriesLost;
@@ -255,7 +330,6 @@ export default {
         to.flagCaps += from.flagCaps;
         to.hillSecs += from.hillSecs;
         to.ballSecs += from.ballSecs;
-
         delete leaderboard[fromKey];
         await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
         return jsonResponse({ status: 'merged' }, 200, origin);
@@ -264,54 +338,26 @@ export default {
       }
     }
 
-    // ── POST /leaderboard/delete ─────────────────────────────────────────
+    // ── POST /leaderboard/delete — requires admin token ──────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/delete') {
+      if (!await validateAdminToken(request, env)) {
+        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      }
       try {
         const { key } = await request.json();
         if (!key) throw new Error('key required');
-
         const lbRaw = await env.REPORTS.get('leaderboard:alltime');
         if (!lbRaw) throw new Error('Leaderboard is empty');
         const leaderboard = JSON.parse(lbRaw);
-
         if (!leaderboard[key]) throw new Error(`Player "${key}" not found`);
         delete leaderboard[key];
-
         await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
         return jsonResponse({ status: 'deleted' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
-// ── POST /leaderboard/edit ───────────────────────────────────────────
-if (request.method === 'POST' && url.pathname === '/leaderboard/edit') {
-  try {
-    const { key, stats } = await request.json();
-    if (!key || !stats) throw new Error('key and stats required');
 
-    const lbRaw = await env.REPORTS.get('leaderboard:alltime');
-    if (!lbRaw) throw new Error('Leaderboard is empty');
-    const leaderboard = JSON.parse(lbRaw);
-
-    if (!leaderboard[key]) throw new Error(`Player "${key}" not found`);
-
-    // Overwrite stats fields, keep displayName unchanged
-    leaderboard[key].seriesPlayed = stats.seriesPlayed;
-    leaderboard[key].seriesWon = stats.seriesWon;
-    leaderboard[key].seriesLost = stats.seriesLost;
-    leaderboard[key].kills = stats.kills;
-    leaderboard[key].deaths = stats.deaths;
-    leaderboard[key].assists = stats.assists;
-    leaderboard[key].flagCaps = stats.flagCaps;
-    leaderboard[key].hillSecs = stats.hillSecs;
-    leaderboard[key].ballSecs = stats.ballSecs;
-
-    await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
-    return jsonResponse({ status: 'saved' }, 200, origin);
-  } catch (err) {
-    return jsonResponse({ error: err.message }, 500, origin);
-  }
-}
     return new Response('Not found', { status: 404 });
   },
 };
