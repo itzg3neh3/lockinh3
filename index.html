@@ -30,8 +30,6 @@
   .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
   .nav-link:hover { color: var(--accent); border-color: var(--accent); }
   .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
-
-  /* Password gate */
   .pw-gate { background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 2rem; margin-bottom: 1.5rem; text-align: center; }
   .pw-gate-icon { font-size: 2rem; margin-bottom: 0.75rem; display: block; }
   .pw-gate-title { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.4rem; }
@@ -44,7 +42,6 @@
   .pw-btn:hover { background: #74b4ff; }
   .pw-error { font-size: 13px; color: var(--red); margin-top: 0.6rem; display: none; }
   .pw-unlocked-badge { display: none; align-items: center; gap: 8px; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); border-radius: 6px; padding: 8px 14px; font-size: 13px; color: #4ade80; margin-bottom: 1.5rem; }
-
   .upload-zone { border: 1.5px dashed var(--border2); border-radius: 10px; padding: 3rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface); margin-bottom: 1rem; }
   .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
   .upload-zone input { display: none; }
@@ -185,7 +182,6 @@
     </div>
   </header>
 
-  <!-- Password gate — hidden once unlocked -->
   <div class="pw-gate" id="pwGate">
     <span class="pw-gate-icon">🔒</span>
     <div class="pw-gate-title">Members Only</div>
@@ -197,14 +193,12 @@
     <div class="pw-error" id="pwError">Incorrect password — try again</div>
   </div>
 
-  <!-- Shown after unlock -->
   <div class="pw-unlocked-badge" id="pwBadge">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     Unlocked — ready to analyze
     <button onclick="lockApp()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;text-decoration:underline;">Lock</button>
   </div>
 
-  <!-- Main app — hidden until unlocked -->
   <div id="appContent" style="display:none">
     <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" accept="image/*" multiple>
@@ -254,24 +248,39 @@
 <script>
 const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
 const BASE_URL = 'https://itzg3neh3.github.io/lockinh3/';
-const APP_PASSWORD = 'mccstats2026';
 
-// Check if already unlocked this session
-let appUnlocked = sessionStorage.getItem('mcc_unlocked') === '1';
+// App token stored in sessionStorage — no password ever in source code
+let appUnlocked = !!sessionStorage.getItem('mcc_app_token');
 if (appUnlocked) showApp();
 
-function checkPassword() {
+async function checkPassword() {
   const input = document.getElementById('pwInput');
   const errEl = document.getElementById('pwError');
-  if (input.value === APP_PASSWORD) {
-    sessionStorage.setItem('mcc_unlocked', '1');
-    appUnlocked = true;
-    showApp();
-  } else {
+  errEl.style.display = 'none';
+  input.classList.remove('error');
+  try {
+    const resp = await fetch(WORKER_URL + '/app/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: input.value }),
+    });
+    const result = await resp.json();
+    if (result.token) {
+      sessionStorage.setItem('mcc_app_token', result.token);
+      appUnlocked = true;
+      input.value = '';
+      showApp();
+    } else {
+      input.classList.add('error');
+      errEl.style.display = 'block';
+      input.value = '';
+      setTimeout(() => { input.classList.remove('error'); errEl.style.display = 'none'; }, 3000);
+    }
+  } catch(e) {
     input.classList.add('error');
+    errEl.textContent = 'Connection error — try again';
     errEl.style.display = 'block';
     input.value = '';
-    setTimeout(() => { input.classList.remove('error'); errEl.style.display = 'none'; }, 3000);
   }
 }
 
@@ -282,7 +291,7 @@ function showApp() {
 }
 
 function lockApp() {
-  sessionStorage.removeItem('mcc_unlocked');
+  sessionStorage.removeItem('mcc_app_token');
   appUnlocked = false;
   document.getElementById('pwGate').style.display = 'block';
   document.getElementById('pwBadge').style.display = 'none';
@@ -430,11 +439,11 @@ IMPORTANT: The team listed first at the TOP of the scoreboard is NOT always redT
 Do NOT assume position in the list determines team color. ONLY use the row background color.
 
 STEP 5 — VERIFY THE WINNER USING SCORES:
-For CTF/"30" games: Add up flagCaps for redTeam and blueTeam separately. The team with MORE caps wins.
+For CTF/"30" games: Add up flagCaps for redTeam and blueTeam. Team with MORE caps wins.
 For KOTH games: Add up hillTime for each team. Higher total wins.
 For BALL games: Add up ballTime for each team. Higher total wins.
-For Slayer/TS: The team with more kills wins. Trust the title.
-Always verify winner from scores for objective modes — do not rely solely on the title banner.
+For Slayer/TS: Team with more kills wins. Trust the title.
+Always verify winner from scores for objective modes.
 
 PLAYER NAMES: TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this).
 Never duplicate. 4v4 = exactly 4 per team. 2v2 = exactly 2 per team.
@@ -485,18 +494,18 @@ function verifyWinner(game) {
   const red = game.redTeam || [];
   const blue = game.blueTeam || [];
   if (isCTF(gt)) {
-    const redCaps = red.reduce((s,p) => s + (p.flagCaps||0), 0);
-    const blueCaps = blue.reduce((s,p) => s + (p.flagCaps||0), 0);
+    const redCaps = red.reduce((s,p) => s+(p.flagCaps||0), 0);
+    const blueCaps = blue.reduce((s,p) => s+(p.flagCaps||0), 0);
     if (redCaps !== blueCaps) return redCaps > blueCaps ? 'Red' : 'Blue';
   }
   if (isKOTH(gt)) {
-    const redHill = red.reduce((s,p) => s + parseTimeSecs(p.hillTime), 0);
-    const blueHill = blue.reduce((s,p) => s + parseTimeSecs(p.hillTime), 0);
+    const redHill = red.reduce((s,p) => s+parseTimeSecs(p.hillTime), 0);
+    const blueHill = blue.reduce((s,p) => s+parseTimeSecs(p.hillTime), 0);
     if (redHill !== blueHill) return redHill > blueHill ? 'Red' : 'Blue';
   }
   if (isOddball(gt)) {
-    const redBall = red.reduce((s,p) => s + parseTimeSecs(p.ballTime), 0);
-    const blueBall = blue.reduce((s,p) => s + parseTimeSecs(p.ballTime), 0);
+    const redBall = red.reduce((s,p) => s+parseTimeSecs(p.ballTime), 0);
+    const blueBall = blue.reduce((s,p) => s+parseTimeSecs(p.ballTime), 0);
     if (redBall !== blueBall) return redBall > blueBall ? 'Red' : 'Blue';
   }
   return game.winner;
@@ -764,9 +773,8 @@ document.getElementById('copyBtn').addEventListener('click', () => {
 (async function() {
   const id = new URLSearchParams(window.location.search).get('r');
   if (!id) return;
-  // Shared report links bypass the password gate — view only
-  document.getElementById('pwGate').style.display = 'none';
-  document.getElementById('appContent').style.display = 'block';
+  document.getElementById('pwGate').style.display='none';
+  document.getElementById('appContent').style.display='block';
   document.querySelector('.upload-zone').style.display='none';
   document.querySelector('.analyze-btn').style.display='none';
   reportEl.style.display='block';
