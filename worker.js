@@ -283,7 +283,35 @@ export default {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
+// ── POST /leaderboard/edit ───────────────────────────────────────────
+if (request.method === 'POST' && url.pathname === '/leaderboard/edit') {
+  try {
+    const { key, stats } = await request.json();
+    if (!key || !stats) throw new Error('key and stats required');
 
+    const lbRaw = await env.REPORTS.get('leaderboard:alltime');
+    if (!lbRaw) throw new Error('Leaderboard is empty');
+    const leaderboard = JSON.parse(lbRaw);
+
+    if (!leaderboard[key]) throw new Error(`Player "${key}" not found`);
+
+    // Overwrite stats fields, keep displayName unchanged
+    leaderboard[key].seriesPlayed = stats.seriesPlayed;
+    leaderboard[key].seriesWon = stats.seriesWon;
+    leaderboard[key].seriesLost = stats.seriesLost;
+    leaderboard[key].kills = stats.kills;
+    leaderboard[key].deaths = stats.deaths;
+    leaderboard[key].assists = stats.assists;
+    leaderboard[key].flagCaps = stats.flagCaps;
+    leaderboard[key].hillSecs = stats.hillSecs;
+    leaderboard[key].ballSecs = stats.ballSecs;
+
+    await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
+    return jsonResponse({ status: 'saved' }, 200, origin);
+  } catch (err) {
+    return jsonResponse({ error: err.message }, 500, origin);
+  }
+}
     return new Response('Not found', { status: 404 });
   },
 };
