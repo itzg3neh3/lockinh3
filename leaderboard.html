@@ -64,8 +64,6 @@
   .win-pct { font-size: 12px; color: var(--muted); }
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-  /* Admin panel */
   .admin-toggle { margin-top: 3rem; text-align: center; }
   .admin-toggle-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; cursor: pointer; transition: all 0.15s; }
   .admin-toggle-btn:hover { color: var(--text); }
@@ -78,11 +76,9 @@
   .admin-input:focus { border-color: var(--accent); }
   .admin-btn { padding: 9px 18px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
   .admin-btn:hover { background: #74b4ff; }
-  .admin-btn-red { background: var(--red); color: #fff; }
-  .admin-btn-red:hover { background: #ff7777; }
   .admin-btn-green { background: var(--green); color: #000; }
   .admin-btn-green:hover { background: #86efac; }
-  .admin-locked { text-align: center; color: var(--muted); font-size: 13px; padding: 1rem; }
+  .admin-locked-msg { text-align: center; color: var(--muted); font-size: 13px; padding: 1rem; }
   .admin-unlocked { display: none; }
   .admin-unlocked.visible { display: block; }
   .admin-section { margin-bottom: 2rem; }
@@ -96,7 +92,7 @@
   .admin-action-btns { display: flex; gap: 6px; flex-shrink: 0; }
   .admin-edit-btn { background: none; border: 1px solid var(--border2); color: var(--accent); border-radius: 4px; padding: 3px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
   .admin-edit-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
-  .admin-delete-btn { background: none; border: 1px solid var(--red-border); color: var(--red); border-radius: 4px; padding: 3px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+  .admin-delete-btn { background: none; border: 1px solid var(--red-border); color: var(--red); border-radius: 4px; padding: 3px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
   .admin-delete-btn:hover { background: var(--red-dim); }
   .merge-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
   .merge-form label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px; text-transform: uppercase; }
@@ -105,8 +101,6 @@
   .admin-msg { margin-top: 0.75rem; font-size: 13px; padding: 8px 12px; border-radius: 6px; display: none; }
   .admin-msg.success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: var(--green); display: block; }
   .admin-msg.error { background: var(--red-dim); border: 1px solid var(--red-border); color: var(--red); display: block; }
-
-  /* Edit modal */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
   .modal-overlay.visible { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
@@ -122,8 +116,7 @@
   .modal-section-label { grid-column: 1 / -1; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .modal-cancel { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 9px 18px; cursor: pointer; transition: all 0.15s; }
-  .modal-cancel:hover { color: var(--text); border-color: var(--border2); }
-
+  .modal-cancel:hover { color: var(--text); }
   @media (max-width: 600px) { .alltime-grid { grid-template-columns: 1fr; } .merge-form { grid-template-columns: 1fr; } .modal-grid { grid-template-columns: 1fr; } .modal-field.full { grid-column: 1; } .modal-section-label { grid-column: 1; } .modal-divider { grid-column: 1; } }
 </style>
 </head>
@@ -136,42 +129,32 @@
       <a href="leaderboard.html" class="nav-link active">Leaderboard</a>
     </div>
   </header>
-
   <div class="page-title">All-Time Leaderboard</div>
   <div class="page-sub">Cumulative stats across all series — updated manually after each verified report</div>
-
   <div id="content"><div class="loading">Loading leaderboard...</div></div>
-
-  <!-- Admin Panel -->
   <div class="admin-toggle">
     <button class="admin-toggle-btn" onclick="toggleAdmin()">⚙ Manage Players</button>
   </div>
   <div class="admin-panel" id="adminPanel">
     <div class="admin-title">⚠ Player Management</div>
     <div class="admin-sub">Merge duplicates, edit stats, or delete entries. Enter the password to unlock.</div>
-
     <div id="adminLocked">
       <div class="admin-password-wrap">
         <input type="password" class="admin-input" id="adminPwInput" placeholder="Enter password..." onkeydown="if(event.key==='Enter')checkPassword()">
         <button class="admin-btn" onclick="checkPassword()">Unlock</button>
       </div>
-      <div class="admin-locked" id="adminPwError" style="display:none;color:var(--red)">Incorrect password.</div>
+      <div class="admin-locked-msg" id="adminPwError" style="display:none;color:var(--red)">Incorrect password.</div>
     </div>
-
     <div class="admin-unlocked" id="adminUnlocked">
-
-      <!-- Edit Stats section -->
       <div class="admin-section">
         <div class="admin-section-title">Edit Player Stats</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Click Edit next to any player to manually correct their stats. All fields will be overwritten with exactly what you enter.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Click Edit next to any player to manually correct their stats.</p>
         <div class="admin-player-list" id="adminPlayerList"></div>
         <div class="admin-msg" id="editMsg"></div>
       </div>
-
-      <!-- Merge section -->
       <div class="admin-section">
         <div class="admin-section-title">Merge Duplicate Players</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect (duplicate) name and the correct name to merge into. All stats will be combined and the duplicate removed.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect duplicate and the correct name to merge into.</p>
         <div class="merge-form">
           <div>
             <label>Duplicate / Wrong Name</label>
@@ -185,12 +168,11 @@
         </div>
         <div class="admin-msg" id="mergeMsg"></div>
       </div>
-
     </div>
   </div>
 </div>
 
-<!-- Edit Player Modal -->
+<!-- Edit Modal -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <div class="modal-title" id="modalPlayerName">Edit Player</div>
@@ -198,46 +180,19 @@
     <input type="hidden" id="editKey">
     <div class="modal-grid">
       <div class="modal-section-label">Series Record</div>
-      <div class="modal-field">
-        <label>Series Played</label>
-        <input type="number" id="editPlayed" min="0">
-      </div>
-      <div class="modal-field">
-        <label>Series Won</label>
-        <input type="number" id="editWon" min="0">
-      </div>
-      <div class="modal-field">
-        <label>Series Lost</label>
-        <input type="number" id="editLost" min="0">
-      </div>
+      <div class="modal-field"><label>Series Played</label><input type="number" id="editPlayed" min="0"></div>
+      <div class="modal-field"><label>Series Won</label><input type="number" id="editWon" min="0"></div>
+      <div class="modal-field"><label>Series Lost</label><input type="number" id="editLost" min="0"></div>
       <hr class="modal-divider">
       <div class="modal-section-label">Combat Stats</div>
-      <div class="modal-field">
-        <label>Kills</label>
-        <input type="number" id="editKills" min="0">
-      </div>
-      <div class="modal-field">
-        <label>Deaths</label>
-        <input type="number" id="editDeaths" min="0">
-      </div>
-      <div class="modal-field full">
-        <label>Assists</label>
-        <input type="number" id="editAssists" min="0">
-      </div>
+      <div class="modal-field"><label>Kills</label><input type="number" id="editKills" min="0"></div>
+      <div class="modal-field"><label>Deaths</label><input type="number" id="editDeaths" min="0"></div>
+      <div class="modal-field full"><label>Assists</label><input type="number" id="editAssists" min="0"></div>
       <hr class="modal-divider">
       <div class="modal-section-label">Objective Stats</div>
-      <div class="modal-field">
-        <label>Flag Caps</label>
-        <input type="number" id="editFlagCaps" min="0">
-      </div>
-      <div class="modal-field">
-        <label>Hill Time (seconds)</label>
-        <input type="number" id="editHillSecs" min="0">
-      </div>
-      <div class="modal-field">
-        <label>Ball Time (seconds)</label>
-        <input type="number" id="editBallSecs" min="0">
-      </div>
+      <div class="modal-field"><label>Flag Caps</label><input type="number" id="editFlagCaps" min="0"></div>
+      <div class="modal-field"><label>Hill Time (seconds)</label><input type="number" id="editHillSecs" min="0"></div>
+      <div class="modal-field"><label>Ball Time (seconds)</label><input type="number" id="editBallSecs" min="0"></div>
     </div>
     <div class="admin-msg" id="modalMsg"></div>
     <div class="modal-actions" style="margin-top:1rem">
@@ -249,9 +204,9 @@
 
 <script>
 const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
-const ADMIN_PASSWORD = 'fixme';
 
-let adminUnlocked = false;
+// No passwords stored here — all auth goes through the Worker
+let adminToken = null;
 let allPlayersData = {};
 
 function fmtTime(sec) {
@@ -261,7 +216,6 @@ function fmtTime(sec) {
 }
 function kd(k,d) { return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2); }
 function kdClass(k,d) { const r=d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
-
 function calcObjScore(p, totals) {
   const shares = [];
   if (totals.ball > 0) shares.push(p.ballSecs / totals.ball);
@@ -287,7 +241,7 @@ async function load() {
     }
     leaderboardData = players;
     render();
-    if (adminUnlocked) populateAdminPanel(raw);
+    if (adminToken) populateAdminPanel(raw);
   } catch(e) {
     document.getElementById('content').innerHTML = `<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;
   }
@@ -296,33 +250,30 @@ async function load() {
 function render() {
   const players = leaderboardData;
   if (!players.length) return;
-
   const totals = {
     ball: players.reduce((s,p)=>s+p.ballSecs,0),
     caps: players.reduce((s,p)=>s+p.flagCaps,0),
     hill: players.reduce((s,p)=>s+p.hillSecs,0),
   };
   const hasObj = totals.ball > 0 || totals.caps > 0 || totals.hill > 0;
-
   const topFragger = [...players].sort((a,b)=>b.kills-a.kills)[0];
   const topShitter = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   const assistKing = [...players].sort((a,b)=>b.assists-a.assists)[0];
   const objMVP = hasObj ? [...players].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0] : null;
-
   const sorted = [...players].sort((a,b) => {
     switch(currentSort) {
       case 'kills': return b.kills - a.kills;
-      case 'kd': return (b.deaths?b.kills/b.deaths:b.kills) - (a.deaths?a.kills/a.deaths:a.kills);
+      case 'kd': return (b.deaths?b.kills/b.deaths:b.kills)-(a.deaths?a.kills/a.deaths:a.kills);
       case 'assists': return b.assists - a.assists;
       case 'deaths': return b.deaths - a.deaths;
       case 'wins': {
         const diff = b.seriesWon - a.seriesWon;
         if (diff !== 0) return diff;
-        const aPct = a.seriesPlayed > 0 ? a.seriesWon / a.seriesPlayed : 0;
-        const bPct = b.seriesPlayed > 0 ? b.seriesWon / b.seriesPlayed : 0;
+        const aPct = a.seriesPlayed>0?a.seriesWon/a.seriesPlayed:0;
+        const bPct = b.seriesPlayed>0?b.seriesWon/b.seriesPlayed:0;
         if (bPct !== aPct) return bPct - aPct;
-        const aKD = a.deaths > 0 ? a.kills / a.deaths : a.kills;
-        const bKD = b.deaths > 0 ? b.kills / b.deaths : b.kills;
+        const aKD = a.deaths>0?a.kills/a.deaths:a.kills;
+        const bKD = b.deaths>0?b.kills/b.deaths:b.kills;
         return bKD - aKD;
       }
       case 'caps': return b.flagCaps - a.flagCaps;
@@ -331,7 +282,6 @@ function render() {
       default: return b.kills - a.kills;
     }
   });
-
   const hasCaps = totals.caps > 0;
   const hasHill = totals.hill > 0;
   const hasBall = totals.ball > 0;
@@ -340,41 +290,21 @@ function render() {
     <div>
       <div class="callout-card callout-gold" style="margin-bottom:0.75rem">
         <div class="callout-icon">⭐</div>
-        <div>
-          <div class="callout-eyebrow ey-gold">All-Time Top Fragger</div>
-          <div class="callout-name">${topFragger.displayName}</div>
-          <div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div>
-        </div>
+        <div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div></div>
       </div>
       <div class="callout-card callout-red">
         <div class="callout-icon">🍆</div>
-        <div>
-          <div class="callout-eyebrow ey-red">All-Time Top Shitter</div>
-          <div class="callout-name">${topShitter.displayName}</div>
-          <div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div>
-        </div>
+        <div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div></div>
       </div>
     </div>
     <div>
       <div class="callout-card callout-blue" style="margin-bottom:0.75rem">
         <div class="callout-icon">🤝</div>
-        <div>
-          <div class="callout-eyebrow ey-blue">All-Time Assist King</div>
-          <div class="callout-name">${assistKing.displayName}</div>
-          <div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div>
-        </div>
+        <div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div></div>
       </div>
-      ${objMVP ? `<div class="callout-card callout-green">
-        <div class="callout-icon">🎯</div>
-        <div>
-          <div class="callout-eyebrow ey-green">All-Time OBJ MVP</div>
-          <div class="callout-name">${objMVP.displayName}</div>
-          <div class="callout-stat">${objMVP.flagCaps>0?objMVP.flagCaps+' Caps &nbsp;·&nbsp; ':''} ${objMVP.hillSecs>0?fmtTime(objMVP.hillSecs)+' Hill &nbsp;·&nbsp; ':''} ${objMVP.ballSecs>0?fmtTime(objMVP.ballSecs)+' Ball':''}</div>
-        </div>
-      </div>` : ''}
+      ${objMVP?`<div class="callout-card callout-green"><div class="callout-icon">🎯</div><div><div class="callout-eyebrow ey-green">All-Time OBJ MVP</div><div class="callout-name">${objMVP.displayName}</div><div class="callout-stat">${objMVP.flagCaps>0?objMVP.flagCaps+' Caps &nbsp;·&nbsp; ':''}${objMVP.hillSecs>0?fmtTime(objMVP.hillSecs)+' Hill &nbsp;·&nbsp; ':''}${objMVP.ballSecs>0?fmtTime(objMVP.ballSecs)+' Ball':''}</div></div></div>`:''}
     </div>
   </div>
-
   <div class="section-title">Player Stats</div>
   <div class="sort-wrap">
     <button class="sort-btn ${currentSort==='kills'?'active':''}" onclick="setSort('kills')">Kills</button>
@@ -386,11 +316,9 @@ function render() {
     ${hasHill?`<button class="sort-btn ${currentSort==='hill'?'active':''}" onclick="setSort('hill')">Hill Time</button>`:''}
     ${hasBall?`<button class="sort-btn ${currentSort==='ball'?'active':''}" onclick="setSort('ball')">Ball Time</button>`:''}
   </div>
-
   <div class="lb-table-wrap"><table>
     <thead><tr>
-      <th>#</th>
-      <th>Player</th>
+      <th>#</th><th>Player</th>
       <th class="${currentSort==='wins'?'sorted':''}" onclick="setSort('wins')">W / L</th>
       <th>Played</th>
       <th class="${currentSort==='kills'?'sorted':''}" onclick="setSort('kills')">Kills</th>
@@ -400,68 +328,68 @@ function render() {
       ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th>`:''}
       ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th>`:''}
       ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th>`:''}
-    </tr></thead>
-    <tbody>`;
+    </tr></thead><tbody>`;
 
-  sorted.forEach((p, i) => {
-    const rank = i + 1;
+  sorted.forEach((p,i) => {
+    const rank = i+1;
     const rankClass = rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
-    const winPct = p.seriesPlayed > 0 ? Math.round((p.seriesWon/p.seriesPlayed)*100) : 0;
+    const winPct = p.seriesPlayed>0?Math.round((p.seriesWon/p.seriesPlayed)*100):0;
     html += `<tr>
       <td class="rank-cell ${rankClass}">${rank}</td>
       <td class="player-cell">${p.displayName}</td>
       <td>${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span></td>
-      <td>${p.seriesPlayed}</td>
-      <td>${p.kills}</td>
-      <td>${p.deaths}</td>
-      <td>${p.assists}</td>
+      <td>${p.seriesPlayed}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td>
       <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
       ${hasCaps?`<td>${p.flagCaps||0}</td>`:''}
       ${hasHill?`<td>${fmtTime(p.hillSecs)}</td>`:''}
       ${hasBall?`<td>${fmtTime(p.ballSecs)}</td>`:''}
     </tr>`;
   });
-
   html += `</tbody></table></div>`;
   document.getElementById('content').innerHTML = html;
 }
 
 function setSort(col) { currentSort = col; render(); }
+function toggleAdmin() { document.getElementById('adminPanel').classList.toggle('visible'); }
 
-function toggleAdmin() {
-  const panel = document.getElementById('adminPanel');
-  panel.classList.toggle('visible');
-}
-
-function checkPassword() {
+async function checkPassword() {
   const input = document.getElementById('adminPwInput');
   const errEl = document.getElementById('adminPwError');
-  if (input.value === ADMIN_PASSWORD) {
-    document.getElementById('adminLocked').style.display = 'none';
-    document.getElementById('adminUnlocked').classList.add('visible');
-    adminUnlocked = true;
-    populateAdminPanel(allPlayersData);
-  } else {
+  errEl.style.display = 'none';
+  try {
+    // Send password to Worker for verification — never compare locally
+    const resp = await fetch(WORKER_URL + '/admin/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: input.value }),
+    });
+    const result = await resp.json();
+    if (result.token) {
+      adminToken = result.token;
+      input.value = '';
+      document.getElementById('adminLocked').style.display = 'none';
+      document.getElementById('adminUnlocked').classList.add('visible');
+      populateAdminPanel(allPlayersData);
+    } else {
+      errEl.style.display = 'block';
+      input.value = '';
+    }
+  } catch(e) {
+    errEl.textContent = 'Connection error — try again';
     errEl.style.display = 'block';
-    document.getElementById('adminPwInput').value = '';
+    input.value = '';
   }
 }
 
 function populateAdminPanel(raw) {
   const entries = Object.entries(raw).sort((a,b) => a[1].displayName.localeCompare(b[1].displayName));
-
-  // Populate merge dropdowns
   const fromSel = document.getElementById('mergeFrom');
   const toSel = document.getElementById('mergeTo');
   [fromSel, toSel].forEach(sel => {
-    sel.innerHTML = entries.map(([key, p]) =>
-      `<option value="${key}">${p.displayName} (${key})</option>`
-    ).join('');
+    sel.innerHTML = entries.map(([key,p]) => `<option value="${key}">${p.displayName} (${key})</option>`).join('');
   });
-
-  // Populate player list with Edit + Delete buttons
   const listEl = document.getElementById('adminPlayerList');
-  listEl.innerHTML = entries.map(([key, p]) => `
+  listEl.innerHTML = entries.map(([key,p]) => `
     <div class="admin-player-row" id="row-${key}">
       <div class="admin-player-info">
         <div class="admin-player-name">${p.displayName}</div>
@@ -495,38 +423,29 @@ function openEditModal(key) {
   document.getElementById('editModal').classList.add('visible');
 }
 
-function closeModal() {
-  document.getElementById('editModal').classList.remove('visible');
-}
-
-// Close modal on overlay click
-document.getElementById('editModal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
+function closeModal() { document.getElementById('editModal').classList.remove('visible'); }
+document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 
 async function saveEdit() {
   const key = document.getElementById('editKey').value;
   const msgEl = document.getElementById('modalMsg');
-  msgEl.className = 'admin-msg';
-  msgEl.style.display = 'none';
-
-  const updatedStats = {
-    seriesPlayed: parseInt(document.getElementById('editPlayed').value) || 0,
-    seriesWon: parseInt(document.getElementById('editWon').value) || 0,
-    seriesLost: parseInt(document.getElementById('editLost').value) || 0,
-    kills: parseInt(document.getElementById('editKills').value) || 0,
-    deaths: parseInt(document.getElementById('editDeaths').value) || 0,
-    assists: parseInt(document.getElementById('editAssists').value) || 0,
-    flagCaps: parseInt(document.getElementById('editFlagCaps').value) || 0,
-    hillSecs: parseInt(document.getElementById('editHillSecs').value) || 0,
-    ballSecs: parseInt(document.getElementById('editBallSecs').value) || 0,
+  msgEl.className = 'admin-msg'; msgEl.style.display = 'none';
+  const stats = {
+    seriesPlayed: parseInt(document.getElementById('editPlayed').value)||0,
+    seriesWon: parseInt(document.getElementById('editWon').value)||0,
+    seriesLost: parseInt(document.getElementById('editLost').value)||0,
+    kills: parseInt(document.getElementById('editKills').value)||0,
+    deaths: parseInt(document.getElementById('editDeaths').value)||0,
+    assists: parseInt(document.getElementById('editAssists').value)||0,
+    flagCaps: parseInt(document.getElementById('editFlagCaps').value)||0,
+    hillSecs: parseInt(document.getElementById('editHillSecs').value)||0,
+    ballSecs: parseInt(document.getElementById('editBallSecs').value)||0,
   };
-
   try {
     const resp = await fetch(WORKER_URL + '/leaderboard/edit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, stats: updatedStats }),
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ key, stats }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
@@ -543,28 +462,20 @@ async function doMerge() {
   const fromKey = document.getElementById('mergeFrom').value;
   const toKey = document.getElementById('mergeTo').value;
   const msgEl = document.getElementById('mergeMsg');
-  msgEl.className = 'admin-msg';
-  msgEl.style.display = 'none';
-
-  if (fromKey === toKey) {
-    msgEl.textContent = 'Cannot merge a player into themselves.';
-    msgEl.className = 'admin-msg error';
-    return;
-  }
-
+  msgEl.className = 'admin-msg'; msgEl.style.display = 'none';
+  if (fromKey === toKey) { msgEl.textContent = 'Cannot merge a player into themselves.'; msgEl.className = 'admin-msg error'; return; }
   const fromName = document.getElementById('mergeFrom').options[document.getElementById('mergeFrom').selectedIndex].text;
   const toName = document.getElementById('mergeTo').options[document.getElementById('mergeTo').selectedIndex].text;
-  if (!confirm(`Merge "${fromName}" INTO "${toName}"?\n\nThis combines all stats and permanently deletes the duplicate. Cannot be undone.`)) return;
-
+  if (!confirm(`Merge "${fromName}" INTO "${toName}"?\n\nCannot be undone.`)) return;
   try {
     const resp = await fetch(WORKER_URL + '/leaderboard/merge', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
       body: JSON.stringify({ fromKey, toKey }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
-    msgEl.textContent = `✓ Merged successfully. Refreshing...`;
+    msgEl.textContent = '✓ Merged successfully. Refreshing...';
     msgEl.className = 'admin-msg success';
     setTimeout(() => load(), 1500);
   } catch(e) {
@@ -575,15 +486,12 @@ async function doMerge() {
 
 async function doDelete(key, displayName) {
   const msgEl = document.getElementById('editMsg');
-  msgEl.className = 'admin-msg';
-  msgEl.style.display = 'none';
-
-  if (!confirm(`Permanently delete "${displayName}" from the leaderboard?\n\nThis cannot be undone.`)) return;
-
+  msgEl.className = 'admin-msg'; msgEl.style.display = 'none';
+  if (!confirm(`Permanently delete "${displayName}"?\n\nCannot be undone.`)) return;
   try {
     const resp = await fetch(WORKER_URL + '/leaderboard/delete', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
       body: JSON.stringify({ key }),
     });
     const result = await resp.json();
