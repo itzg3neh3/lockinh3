@@ -68,7 +68,7 @@
   /* Admin panel */
   .admin-toggle { margin-top: 3rem; text-align: center; }
   .admin-toggle-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; cursor: pointer; transition: all 0.15s; }
-  .admin-toggle-btn:hover { color: var(--text); border-color: var(--border2); }
+  .admin-toggle-btn:hover { color: var(--text); }
   .admin-panel { display: none; margin-top: 1.5rem; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 1.5rem; }
   .admin-panel.visible { display: block; }
   .admin-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; color: var(--red); }
@@ -80,6 +80,8 @@
   .admin-btn:hover { background: #74b4ff; }
   .admin-btn-red { background: var(--red); color: #fff; }
   .admin-btn-red:hover { background: #ff7777; }
+  .admin-btn-green { background: var(--green); color: #000; }
+  .admin-btn-green:hover { background: #86efac; }
   .admin-locked { text-align: center; color: var(--muted); font-size: 13px; padding: 1rem; }
   .admin-unlocked { display: none; }
   .admin-unlocked.visible { display: block; }
@@ -91,6 +93,9 @@
   .admin-player-name { font-weight: 600; font-size: 14px; }
   .admin-player-key { font-size: 11px; color: var(--muted); font-family: monospace; }
   .admin-player-stats { font-size: 12px; color: var(--muted); }
+  .admin-action-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  .admin-edit-btn { background: none; border: 1px solid var(--border2); color: var(--accent); border-radius: 4px; padding: 3px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+  .admin-edit-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
   .admin-delete-btn { background: none; border: 1px solid var(--red-border); color: var(--red); border-radius: 4px; padding: 3px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
   .admin-delete-btn:hover { background: var(--red-dim); }
   .merge-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
@@ -101,7 +106,25 @@
   .admin-msg.success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: var(--green); display: block; }
   .admin-msg.error { background: var(--red-dim); border: 1px solid var(--red-border); color: var(--red); display: block; }
 
-  @media (max-width: 600px) { .alltime-grid { grid-template-columns: 1fr; } .merge-form { grid-template-columns: 1fr; } }
+  /* Edit modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.visible { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  .modal-field { display: flex; flex-direction: column; gap: 4px; }
+  .modal-field label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .modal-field input { background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 12px; color: var(--text); font-size: 14px; outline: none; width: 100%; }
+  .modal-field input:focus { border-color: var(--accent); }
+  .modal-field.full { grid-column: 1 / -1; }
+  .modal-divider { grid-column: 1 / -1; border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+  .modal-section-label { grid-column: 1 / -1; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-cancel { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 9px 18px; cursor: pointer; transition: all 0.15s; }
+  .modal-cancel:hover { color: var(--text); border-color: var(--border2); }
+
+  @media (max-width: 600px) { .alltime-grid { grid-template-columns: 1fr; } .merge-form { grid-template-columns: 1fr; } .modal-grid { grid-template-columns: 1fr; } .modal-field.full { grid-column: 1; } .modal-section-label { grid-column: 1; } .modal-divider { grid-column: 1; } }
 </style>
 </head>
 <body>
@@ -125,7 +148,7 @@
   </div>
   <div class="admin-panel" id="adminPanel">
     <div class="admin-title">⚠ Player Management</div>
-    <div class="admin-sub">Use this to fix duplicate or misspelled player names. Enter the password to unlock.</div>
+    <div class="admin-sub">Merge duplicates, edit stats, or delete entries. Enter the password to unlock.</div>
 
     <div id="adminLocked">
       <div class="admin-password-wrap">
@@ -137,10 +160,18 @@
 
     <div class="admin-unlocked" id="adminUnlocked">
 
+      <!-- Edit Stats section -->
+      <div class="admin-section">
+        <div class="admin-section-title">Edit Player Stats</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Click Edit next to any player to manually correct their stats. All fields will be overwritten with exactly what you enter.</p>
+        <div class="admin-player-list" id="adminPlayerList"></div>
+        <div class="admin-msg" id="editMsg"></div>
+      </div>
+
       <!-- Merge section -->
       <div class="admin-section">
         <div class="admin-section-title">Merge Duplicate Players</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect (duplicate) name and the correct name to merge into. All stats will be combined under the correct name and the duplicate will be removed.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect (duplicate) name and the correct name to merge into. All stats will be combined and the duplicate removed.</p>
         <div class="merge-form">
           <div>
             <label>Duplicate / Wrong Name</label>
@@ -155,14 +186,63 @@
         <div class="admin-msg" id="mergeMsg"></div>
       </div>
 
-      <!-- Delete section -->
-      <div class="admin-section">
-        <div class="admin-section-title">All Players — Delete Entry</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Only delete entries that are completely invalid (e.g. test data). Use Merge for duplicates instead.</p>
-        <div class="admin-player-list" id="adminPlayerList"></div>
-        <div class="admin-msg" id="deleteMsg"></div>
-      </div>
+    </div>
+  </div>
+</div>
 
+<!-- Edit Player Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title" id="modalPlayerName">Edit Player</div>
+    <div class="modal-sub">Enter the correct stats from your records. Every field will be saved exactly as entered.</div>
+    <input type="hidden" id="editKey">
+    <div class="modal-grid">
+      <div class="modal-section-label">Series Record</div>
+      <div class="modal-field">
+        <label>Series Played</label>
+        <input type="number" id="editPlayed" min="0">
+      </div>
+      <div class="modal-field">
+        <label>Series Won</label>
+        <input type="number" id="editWon" min="0">
+      </div>
+      <div class="modal-field">
+        <label>Series Lost</label>
+        <input type="number" id="editLost" min="0">
+      </div>
+      <hr class="modal-divider">
+      <div class="modal-section-label">Combat Stats</div>
+      <div class="modal-field">
+        <label>Kills</label>
+        <input type="number" id="editKills" min="0">
+      </div>
+      <div class="modal-field">
+        <label>Deaths</label>
+        <input type="number" id="editDeaths" min="0">
+      </div>
+      <div class="modal-field full">
+        <label>Assists</label>
+        <input type="number" id="editAssists" min="0">
+      </div>
+      <hr class="modal-divider">
+      <div class="modal-section-label">Objective Stats</div>
+      <div class="modal-field">
+        <label>Flag Caps</label>
+        <input type="number" id="editFlagCaps" min="0">
+      </div>
+      <div class="modal-field">
+        <label>Hill Time (seconds)</label>
+        <input type="number" id="editHillSecs" min="0">
+      </div>
+      <div class="modal-field">
+        <label>Ball Time (seconds)</label>
+        <input type="number" id="editBallSecs" min="0">
+      </div>
+    </div>
+    <div class="admin-msg" id="modalMsg"></div>
+    <div class="modal-actions" style="margin-top:1rem">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="admin-btn admin-btn-green" onclick="saveEdit()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -236,17 +316,15 @@ function render() {
       case 'assists': return b.assists - a.assists;
       case 'deaths': return b.deaths - a.deaths;
       case 'wins': {
-  const diff = b.seriesWon - a.seriesWon;
-  if (diff !== 0) return diff;
-  // Tiebreak 1: win percentage
-  const aPct = a.seriesPlayed > 0 ? a.seriesWon / a.seriesPlayed : 0;
-  const bPct = b.seriesPlayed > 0 ? b.seriesWon / b.seriesPlayed : 0;
-  if (bPct !== aPct) return bPct - aPct;
-  // Tiebreak 2: K/D
-  const aKD = a.deaths > 0 ? a.kills / a.deaths : a.kills;
-  const bKD = b.deaths > 0 ? b.kills / b.deaths : b.kills;
-  return bKD - aKD;
-}
+        const diff = b.seriesWon - a.seriesWon;
+        if (diff !== 0) return diff;
+        const aPct = a.seriesPlayed > 0 ? a.seriesWon / a.seriesPlayed : 0;
+        const bPct = b.seriesPlayed > 0 ? b.seriesWon / b.seriesPlayed : 0;
+        if (bPct !== aPct) return bPct - aPct;
+        const aKD = a.deaths > 0 ? a.kills / a.deaths : a.kills;
+        const bKD = b.deaths > 0 ? b.kills / b.deaths : b.kills;
+        return bKD - aKD;
+      }
       case 'caps': return b.flagCaps - a.flagCaps;
       case 'hill': return b.hillSecs - a.hillSecs;
       case 'ball': return b.ballSecs - a.ballSecs;
@@ -356,9 +434,9 @@ function toggleAdmin() {
 }
 
 function checkPassword() {
-  const input = document.getElementById('adminPwInput').value;
+  const input = document.getElementById('adminPwInput');
   const errEl = document.getElementById('adminPwError');
-  if (input === ADMIN_PASSWORD) {
+  if (input.value === ADMIN_PASSWORD) {
     document.getElementById('adminLocked').style.display = 'none';
     document.getElementById('adminUnlocked').classList.add('visible');
     adminUnlocked = true;
@@ -381,18 +459,84 @@ function populateAdminPanel(raw) {
     ).join('');
   });
 
-  // Populate player list with delete buttons
+  // Populate player list with Edit + Delete buttons
   const listEl = document.getElementById('adminPlayerList');
   listEl.innerHTML = entries.map(([key, p]) => `
     <div class="admin-player-row" id="row-${key}">
       <div class="admin-player-info">
         <div class="admin-player-name">${p.displayName}</div>
         <div class="admin-player-key">key: ${key}</div>
-        <div class="admin-player-stats">${p.seriesPlayed} series · ${p.kills}K / ${p.deaths}D / ${p.assists}A</div>
+        <div class="admin-player-stats">${p.seriesPlayed} series · ${p.seriesWon}W ${p.seriesLost}L · ${p.kills}K / ${p.deaths}D / ${p.assists}A</div>
       </div>
-      <button class="admin-delete-btn" onclick="doDelete('${key}', '${p.displayName.replace(/'/g,"\\'")}')">Delete</button>
+      <div class="admin-action-btns">
+        <button class="admin-edit-btn" onclick="openEditModal('${key}')">Edit</button>
+        <button class="admin-delete-btn" onclick="doDelete('${key}', '${p.displayName.replace(/'/g,"\\'")}')">Delete</button>
+      </div>
     </div>
   `).join('');
+}
+
+function openEditModal(key) {
+  const p = allPlayersData[key];
+  if (!p) return;
+  document.getElementById('editKey').value = key;
+  document.getElementById('modalPlayerName').textContent = `Edit — ${p.displayName}`;
+  document.getElementById('editPlayed').value = p.seriesPlayed || 0;
+  document.getElementById('editWon').value = p.seriesWon || 0;
+  document.getElementById('editLost').value = p.seriesLost || 0;
+  document.getElementById('editKills').value = p.kills || 0;
+  document.getElementById('editDeaths').value = p.deaths || 0;
+  document.getElementById('editAssists').value = p.assists || 0;
+  document.getElementById('editFlagCaps').value = p.flagCaps || 0;
+  document.getElementById('editHillSecs').value = p.hillSecs || 0;
+  document.getElementById('editBallSecs').value = p.ballSecs || 0;
+  document.getElementById('modalMsg').className = 'admin-msg';
+  document.getElementById('modalMsg').style.display = 'none';
+  document.getElementById('editModal').classList.add('visible');
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('visible');
+}
+
+// Close modal on overlay click
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+async function saveEdit() {
+  const key = document.getElementById('editKey').value;
+  const msgEl = document.getElementById('modalMsg');
+  msgEl.className = 'admin-msg';
+  msgEl.style.display = 'none';
+
+  const updatedStats = {
+    seriesPlayed: parseInt(document.getElementById('editPlayed').value) || 0,
+    seriesWon: parseInt(document.getElementById('editWon').value) || 0,
+    seriesLost: parseInt(document.getElementById('editLost').value) || 0,
+    kills: parseInt(document.getElementById('editKills').value) || 0,
+    deaths: parseInt(document.getElementById('editDeaths').value) || 0,
+    assists: parseInt(document.getElementById('editAssists').value) || 0,
+    flagCaps: parseInt(document.getElementById('editFlagCaps').value) || 0,
+    hillSecs: parseInt(document.getElementById('editHillSecs').value) || 0,
+    ballSecs: parseInt(document.getElementById('editBallSecs').value) || 0,
+  };
+
+  try {
+    const resp = await fetch(WORKER_URL + '/leaderboard/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, stats: updatedStats }),
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    msgEl.textContent = '✓ Stats saved successfully';
+    msgEl.className = 'admin-msg success';
+    setTimeout(() => { closeModal(); load(); }, 1200);
+  } catch(e) {
+    msgEl.textContent = `Error: ${e.message}`;
+    msgEl.className = 'admin-msg error';
+  }
 }
 
 async function doMerge() {
@@ -403,14 +547,14 @@ async function doMerge() {
   msgEl.style.display = 'none';
 
   if (fromKey === toKey) {
-    msgEl.textContent = 'Cannot merge a player into themselves — select two different players.';
+    msgEl.textContent = 'Cannot merge a player into themselves.';
     msgEl.className = 'admin-msg error';
     return;
   }
 
   const fromName = document.getElementById('mergeFrom').options[document.getElementById('mergeFrom').selectedIndex].text;
   const toName = document.getElementById('mergeTo').options[document.getElementById('mergeTo').selectedIndex].text;
-  if (!confirm(`Merge "${fromName}" INTO "${toName}"?\n\nThis will combine all stats under the correct name and permanently delete the duplicate. This cannot be undone.`)) return;
+  if (!confirm(`Merge "${fromName}" INTO "${toName}"?\n\nThis combines all stats and permanently deletes the duplicate. Cannot be undone.`)) return;
 
   try {
     const resp = await fetch(WORKER_URL + '/leaderboard/merge', {
@@ -420,7 +564,7 @@ async function doMerge() {
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
-    msgEl.textContent = `✓ Successfully merged! Refreshing...`;
+    msgEl.textContent = `✓ Merged successfully. Refreshing...`;
     msgEl.className = 'admin-msg success';
     setTimeout(() => load(), 1500);
   } catch(e) {
@@ -430,11 +574,11 @@ async function doMerge() {
 }
 
 async function doDelete(key, displayName) {
-  const msgEl = document.getElementById('deleteMsg');
+  const msgEl = document.getElementById('editMsg');
   msgEl.className = 'admin-msg';
   msgEl.style.display = 'none';
 
-  if (!confirm(`Permanently delete "${displayName}" from the leaderboard?\n\nThis cannot be undone. Use Merge instead if this is a duplicate.`)) return;
+  if (!confirm(`Permanently delete "${displayName}" from the leaderboard?\n\nThis cannot be undone.`)) return;
 
   try {
     const resp = await fetch(WORKER_URL + '/leaderboard/delete', {
