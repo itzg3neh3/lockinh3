@@ -78,6 +78,8 @@
   .admin-btn:hover { background: #74b4ff; }
   .admin-btn-green { background: var(--green); color: #000; }
   .admin-btn-green:hover { background: #86efac; }
+  .admin-btn-orange { background: var(--gold); color: #000; }
+  .admin-btn-orange:hover { background: #fcd34d; }
   .admin-locked-msg { text-align: center; color: var(--muted); font-size: 13px; padding: 1rem; }
   .admin-unlocked { display: none; }
   .admin-unlocked.visible { display: block; }
@@ -101,6 +103,14 @@
   .admin-msg { margin-top: 0.75rem; font-size: 13px; padding: 8px 12px; border-radius: 6px; display: none; }
   .admin-msg.success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: var(--green); display: block; }
   .admin-msg.error { background: var(--red-dim); border: 1px solid var(--red-border); color: var(--red); display: block; }
+  /* Snapshot list */
+  .snapshot-list { display: flex; flex-direction: column; gap: 6px; }
+  .snapshot-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; gap: 12px; }
+  .snapshot-info { flex: 1; }
+  .snapshot-date { font-weight: 600; font-size: 14px; }
+  .snapshot-key { font-size: 11px; color: var(--muted); font-family: monospace; margin-top: 2px; }
+  .snapshot-restore-btn { background: none; border: 1px solid var(--gold); color: var(--gold); border-radius: 4px; padding: 4px 12px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
+  .snapshot-restore-btn:hover { background: rgba(245,158,11,0.1); }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
   .modal-overlay.visible { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
@@ -117,7 +127,7 @@
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .modal-cancel { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 9px 18px; cursor: pointer; transition: all 0.15s; }
   .modal-cancel:hover { color: var(--text); }
-  @media (max-width: 600px) { .alltime-grid { grid-template-columns: 1fr; } .merge-form { grid-template-columns: 1fr; } .modal-grid { grid-template-columns: 1fr; } .modal-field.full { grid-column: 1; } .modal-section-label { grid-column: 1; } .modal-divider { grid-column: 1; } }
+  @media (max-width: 600px) { .alltime-grid { grid-template-columns: 1fr; } .merge-form { grid-template-columns: 1fr; } .modal-grid { grid-template-columns: 1fr; } .modal-field.full { grid-column: 1; } .modal-section-label { grid-column: 1; } .modal-divider { grid-column: 1; } .snapshot-row { flex-direction: column; align-items: flex-start; } }
 </style>
 </head>
 <body>
@@ -137,7 +147,7 @@
   </div>
   <div class="admin-panel" id="adminPanel">
     <div class="admin-title">⚠ Player Management</div>
-    <div class="admin-sub">Merge duplicates, edit stats, or delete entries. Enter the password to unlock.</div>
+    <div class="admin-sub">Edit stats, restore backups, merge duplicates, or delete entries.</div>
     <div id="adminLocked">
       <div class="admin-password-wrap">
         <input type="password" class="admin-input" id="adminPwInput" placeholder="Enter password..." onkeydown="if(event.key==='Enter')checkPassword()">
@@ -146,14 +156,28 @@
       <div class="admin-locked-msg" id="adminPwError" style="display:none;color:var(--red)">Incorrect password.</div>
     </div>
     <div class="admin-unlocked" id="adminUnlocked">
+
+      <!-- SNAPSHOTS -->
       <div class="admin-section">
-        <div class="admin-section-title">Edit Player Stats</div>
+        <div class="admin-section-title">📦 Restore a Backup</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">A snapshot is automatically saved every time stats are added or edited. Click Restore to roll the leaderboard back to that exact moment.</p>
+        <div class="snapshot-list" id="snapshotList">
+          <div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading snapshots...</div>
+        </div>
+        <div class="admin-msg" id="snapshotMsg"></div>
+      </div>
+
+      <!-- EDIT STATS -->
+      <div class="admin-section">
+        <div class="admin-section-title">✏️ Edit Player Stats</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Click Edit next to any player to manually correct their stats.</p>
         <div class="admin-player-list" id="adminPlayerList"></div>
         <div class="admin-msg" id="editMsg"></div>
       </div>
+
+      <!-- MERGE -->
       <div class="admin-section">
-        <div class="admin-section-title">Merge Duplicate Players</div>
+        <div class="admin-section-title">🔀 Merge Duplicate Players</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect duplicate and the correct name to merge into.</p>
         <div class="merge-form">
           <div>
@@ -168,6 +192,7 @@
         </div>
         <div class="admin-msg" id="mergeMsg"></div>
       </div>
+
     </div>
   </div>
 </div>
@@ -205,7 +230,6 @@
 <script>
 const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
 
-// No passwords stored here — all auth goes through the Worker
 let adminToken = null;
 let allPlayersData = {};
 
@@ -213,6 +237,16 @@ function fmtTime(sec) {
   if (!sec) return '—';
   const m = Math.floor(sec/60), s = sec%60;
   return `${m}:${String(s).padStart(2,'0')}`;
+}
+function fmtDateTime(isoStr) {
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+      timeZoneName: 'short'
+    });
+  } catch(e) { return isoStr; }
 }
 function kd(k,d) { return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2); }
 function kdClass(k,d) { const r=d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
@@ -241,7 +275,10 @@ async function load() {
     }
     leaderboardData = players;
     render();
-    if (adminToken) populateAdminPanel(raw);
+    if (adminToken) {
+      populateAdminPanel(raw);
+      loadSnapshots();
+    }
   } catch(e) {
     document.getElementById('content').innerHTML = `<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;
   }
@@ -357,7 +394,6 @@ async function checkPassword() {
   const errEl = document.getElementById('adminPwError');
   errEl.style.display = 'none';
   try {
-    // Send password to Worker for verification — never compare locally
     const resp = await fetch(WORKER_URL + '/admin/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -370,6 +406,7 @@ async function checkPassword() {
       document.getElementById('adminLocked').style.display = 'none';
       document.getElementById('adminUnlocked').classList.add('visible');
       populateAdminPanel(allPlayersData);
+      loadSnapshots();
     } else {
       errEl.style.display = 'block';
       input.value = '';
@@ -378,6 +415,55 @@ async function checkPassword() {
     errEl.textContent = 'Connection error — try again';
     errEl.style.display = 'block';
     input.value = '';
+  }
+}
+
+async function loadSnapshots() {
+  const listEl = document.getElementById('snapshotList');
+  listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading snapshots...</div>';
+  try {
+    const resp = await fetch(WORKER_URL + '/leaderboard/snapshots', {
+      headers: { 'X-Admin-Token': adminToken },
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    const { snapshots } = result;
+    if (!snapshots.length) {
+      listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">No snapshots yet — one will be saved automatically next time stats are added.</div>';
+      return;
+    }
+    listEl.innerHTML = snapshots.map((s, i) => `
+      <div class="snapshot-row">
+        <div class="snapshot-info">
+          <div class="snapshot-date">${i === 0 ? '🟢 Latest — ' : ''}${fmtDateTime(s.timestamp)}</div>
+          <div class="snapshot-key">${s.key}</div>
+        </div>
+        <button class="snapshot-restore-btn" onclick="doRestore('${s.key}', '${fmtDateTime(s.timestamp)}')">Restore</button>
+      </div>
+    `).join('');
+  } catch(e) {
+    listEl.innerHTML = `<div style="font-size:13px;color:var(--red);padding:0.5rem 0">Error loading snapshots: ${e.message}</div>`;
+  }
+}
+
+async function doRestore(key, label) {
+  const msgEl = document.getElementById('snapshotMsg');
+  msgEl.className = 'admin-msg'; msgEl.style.display = 'none';
+  if (!confirm(`Restore the leaderboard to the snapshot from:\n\n${label}\n\nThis will overwrite all current stats. Cannot be undone.`)) return;
+  try {
+    const resp = await fetch(WORKER_URL + '/leaderboard/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ key }),
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    msgEl.textContent = `✓ Leaderboard restored to ${label}. Refreshing...`;
+    msgEl.className = 'admin-msg success';
+    setTimeout(() => load(), 1500);
+  } catch(e) {
+    msgEl.textContent = `Error: ${e.message}`;
+    msgEl.className = 'admin-msg error';
   }
 }
 
