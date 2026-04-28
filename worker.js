@@ -1,5 +1,6 @@
 // Lock in H3 — Cloudflare Worker
 const ALLOWED_ORIGIN = 'https://itzg3neh3.github.io';
+const MAX_SNAPSHOTS = 10;
 
 function cors(origin) {
   return {
@@ -82,6 +83,27 @@ function parseTimeSecs(t) {
   return parseInt(s) || 0;
 }
 
+// Save a snapshot and trim to MAX_SNAPSHOTS
+async function saveSnapshot(leaderboard, env) {
+  const timestamp = new Date().toISOString();
+  const snapshotKey = `snapshot:${timestamp}`;
+
+  // Save new snapshot
+  await env.REPORTS.put(snapshotKey, JSON.stringify({
+    timestamp,
+    data: leaderboard,
+  }), { expirationTtl: 60 * 60 * 24 * 365 }); // Keep for 1 year
+
+  // List all snapshots and trim to MAX_SNAPSHOTS
+  const list = await env.REPORTS.list({ prefix: 'snapshot:' });
+  const keys = list.keys.map(k => k.name).sort(); // oldest first
+
+  if (keys.length > MAX_SNAPSHOTS) {
+    const toDelete = keys.slice(0, keys.length - MAX_SNAPSHOTS);
+    await Promise.all(toDelete.map(k => env.REPORTS.delete(k)));
+  }
+}
+
 async function mergeSeriesIntoLeaderboard(games, seriesWinner, env) {
   const lbRaw = await env.REPORTS.get('leaderboard:alltime');
   const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
@@ -155,7 +177,7 @@ export default {
       return new Response('Forbidden', { status: 403 });
     }
 
-    // ── POST /app/auth — verify app password, return token ───────────────
+    // ── POST /app/auth ───────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/app/auth') {
       try {
         const { password } = await request.json();
@@ -170,7 +192,7 @@ export default {
       }
     }
 
-    // ── POST /admin/auth — verify admin password, return token ───────────
+    // ── POST /admin/auth ─────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/admin/auth') {
       try {
         const { password } = await request.json();
@@ -258,7 +280,11 @@ export default {
           }
         }
 
-        await mergeSeriesIntoLeaderboard(games, seriesWinner, env);
+        const leaderboard = await mergeSeriesIntoLeaderboard(games, seriesWinner, env);
+
+        // Auto-save snapshot after every successful leaderboard update
+        await saveSnapshot(leaderboard, env);
+
         await env.REPORTS.put(fpKey, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
         return jsonResponse({ status: 'saved' }, 200, origin);
       } catch (err) {
@@ -272,6 +298,40 @@ export default {
         const data = await env.REPORTS.get('leaderboard:alltime');
         if (!data) return jsonResponse({}, 200, origin);
         return jsonResponse(JSON.parse(data), 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── GET /leaderboard/snapshots — requires admin token ────────────────
+    if (request.method === 'GET' && url.pathname === '/leaderboard/snapshots') {
+      if (!await validateAdminToken(request, env)) {
+        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      }
+      try {
+        const list = await env.REPORTS.list({ prefix: 'snapshot:' });
+        const snapshots = list.keys
+          .map(k => ({ key: k.name, timestamp: k.name.replace('snapshot:', '') }))
+          .sort((a, b) => b.timestamp.localeCompare(a.timestamp)); // newest first
+        return jsonResponse({ snapshots }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── POST /leaderboard/restore — requires admin token ─────────────────
+    if (request.method === 'POST' && url.pathname === '/leaderboard/restore') {
+      if (!await validateAdminToken(request, env)) {
+        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      }
+      try {
+        const { key } = await request.json();
+        if (!key || !key.startsWith('snapshot:')) throw new Error('Invalid snapshot key');
+        const snapshotRaw = await env.REPORTS.get(key);
+        if (!snapshotRaw) throw new Error('Snapshot not found');
+        const snapshot = JSON.parse(snapshotRaw);
+        await env.REPORTS.put('leaderboard:alltime', JSON.stringify(snapshot.data));
+        return jsonResponse({ status: 'restored', timestamp: snapshot.timestamp }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
@@ -299,6 +359,8 @@ export default {
         leaderboard[key].hillSecs = stats.hillSecs;
         leaderboard[key].ballSecs = stats.ballSecs;
         await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
+        // Save snapshot after manual edit too
+        await saveSnapshot(leaderboard, env);
         return jsonResponse({ status: 'saved' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
@@ -332,6 +394,8 @@ export default {
         to.ballSecs += from.ballSecs;
         delete leaderboard[fromKey];
         await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
+        // Save snapshot after merge too
+        await saveSnapshot(leaderboard, env);
         return jsonResponse({ status: 'merged' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
@@ -352,6 +416,8 @@ export default {
         if (!leaderboard[key]) throw new Error(`Player "${key}" not found`);
         delete leaderboard[key];
         await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
+        // Save snapshot after delete too
+        await saveSnapshot(leaderboard, env);
         return jsonResponse({ status: 'deleted' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
