@@ -46,11 +46,13 @@
   .sort-btn:hover { color: var(--text); }
   .sort-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
   .lb-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 750px; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
   thead th { padding: 10px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
   thead th:hover { color: var(--text); }
   thead th.sorted { color: var(--accent); }
   thead th:not(:first-child) { text-align: center; }
+  thead th.obj-per { color: rgba(74,158,255,0.6); }
+  thead th.obj-per.sorted { color: var(--accent); }
   tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; white-space: nowrap; }
   tbody td:not(:first-child) { text-align: center; }
   tbody tr:last-child td { border-bottom: none; }
@@ -61,6 +63,7 @@
   .kd-pos { color: var(--green); font-weight: 600; }
   .kd-neg { color: var(--red); }
   .kd-neu { color: var(--muted); }
+  .obj-per-val { color: var(--accent); font-size: 13px; }
   .win-pct { font-size: 12px; color: var(--muted); }
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
@@ -228,6 +231,10 @@ function fmtTime(sec) {
   const m = Math.floor(sec/60), s = sec%60;
   return `${m}:${String(s).padStart(2,'0')}`;
 }
+function fmtTimeDecimal(sec) {
+  if (!sec) return '—';
+  return fmtTime(Math.round(sec));
+}
 function fmtDateTime(isoStr) {
   try {
     const d = new Date(isoStr);
@@ -242,6 +249,7 @@ function kd(k,d) { return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2); }
 function kda(k,a,d) { return d===0?(k+a>0?(k+a).toFixed(2):'0.00'):((k+a)/d).toFixed(2); }
 function kdClass(k,d) { const r=d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
 function kdaClass(k,a,d) { const r=d===0?(k+a):(k+a)/d; return r>1.5?'kd-pos':r<1.0?'kd-neg':'kd-neu'; }
+function perSeries(val, played) { return played > 0 ? (val / played) : 0; }
 function calcObjScore(p, totals) {
   const shares = [];
   if (totals.ball > 0) shares.push(p.ballSecs / totals.ball);
@@ -280,15 +288,20 @@ function render() {
   const players = leaderboardData;
   if (!players.length) return;
   const totals = {
-    ball: players.reduce((s,p)=>s+p.ballSecs,0),
-    caps: players.reduce((s,p)=>s+p.flagCaps,0),
-    hill: players.reduce((s,p)=>s+p.hillSecs,0),
+    ball: players.reduce((s,p)=>s+(p.ballSecs||0),0),
+    caps: players.reduce((s,p)=>s+(p.flagCaps||0),0),
+    hill: players.reduce((s,p)=>s+(p.hillSecs||0),0),
   };
   const hasObj = totals.ball > 0 || totals.caps > 0 || totals.hill > 0;
+  const hasCaps = totals.caps > 0;
+  const hasHill = totals.hill > 0;
+  const hasBall = totals.ball > 0;
+
   const topFragger = [...players].sort((a,b)=>b.kills-a.kills)[0];
   const topShitter = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   const assistKing = [...players].sort((a,b)=>b.assists-a.assists)[0];
   const objMVP = hasObj ? [...players].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0] : null;
+
   const sorted = [...players].sort((a,b) => {
     switch(currentSort) {
       case 'kills': return b.kills - a.kills;
@@ -306,15 +319,15 @@ function render() {
         const bKD = b.deaths>0?b.kills/b.deaths:b.kills;
         return bKD - aKD;
       }
-      case 'caps': return b.flagCaps - a.flagCaps;
-      case 'hill': return b.hillSecs - a.hillSecs;
-      case 'ball': return b.ballSecs - a.ballSecs;
+      case 'caps': return (b.flagCaps||0) - (a.flagCaps||0);
+      case 'caps_s': return perSeries(b.flagCaps||0,b.seriesPlayed) - perSeries(a.flagCaps||0,a.seriesPlayed);
+      case 'hill': return (b.hillSecs||0) - (a.hillSecs||0);
+      case 'hill_s': return perSeries(b.hillSecs||0,b.seriesPlayed) - perSeries(a.hillSecs||0,a.seriesPlayed);
+      case 'ball': return (b.ballSecs||0) - (a.ballSecs||0);
+      case 'ball_s': return perSeries(b.ballSecs||0,b.seriesPlayed) - perSeries(a.ballSecs||0,a.seriesPlayed);
       default: return b.kills - a.kills;
     }
   });
-  const hasCaps = totals.caps > 0;
-  const hasHill = totals.hill > 0;
-  const hasBall = totals.ball > 0;
 
   let html = `<div class="alltime-grid">
     <div>
@@ -343,9 +356,12 @@ function render() {
     <button class="sort-btn ${currentSort==='assists'?'active':''}" onclick="setSort('assists')">Assists</button>
     <button class="sort-btn ${currentSort==='deaths'?'active':''}" onclick="setSort('deaths')">Deaths</button>
     <button class="sort-btn ${currentSort==='wins'?'active':''}" onclick="setSort('wins')">Series Wins</button>
-    ${hasCaps?`<button class="sort-btn ${currentSort==='caps'?'active':''}" onclick="setSort('caps')">Flag Caps</button>`:''}
-    ${hasHill?`<button class="sort-btn ${currentSort==='hill'?'active':''}" onclick="setSort('hill')">Hill Time</button>`:''}
-    ${hasBall?`<button class="sort-btn ${currentSort==='ball'?'active':''}" onclick="setSort('ball')">Ball Time</button>`:''}
+    ${hasCaps?`<button class="sort-btn ${currentSort==='caps'?'active':''}" onclick="setSort('caps')">Flag Caps</button>
+    <button class="sort-btn ${currentSort==='caps_s'?'active':''}" onclick="setSort('caps_s')">Caps/S</button>`:''}
+    ${hasHill?`<button class="sort-btn ${currentSort==='hill'?'active':''}" onclick="setSort('hill')">Hill Time</button>
+    <button class="sort-btn ${currentSort==='hill_s'?'active':''}" onclick="setSort('hill_s')">Hill/S</button>`:''}
+    ${hasBall?`<button class="sort-btn ${currentSort==='ball'?'active':''}" onclick="setSort('ball')">Ball Time</button>
+    <button class="sort-btn ${currentSort==='ball_s'?'active':''}" onclick="setSort('ball_s')">Ball/S</button>`:''}
   </div>
   <div class="lb-table-wrap"><table>
     <thead><tr>
@@ -357,15 +373,24 @@ function render() {
       <th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th>
       <th class="${currentSort==='kd'?'sorted':''}" onclick="setSort('kd')">K/D</th>
       <th class="${currentSort==='kda'?'sorted':''}" onclick="setSort('kda')">KDA</th>
-      ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th>`:''}
-      ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th>`:''}
-      ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th>`:''}
+      ${hasCaps?`
+      <th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th>
+      <th class="obj-per ${currentSort==='caps_s'?'sorted':''}" onclick="setSort('caps_s')">Caps/S</th>`:''}
+      ${hasHill?`
+      <th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th>
+      <th class="obj-per ${currentSort==='hill_s'?'sorted':''}" onclick="setSort('hill_s')">Hill/S</th>`:''}
+      ${hasBall?`
+      <th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th>
+      <th class="obj-per ${currentSort==='ball_s'?'sorted':''}" onclick="setSort('ball_s')">Ball/S</th>`:''}
     </tr></thead><tbody>`;
 
   sorted.forEach((p,i) => {
     const rank = i+1;
     const rankClass = rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
     const winPct = p.seriesPlayed>0?Math.round((p.seriesWon/p.seriesPlayed)*100):0;
+    const capsPS = perSeries(p.flagCaps||0, p.seriesPlayed);
+    const hillPS = perSeries(p.hillSecs||0, p.seriesPlayed);
+    const ballPS = perSeries(p.ballSecs||0, p.seriesPlayed);
     html += `<tr>
       <td class="rank-cell ${rankClass}">${rank}</td>
       <td class="player-cell">${p.displayName}</td>
@@ -376,9 +401,9 @@ function render() {
       <td>${p.assists}</td>
       <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
       <td class="${kdaClass(p.kills,p.assists,p.deaths)}">${kda(p.kills,p.assists,p.deaths)}</td>
-      ${hasCaps?`<td>${p.flagCaps||0}</td>`:''}
-      ${hasHill?`<td>${fmtTime(p.hillSecs)}</td>`:''}
-      ${hasBall?`<td>${fmtTime(p.ballSecs)}</td>`:''}
+      ${hasCaps?`<td>${p.flagCaps||0}</td><td class="obj-per-val">${capsPS > 0 ? capsPS.toFixed(2) : '—'}</td>`:''}
+      ${hasHill?`<td>${fmtTime(p.hillSecs)}</td><td class="obj-per-val">${hillPS > 0 ? fmtTimeDecimal(hillPS) : '—'}</td>`:''}
+      ${hasBall?`<td>${fmtTime(p.ballSecs)}</td><td class="obj-per-val">${ballPS > 0 ? fmtTimeDecimal(ballPS) : '—'}</td>`:''}
     </tr>`;
   });
   html += `</tbody></table></div>`;
