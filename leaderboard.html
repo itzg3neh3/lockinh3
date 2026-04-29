@@ -46,7 +46,7 @@
   .sort-btn:hover { color: var(--text); }
   .sort-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
   .lb-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  table { width: 100%; border-collapse: collapse; min-width: 750px; }
   thead th { padding: 10px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
   thead th:hover { color: var(--text); }
   thead th.sorted { color: var(--accent); }
@@ -78,8 +78,6 @@
   .admin-btn:hover { background: #74b4ff; }
   .admin-btn-green { background: var(--green); color: #000; }
   .admin-btn-green:hover { background: #86efac; }
-  .admin-btn-orange { background: var(--gold); color: #000; }
-  .admin-btn-orange:hover { background: #fcd34d; }
   .admin-locked-msg { text-align: center; color: var(--muted); font-size: 13px; padding: 1rem; }
   .admin-unlocked { display: none; }
   .admin-unlocked.visible { display: block; }
@@ -103,7 +101,6 @@
   .admin-msg { margin-top: 0.75rem; font-size: 13px; padding: 8px 12px; border-radius: 6px; display: none; }
   .admin-msg.success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: var(--green); display: block; }
   .admin-msg.error { background: var(--red-dim); border: 1px solid var(--red-border); color: var(--red); display: block; }
-  /* Snapshot list */
   .snapshot-list { display: flex; flex-direction: column; gap: 6px; }
   .snapshot-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; gap: 12px; }
   .snapshot-info { flex: 1; }
@@ -156,8 +153,6 @@
       <div class="admin-locked-msg" id="adminPwError" style="display:none;color:var(--red)">Incorrect password.</div>
     </div>
     <div class="admin-unlocked" id="adminUnlocked">
-
-      <!-- SNAPSHOTS -->
       <div class="admin-section">
         <div class="admin-section-title">📦 Restore a Backup</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">A snapshot is automatically saved every time stats are added or edited. Click Restore to roll the leaderboard back to that exact moment.</p>
@@ -166,16 +161,12 @@
         </div>
         <div class="admin-msg" id="snapshotMsg"></div>
       </div>
-
-      <!-- EDIT STATS -->
       <div class="admin-section">
         <div class="admin-section-title">✏️ Edit Player Stats</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Click Edit next to any player to manually correct their stats.</p>
         <div class="admin-player-list" id="adminPlayerList"></div>
         <div class="admin-msg" id="editMsg"></div>
       </div>
-
-      <!-- MERGE -->
       <div class="admin-section">
         <div class="admin-section-title">🔀 Merge Duplicate Players</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect duplicate and the correct name to merge into.</p>
@@ -192,7 +183,6 @@
         </div>
         <div class="admin-msg" id="mergeMsg"></div>
       </div>
-
     </div>
   </div>
 </div>
@@ -249,7 +239,9 @@ function fmtDateTime(isoStr) {
   } catch(e) { return isoStr; }
 }
 function kd(k,d) { return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2); }
+function kda(k,a,d) { return d===0?(k+a>0?(k+a).toFixed(2):'0.00'):((k+a)/d).toFixed(2); }
 function kdClass(k,d) { const r=d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
+function kdaClass(k,a,d) { const r=d===0?(k+a):(k+a)/d; return r>1.5?'kd-pos':r<1.0?'kd-neg':'kd-neu'; }
 function calcObjScore(p, totals) {
   const shares = [];
   if (totals.ball > 0) shares.push(p.ballSecs / totals.ball);
@@ -301,6 +293,7 @@ function render() {
     switch(currentSort) {
       case 'kills': return b.kills - a.kills;
       case 'kd': return (b.deaths?b.kills/b.deaths:b.kills)-(a.deaths?a.kills/a.deaths:a.kills);
+      case 'kda': return ((b.kills+b.assists)/(b.deaths||1))-((a.kills+a.assists)/(a.deaths||1));
       case 'assists': return b.assists - a.assists;
       case 'deaths': return b.deaths - a.deaths;
       case 'wins': {
@@ -346,6 +339,7 @@ function render() {
   <div class="sort-wrap">
     <button class="sort-btn ${currentSort==='kills'?'active':''}" onclick="setSort('kills')">Kills</button>
     <button class="sort-btn ${currentSort==='kd'?'active':''}" onclick="setSort('kd')">K/D</button>
+    <button class="sort-btn ${currentSort==='kda'?'active':''}" onclick="setSort('kda')">KDA</button>
     <button class="sort-btn ${currentSort==='assists'?'active':''}" onclick="setSort('assists')">Assists</button>
     <button class="sort-btn ${currentSort==='deaths'?'active':''}" onclick="setSort('deaths')">Deaths</button>
     <button class="sort-btn ${currentSort==='wins'?'active':''}" onclick="setSort('wins')">Series Wins</button>
@@ -362,6 +356,7 @@ function render() {
       <th class="${currentSort==='deaths'?'sorted':''}" onclick="setSort('deaths')">Deaths</th>
       <th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th>
       <th class="${currentSort==='kd'?'sorted':''}" onclick="setSort('kd')">K/D</th>
+      <th class="${currentSort==='kda'?'sorted':''}" onclick="setSort('kda')">KDA</th>
       ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th>`:''}
       ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th>`:''}
       ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th>`:''}
@@ -375,8 +370,12 @@ function render() {
       <td class="rank-cell ${rankClass}">${rank}</td>
       <td class="player-cell">${p.displayName}</td>
       <td>${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span></td>
-      <td>${p.seriesPlayed}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td>
+      <td>${p.seriesPlayed}</td>
+      <td>${p.kills}</td>
+      <td>${p.deaths}</td>
+      <td>${p.assists}</td>
       <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
+      <td class="${kdaClass(p.kills,p.assists,p.deaths)}">${kda(p.kills,p.assists,p.deaths)}</td>
       ${hasCaps?`<td>${p.flagCaps||0}</td>`:''}
       ${hasHill?`<td>${fmtTime(p.hillSecs)}</td>`:''}
       ${hasBall?`<td>${fmtTime(p.ballSecs)}</td>`:''}
