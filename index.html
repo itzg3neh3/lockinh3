@@ -42,6 +42,17 @@
   .pw-btn:hover { background: #74b4ff; }
   .pw-error { font-size: 13px; color: var(--red); margin-top: 0.6rem; display: none; }
   .pw-unlocked-badge { display: none; align-items: center; gap: 8px; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); border-radius: 6px; padding: 8px 14px; font-size: 13px; color: #4ade80; margin-bottom: 1.5rem; }
+  /* Mode selector */
+  .mode-select-wrap { margin-bottom: 1.5rem; }
+  .mode-select-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem; display: block; }
+  .mode-btns { display: flex; gap: 8px; }
+  .mode-btn { flex: 1; padding: 14px; background: var(--surface); border: 1.5px solid var(--border2); border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); cursor: pointer; transition: all 0.15s; text-align: center; }
+  .mode-btn:hover { border-color: var(--accent); color: var(--text); }
+  .mode-btn.active-4v4 { border-color: var(--s1-border); background: var(--s1-dim); color: var(--s1); }
+  .mode-btn.active-2v2 { border-color: var(--s2-border); background: var(--s2-dim); color: var(--s2); }
+  .mode-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; margin-top: 4px; }
+  .mode-badge-4v4 { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
+  .mode-badge-2v2 { background: var(--s2-dim); color: var(--s2); border: 1px solid var(--s2-border); }
   .upload-zone { border: 1.5px dashed var(--border2); border-radius: 10px; padding: 3rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface); margin-bottom: 1rem; }
   .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
   .upload-zone input { display: none; }
@@ -125,11 +136,11 @@
   .color-tag-blue { background: var(--blue-dim); color: var(--blue); }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @media (max-width: 600px) { .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; } .team-wins { font-size: 38px; } thead th, tbody td { padding: 8px 10px; font-size: 12px; } .callouts-grid { grid-template-columns: 1fr; } .pw-row { flex-direction: column; } }
+  @media (max-width: 600px) { .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; } .team-wins { font-size: 38px; } thead th, tbody td { padding: 8px 10px; font-size: 12px; } .callouts-grid { grid-template-columns: 1fr; } .pw-row { flex-direction: column; } .mode-btns { flex-direction: column; } }
   @media print {
     body { background: #fff !important; color: #111 !important; font-size: 12px; }
     body::before { display: none; }
-    header, .upload-zone, .file-list, .analyze-btn, .progress-wrap, .error-box, .export-btn-wrap, .share-btn-wrap, .lb-btn-wrap, .pw-gate, .pw-unlocked-badge { display: none !important; }
+    header, .upload-zone, .file-list, .analyze-btn, .progress-wrap, .error-box, .export-btn-wrap, .share-btn-wrap, .lb-btn-wrap, .pw-gate, .pw-unlocked-badge, .mode-select-wrap { display: none !important; }
     .report { display: block !important; margin-top: 0; }
     .container { max-width: 100%; padding: 0 1rem; }
     :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --blue: #185FA5; --blue-dim: #e6f1fb; --blue-border: rgba(24,95,165,0.3); --green: #1a7a3a; --gold: #b8860b; --s1: #6d28d9; --s1-dim: #f3f0ff; --s1-border: rgba(109,40,217,0.3); --s2: #c2410c; --s2-dim: #fff7ed; --s2-border: rgba(194,65,12,0.3); }
@@ -200,11 +211,27 @@
   </div>
 
   <div id="appContent" style="display:none">
+
+    <!-- Mode selector -->
+    <div class="mode-select-wrap">
+      <span class="mode-select-label">Select Series Type</span>
+      <div class="mode-btns">
+        <button class="mode-btn active-4v4" id="modeBtn4v4" onclick="setMode('4v4')">
+          4v4
+          <div class="mode-badge mode-badge-4v4">All Game Types</div>
+        </button>
+        <button class="mode-btn" id="modeBtn2v2" onclick="setMode('2v2')">
+          2v2
+          <div class="mode-badge mode-badge-2v2">Slayer Only</div>
+        </button>
+      </div>
+    </div>
+
     <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" accept="image/*" multiple>
       <span class="upload-icon">🎮</span>
-      <div class="upload-title">Drop scoreboard screenshots here</div>
-      <div class="upload-hint-text">Click or drag & drop · JPG, PNG · 2v2 or 4v4 · up to best-of-5</div>
+      <div class="upload-title" id="uploadTitle">Drop 4v4 scoreboard screenshots here</div>
+      <div class="upload-hint-text">Click or drag & drop · JPG, PNG · up to best-of-5</div>
     </div>
     <div class="file-list" id="fileList"></div>
     <button class="analyze-btn" id="analyzeBtn" disabled>Analyze Series</button>
@@ -236,7 +263,7 @@
     <div class="lb-btn-wrap" id="lbBtnWrap">
       <button class="lb-btn" id="lbBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-        Add to Leaderboard Stats
+        <span id="lbBtnLabel">Add to Leaderboard Stats</span>
       </button>
       <button class="lb-force-btn" id="lbForceBtn">
         ⚠ Stats missing? Force add this series
@@ -249,9 +276,30 @@
 const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
 const BASE_URL = 'https://itzg3neh3.github.io/lockinh3/';
 
-// App token stored in sessionStorage — no password ever in source code
 let appUnlocked = !!sessionStorage.getItem('mcc_app_token');
+let currentMode = '4v4';
 if (appUnlocked) showApp();
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeBtn4v4').className = 'mode-btn' + (mode === '4v4' ? ' active-4v4' : '');
+  document.getElementById('modeBtn2v2').className = 'mode-btn' + (mode === '2v2' ? ' active-2v2' : '');
+  document.getElementById('uploadTitle').textContent = mode === '2v2'
+    ? 'Drop 2v2 scoreboard screenshots here'
+    : 'Drop 4v4 scoreboard screenshots here';
+  // Clear files when switching mode
+  files = [];
+  renderList();
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('report').style.display = 'none';
+  document.getElementById('lbBtnWrap').style.display = 'none';
+  document.getElementById('exportWrap').style.display = 'none';
+  document.getElementById('shareBtnWrap').style.display = 'none';
+  // Update leaderboard button label
+  document.getElementById('lbBtnLabel').textContent = mode === '2v2'
+    ? 'Add to 2v2 Leaderboard Stats'
+    : 'Add to Leaderboard Stats';
+}
 
 async function checkPassword() {
   const input = document.getElementById('pwInput');
@@ -365,7 +413,6 @@ analyzeBtn.addEventListener('click', async () => {
   const lbBtn = document.getElementById('lbBtn');
   const lbForceBtn = document.getElementById('lbForceBtn');
   lbBtn.className = 'lb-btn';
-  lbBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Add to Leaderboard Stats';
   lbBtn.disabled = false;
   lbForceBtn.style.display = 'none';
   analyzeBtn.disabled = true;
@@ -378,7 +425,7 @@ analyzeBtn.addEventListener('click', async () => {
     try {
       const b64 = await toBase64(files[i]);
       const mt = files[i].type || 'image/jpeg';
-      const data = await callClaude(b64, mt, i+1);
+      const data = await callClaude(b64, mt, i+1, currentMode);
       results.push({...data, gameNumber: i+1});
     } catch(err) { errors.push({ gameNumber: i+1, message: err.message }); }
   }
@@ -388,11 +435,16 @@ analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.innerHTML = 'Analyze Series';
     analyzeBtn.disabled = false;
     if (!results.length) { showError('Could not analyze any screenshots.\n\nErrors:\n' + errors.map(e=>`Game ${e.gameNumber}: ${e.message}`).join('\n')); return; }
-    renderReport(results, errors);
+    renderReport(results, errors, currentMode);
   }, 400);
 });
 
-async function callClaude(b64, mediaType, gameNum) {
+async function callClaude(b64, mediaType, gameNum, mode) {
+  const teamSize = mode === '2v2' ? 2 : 4;
+  const modeNote = mode === '2v2'
+    ? `This is a 2v2 SLAYER game. There are exactly 2 players per team. Score column = Kills for all Slayer games.`
+    : `This is a 4v4 game.`;
+
   const response = await fetch(WORKER_URL + '/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -403,16 +455,18 @@ async function callClaude(b64, mediaType, gameNum) {
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
-          { type: 'text', text: `This is a Halo 3 MCC end-of-game scoreboard screenshot (game ${gameNum} in a series).
+          { type: 'text', text: `This is a Halo 3 MCC end-of-game scoreboard screenshot (game ${gameNum} in a series). ${modeNote}
 
 Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra text:
 {"gameType":"Slayer","winner":"Red","redTeam":[{"name":"xXPlayerXx","kills":12,"deaths":8,"assists":3,"ballTime":null,"flagCaps":null,"hillTime":null}],"blueTeam":[{"name":"AnotherPlayer","kills":9,"deaths":11,"assists":1,"ballTime":null,"flagCaps":null,"hillTime":null}]}
 
 STEP 1 — READ THE GAME TYPE FROM THE TITLE TEXT at the top of the scoreboard.
 
-STEP 2 — THE GOLDEN RULE: The scoreboard ALWAYS has 4 columns in this order: SCORE | KILLS | ASSISTS | DEATHS. The SCORE column is NEVER kills except in Slayer. Read every column by its header label, not its position.
+STEP 2 — THE GOLDEN RULE: The scoreboard ALWAYS has 4 columns in this order: SCORE | KILLS | ASSISTS | DEATHS. Read every column by its header label, not its position.
 
-STEP 3 — IDENTIFY MODE AND MAP SCORE COLUMN:
+${mode === '2v2' ? `STEP 3 — 2v2 SLAYER RULES:
+This is always a Slayer game. Score column = Kills. There are exactly 2 players per team.
+Set ballTime, flagCaps, and hillTime to null for all players.` : `STEP 3 — IDENTIFY MODE AND MAP SCORE COLUMN:
 
 HARDCORE BALL / ODDBALL (title contains "BALL" or "ODDBALL"):
 Score column = Ball Time in SECONDS → store in ballTime. NEVER store in kills.
@@ -429,31 +483,30 @@ Score column = Flag Caps (small integer 0-5) → store in flagCaps. NEVER store 
 REAL EXAMPLE: Score=3, Kills=11 → flagCaps=3, kills=11
 
 SLAYER / HARDCORE TS (title contains "SLAYER" or "TS", no "30", no "KING", no "BALL", no "CTF", no "FLAG"):
-Score column = Kills. Use the Kills column value.
+Score column = Kills. Use the Kills column value.`}
 
 STEP 4 — READ TEAM COLORS:
-Every player row has a colored background. Look carefully at each row's background color.
-BLUE background rows → these players go in blueTeam array.
-RED background rows → these players go in redTeam array.
-IMPORTANT: The team listed first at the TOP of the scoreboard is NOT always redTeam.
-Do NOT assume position in the list determines team color. ONLY use the row background color.
+Every player row has a colored background.
+BLUE background rows → blueTeam array.
+RED background rows → redTeam array.
+The team at the TOP of the scoreboard is NOT always redTeam. Only use row background color.
 
 STEP 5 — VERIFY THE WINNER USING SCORES:
-For CTF/"30" games: Add up flagCaps for redTeam and blueTeam. Team with MORE caps wins.
-For KOTH games: Add up hillTime for each team. Higher total wins.
-For BALL games: Add up ballTime for each team. Higher total wins.
-For Slayer/TS: Team with more kills wins. Trust the title.
-Always verify winner from scores for objective modes.
+${mode === '2v2' ? 'For Slayer: team with more kills wins.' : `For CTF/"30" games: team with more flagCaps wins.
+For KOTH games: team with more hillTime wins.
+For BALL games: team with more ballTime wins.
+For Slayer/TS: team with more kills wins.`}
+Always verify winner from actual scores, not just the title banner.
 
 PLAYER NAMES: TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this).
-Never duplicate. 4v4 = exactly 4 per team. 2v2 = exactly 2 per team.
+Never duplicate. ${teamSize}v${teamSize} = exactly ${teamSize} per team.
 
 - gameType: exact title text
-- winner: "Red" or "Blue" — verified by score totals for objective modes
-- ballTime: seconds integer for BALL/ODDBALL only — NEVER null for these games
-- hillTime: seconds integer for KING/HILL/KOTH only — NEVER null for these games
-- flagCaps: integer for CTF/"30"/"5FLAG" games — can be 0 but null only for non-CTF games
-- kills: the KILLS column value — always separate from Score` }
+- winner: "Red" or "Blue"
+- ballTime: ${mode === '2v2' ? 'always null for 2v2' : 'seconds integer for BALL/ODDBALL only'}
+- hillTime: ${mode === '2v2' ? 'always null for 2v2' : 'seconds integer for KING/HILL/KOTH only'}
+- flagCaps: ${mode === '2v2' ? 'always null for 2v2' : 'integer for CTF/"30"/"5FLAG" games only'}
+- kills: the KILLS column value` }
         ]
       }]
     })
@@ -489,7 +542,8 @@ function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|ball/); 
 function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30/); }
 function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 
-function verifyWinner(game) {
+function verifyWinner(game, mode) {
+  if (mode === '2v2') return game.winner; // Slayer only — trust kills
   const gt = game.gameType || '';
   const red = game.redTeam || [];
   const blue = game.blueTeam || [];
@@ -564,7 +618,12 @@ async function submitToLeaderboard(force = false) {
     const resp = await fetch(WORKER_URL + '/leaderboard/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ games: window._lastGames, seriesWinner: window._seriesWinner, force }),
+      body: JSON.stringify({
+        games: window._lastGames,
+        seriesWinner: window._seriesWinner,
+        force,
+        mode: window._seriesMode,
+      }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
@@ -575,7 +634,7 @@ async function submitToLeaderboard(force = false) {
       forceBtn.style.display = 'flex';
     } else {
       btn.className = 'lb-btn saved';
-      btn.innerHTML = '✓ Added to leaderboard successfully';
+      btn.innerHTML = `✓ Added to ${window._seriesMode} leaderboard successfully`;
       btn.disabled = true;
       forceBtn.style.display = 'none';
     }
@@ -596,8 +655,8 @@ document.getElementById('lbForceBtn').addEventListener('click', async () => {
   forceBtn.disabled = false;
 });
 
-function renderReport(games, errors) {
-  games = games.map(g => ({ ...g, winner: verifyWinner(g) }));
+function renderReport(games, errors, mode) {
+  games = games.map(g => ({ ...g, winner: verifyWinner(g, mode) }));
   const { squad1, squad2 } = buildSquads(games);
 
   let s1Wins=0, s2Wins=0;
@@ -627,13 +686,17 @@ function renderReport(games, errors) {
   const topKiller = [...players].sort((a,b)=>b.kills-a.kills)[0];
   const bottomFragger = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   const assistKing = [...players].sort((a,b)=>b.assists-a.assists)[0];
-  const objMVP = calcObjMVP(players, games);
-  const hasOddball = games.some(g=>isOddball(g.gameType));
-  const hasCTF = games.some(g=>isCTF(g.gameType));
-  const hasKOTH = games.some(g=>isKOTH(g.gameType));
+  // OBJ MVP only for 4v4
+  const objMVP = mode === '4v4' ? calcObjMVP(players, games) : null;
+  const hasOddball = mode === '4v4' && games.some(g=>isOddball(g.gameType));
+  const hasCTF = mode === '4v4' && games.some(g=>isCTF(g.gameType));
+  const hasKOTH = mode === '4v4' && games.some(g=>isKOTH(g.gameType));
   const s1Players = [...squad1].join(', ');
   const s2Players = [...squad2].join(', ');
   const dateStr = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const modeBadge = mode === '2v2'
+    ? '<span style="font-size:13px;font-weight:600;background:var(--s2-dim);color:var(--s2);border:1px solid var(--s2-border);padding:2px 10px;border-radius:99px;margin-left:10px;vertical-align:middle;">2v2</span>'
+    : '<span style="font-size:13px;font-weight:600;background:var(--s1-dim);color:var(--s1);border:1px solid var(--s1-border);padding:2px 10px;border-radius:99px;margin-left:10px;vertical-align:middle;">4v4</span>';
 
   function objMVPStats(p) {
     const parts = [];
@@ -643,14 +706,32 @@ function renderReport(games, errors) {
     return parts.join(' &nbsp;·&nbsp; ') || 'Objective contributor';
   }
 
+  // For 2v2 callouts are 3 in a row, for 4v4 use 2x2 grid
+  const calloutHtml = mode === '2v2' ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2rem;">
+      ${topKiller?`<div class="mvp-strip mvp-strip-gold"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D</div></div></div>`:''}
+      ${bottomFragger?`<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D</div></div></div>`:''}
+      ${assistKing?`<div class="mvp-strip mvp-strip-blue"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.deaths} Deaths</div></div></div>`:''}
+    </div>` : `
+    <div class="callouts-grid">
+      <div>
+        ${topKiller?`<div class="mvp-strip mvp-strip-gold" style="margin-bottom:0.75rem"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Series Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D &nbsp;·&nbsp; ${pm(topKiller.kills,topKiller.deaths)} +/-</div></div></div>`:''}
+        ${bottomFragger?`<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Series Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D &nbsp;·&nbsp; ${pm(bottomFragger.kills,bottomFragger.deaths)} +/-</div></div></div>`:''}
+      </div>
+      <div>
+        ${assistKing?`<div class="mvp-strip mvp-strip-blue" style="margin-bottom:0.75rem"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Series Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.deaths} Deaths &nbsp;·&nbsp; ${kd(assistKing.kills,assistKing.deaths)} K/D</div></div></div>`:''}
+        ${objMVP?`<div class="mvp-strip mvp-strip-green"><div class="mvp-star">🎯</div><div><div class="mvp-eyebrow eyebrow-green">Series OBJ MVP</div><div class="mvp-name">${objMVP.name}</div><div class="mvp-stats">${objMVPStats(objMVP)}</div></div></div>`:''}
+      </div>
+    </div>`;
+
   let html = `
   <div class="print-header">
-    <div class="print-header-logo">Lock in H3 — Series Report</div>
+    <div class="print-header-logo">Lock in H3 — ${mode} Series Report</div>
     <div class="print-header-date">Generated ${dateStr}</div>
   </div>
   <div class="report-header">
-    <div class="report-eyebrow">Series Complete · ${games.length} Game${games.length!==1?'s':''}</div>
-    <div class="report-title">${winner===0?'Series Tied':'Squad '+winner+' Wins the Series'}</div>
+    <div class="report-eyebrow">Series Complete · ${games.length} Game${games.length!==1?'s':''} · ${mode}</div>
+    <div class="report-title">${winner===0?'Series Tied':'Squad '+winner+' Wins the Series'}${modeBadge}</div>
   </div>
   <div class="series-score">
     <div class="team-card ${winner===1?'winner-s1':''}">
@@ -667,16 +748,7 @@ function renderReport(games, errors) {
       <div class="team-wins" style="color:var(--s2)">${s2Wins}</div>
     </div>
   </div>
-  <div class="callouts-grid">
-    <div>
-      ${topKiller?`<div class="mvp-strip mvp-strip-gold" style="margin-bottom:0.75rem"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Series Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D &nbsp;·&nbsp; ${pm(topKiller.kills,topKiller.deaths)} +/-</div></div></div>`:''}
-      ${bottomFragger?`<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Series Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills &nbsp;·&nbsp; ${bottomFragger.deaths} Deaths &nbsp;·&nbsp; ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D &nbsp;·&nbsp; ${pm(bottomFragger.kills,bottomFragger.deaths)} +/-</div></div></div>`:''}
-    </div>
-    <div>
-      ${assistKing?`<div class="mvp-strip mvp-strip-blue" style="margin-bottom:0.75rem"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Series Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.deaths} Deaths &nbsp;·&nbsp; ${kd(assistKing.kills,assistKing.deaths)} K/D</div></div></div>`:''}
-      ${objMVP?`<div class="mvp-strip mvp-strip-green"><div class="mvp-star">🎯</div><div><div class="mvp-eyebrow eyebrow-green">Series OBJ MVP</div><div class="mvp-name">${objMVP.name}</div><div class="mvp-stats">${objMVPStats(objMVP)}</div></div></div>`:''}
-    </div>
-  </div>`;
+  ${calloutHtml}`;
 
   html += `<div class="section-title">Overall Player Stats</div><div class="stat-table-wrap"><table><thead><tr>
     <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>
@@ -692,7 +764,7 @@ function renderReport(games, errors) {
 
   html += `<div class="section-title">Game-by-Game Breakdown</div><div class="games-grid">`;
   games.forEach(g => {
-    const gOdd=isOddball(g.gameType), gCTF=isCTF(g.gameType), gKOTH=isKOTH(g.gameType);
+    const gOdd=isOddball(g.gameType)&&mode==='4v4', gCTF=isCTF(g.gameType)&&mode==='4v4', gKOTH=isKOTH(g.gameType)&&mode==='4v4';
     const wt = g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
     let ws1Votes=0, ws2Votes=0;
     wt.forEach(p => { if (getSquad(p.name,squad1,squad2)===1) ws1Votes++; else ws2Votes++; });
@@ -719,8 +791,12 @@ function renderReport(games, errors) {
   document.getElementById('exportWrap').style.display = 'block';
   document.getElementById('shareBtnWrap').style.display = 'block';
   document.getElementById('lbBtnWrap').style.display = winner !== 0 ? 'block' : 'none';
+  // Update leaderboard button label based on mode
+  const lbBtn = document.getElementById('lbBtn');
+  lbBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> ${mode === '2v2' ? 'Add to 2v2 Leaderboard Stats' : 'Add to Leaderboard Stats'}`;
   window._lastGames = games;
   window._seriesWinner = winner;
+  window._seriesMode = mode;
   reportEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -775,6 +851,7 @@ document.getElementById('copyBtn').addEventListener('click', () => {
   if (!id) return;
   document.getElementById('pwGate').style.display='none';
   document.getElementById('appContent').style.display='block';
+  document.querySelector('.mode-select-wrap').style.display='none';
   document.querySelector('.upload-zone').style.display='none';
   document.querySelector('.analyze-btn').style.display='none';
   reportEl.style.display='block';
@@ -786,7 +863,9 @@ document.getElementById('copyBtn').addEventListener('click', () => {
   try {
     const games = await loadReport(id);
     if (!games) { reportEl.innerHTML='<div class="not-found-msg"><h2>Report not found</h2><p>This link may have expired — reports are stored for 90 days.</p></div>'; return; }
-    renderReport(games,[]);
+    // Detect mode from game data — 2v2 has 2 players per team
+    const detectedMode = games[0] && (games[0].redTeam||[]).length <= 2 ? '2v2' : '4v4';
+    renderReport(games, [], detectedMode);
     document.getElementById('exportWrap').style.display='block';
     document.getElementById('shareBtnWrap').style.display='none';
     document.getElementById('lbBtnWrap').style.display='none';
