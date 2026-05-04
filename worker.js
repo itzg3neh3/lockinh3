@@ -66,13 +66,6 @@ async function validateAdminToken(request, env) {
   return token === expected;
 }
 
-async function validateAppToken(request, env) {
-  const token = request.headers.get('X-App-Token');
-  if (!token) return false;
-  const expected = await generateAppToken(env);
-  return token === expected;
-}
-
 function parseTimeSecs(t) {
   if (t === null || t === undefined || t === 'null' || t === '') return 0;
   const s = String(t).trim();
@@ -83,29 +76,32 @@ function parseTimeSecs(t) {
   return parseInt(s) || 0;
 }
 
-// Save a snapshot and trim to MAX_SNAPSHOTS
-async function saveSnapshot(leaderboard, env) {
+function lbKey(mode) {
+  return mode === '2v2' ? 'leaderboard:2v2' : 'leaderboard:alltime';
+}
+
+function snapshotPrefix(mode) {
+  return mode === '2v2' ? 'snapshot2v2:' : 'snapshot:';
+}
+
+async function saveSnapshot(leaderboard, env, mode) {
   const timestamp = new Date().toISOString();
-  const snapshotKey = `snapshot:${timestamp}`;
-
-  // Save new snapshot
-  await env.REPORTS.put(snapshotKey, JSON.stringify({
-    timestamp,
-    data: leaderboard,
-  }), { expirationTtl: 60 * 60 * 24 * 365 }); // Keep for 1 year
-
-  // List all snapshots and trim to MAX_SNAPSHOTS
-  const list = await env.REPORTS.list({ prefix: 'snapshot:' });
-  const keys = list.keys.map(k => k.name).sort(); // oldest first
-
+  const prefix = snapshotPrefix(mode);
+  const snapshotKey = `${prefix}${timestamp}`;
+  await env.REPORTS.put(snapshotKey, JSON.stringify({ timestamp, data: leaderboard }), {
+    expirationTtl: 60 * 60 * 24 * 365,
+  });
+  const list = await env.REPORTS.list({ prefix });
+  const keys = list.keys.map(k => k.name).sort();
   if (keys.length > MAX_SNAPSHOTS) {
     const toDelete = keys.slice(0, keys.length - MAX_SNAPSHOTS);
     await Promise.all(toDelete.map(k => env.REPORTS.delete(k)));
   }
 }
 
-async function mergeSeriesIntoLeaderboard(games, seriesWinner, env) {
-  const lbRaw = await env.REPORTS.get('leaderboard:alltime');
+async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
+  const key = lbKey(mode);
+  const lbRaw = await env.REPORTS.get(key);
   const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
 
   const g1 = games[0];
@@ -122,13 +118,13 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env) {
     ];
     allPlayers.forEach(p => {
       if (!p.name) return;
-      const key = normalizeName(p.name);
-      if (!playerStats[key]) playerStats[key] = {
+      const pKey = normalizeName(p.name);
+      if (!playerStats[pKey]) playerStats[pKey] = {
         displayName: p.name,
         kills: 0, deaths: 0, assists: 0,
         flagCaps: 0, hillSecs: 0, ballSecs: 0
       };
-      const s = playerStats[key];
+      const s = playerStats[pKey];
       s.kills += p.kills || 0;
       s.deaths += p.deaths || 0;
       s.assists += p.assists || 0;
@@ -138,20 +134,20 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env) {
     });
   });
 
-  Object.entries(playerStats).forEach(([key, stats]) => {
-    if (!leaderboard[key]) {
-      leaderboard[key] = {
+  Object.entries(playerStats).forEach(([pKey, stats]) => {
+    if (!leaderboard[pKey]) {
+      leaderboard[pKey] = {
         displayName: stats.displayName,
         seriesPlayed: 0, seriesWon: 0, seriesLost: 0,
         kills: 0, deaths: 0, assists: 0,
         flagCaps: 0, hillSecs: 0, ballSecs: 0
       };
     }
-    const lb = leaderboard[key];
+    const lb = leaderboard[pKey];
     lb.displayName = stats.displayName;
     lb.seriesPlayed += 1;
-    if (winningSquadNames.has(key)) lb.seriesWon += 1;
-    else if (losingSquadNames.has(key)) lb.seriesLost += 1;
+    if (winningSquadNames.has(pKey)) lb.seriesWon += 1;
+    else if (losingSquadNames.has(pKey)) lb.seriesLost += 1;
     lb.kills += stats.kills;
     lb.deaths += stats.deaths;
     lb.assists += stats.assists;
@@ -160,7 +156,7 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env) {
     lb.ballSecs += stats.ballSecs;
   });
 
-  await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
+  await env.REPORTS.put(key, JSON.stringify(leaderboard));
   return leaderboard;
 }
 
@@ -182,9 +178,7 @@ export default {
       try {
         const { password } = await request.json();
         if (!password) return jsonResponse({ error: 'No password provided' }, 400, origin);
-        if (password !== env.APP_PASSWORD) {
-          return jsonResponse({ error: 'Incorrect password' }, 401, origin);
-        }
+        if (password !== env.APP_PASSWORD) return jsonResponse({ error: 'Incorrect password' }, 401, origin);
         const token = await generateAppToken(env);
         return jsonResponse({ token }, 200, origin);
       } catch (err) {
@@ -197,9 +191,7 @@ export default {
       try {
         const { password } = await request.json();
         if (!password) return jsonResponse({ error: 'No password provided' }, 400, origin);
-        if (password !== env.ADMIN_PASSWORD) {
-          return jsonResponse({ error: 'Incorrect password' }, 401, origin);
-        }
+        if (password !== env.ADMIN_PASSWORD) return jsonResponse({ error: 'Incorrect password' }, 401, origin);
         const token = await generateAdminToken(env);
         return jsonResponse({ token }, 200, origin);
       } catch (err) {
@@ -266,12 +258,13 @@ export default {
     // ── POST /leaderboard/save ───────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/save') {
       try {
-        const { games, seriesWinner, force } = await request.json();
+        const { games, seriesWinner, force, mode } = await request.json();
         if (!Array.isArray(games)) throw new Error('Invalid data');
+        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
 
         const fingerprint = await createFingerprint(games);
         const hash = await hashString(fingerprint);
-        const fpKey = `fp:${hash}`;
+        const fpKey = `fp:${resolvedMode}:${hash}`;
 
         if (!force) {
           const existing = await env.REPORTS.get(fpKey);
@@ -280,11 +273,8 @@ export default {
           }
         }
 
-        const leaderboard = await mergeSeriesIntoLeaderboard(games, seriesWinner, env);
-
-        // Auto-save snapshot after every successful leaderboard update
-        await saveSnapshot(leaderboard, env);
-
+        const leaderboard = await mergeSeriesIntoLeaderboard(games, seriesWinner, env, resolvedMode);
+        await saveSnapshot(leaderboard, env, resolvedMode);
         await env.REPORTS.put(fpKey, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
         return jsonResponse({ status: 'saved' }, 200, origin);
       } catch (err) {
@@ -295,7 +285,8 @@ export default {
     // ── GET /leaderboard ─────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/leaderboard') {
       try {
-        const data = await env.REPORTS.get('leaderboard:alltime');
+        const mode = url.searchParams.get('mode') === '2v2' ? '2v2' : '4v4';
+        const data = await env.REPORTS.get(lbKey(mode));
         if (!data) return jsonResponse({}, 200, origin);
         return jsonResponse(JSON.parse(data), 200, origin);
       } catch (err) {
@@ -303,49 +294,47 @@ export default {
       }
     }
 
-    // ── GET /leaderboard/snapshots — requires admin token ────────────────
+    // ── GET /leaderboard/snapshots ───────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/leaderboard/snapshots') {
-      if (!await validateAdminToken(request, env)) {
-        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
-      }
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
-        const list = await env.REPORTS.list({ prefix: 'snapshot:' });
+        const mode = url.searchParams.get('mode') === '2v2' ? '2v2' : '4v4';
+        const prefix = snapshotPrefix(mode);
+        const list = await env.REPORTS.list({ prefix });
         const snapshots = list.keys
-          .map(k => ({ key: k.name, timestamp: k.name.replace('snapshot:', '') }))
-          .sort((a, b) => b.timestamp.localeCompare(a.timestamp)); // newest first
+          .map(k => ({ key: k.name, timestamp: k.name.replace(prefix, '') }))
+          .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
         return jsonResponse({ snapshots }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
 
-    // ── POST /leaderboard/restore — requires admin token ─────────────────
+    // ── POST /leaderboard/restore ────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/restore') {
-      if (!await validateAdminToken(request, env)) {
-        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
-      }
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
-        const { key } = await request.json();
-        if (!key || !key.startsWith('snapshot:')) throw new Error('Invalid snapshot key');
+        const { key, mode } = await request.json();
+        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        if (!key || (!key.startsWith('snapshot:') && !key.startsWith('snapshot2v2:'))) throw new Error('Invalid snapshot key');
         const snapshotRaw = await env.REPORTS.get(key);
         if (!snapshotRaw) throw new Error('Snapshot not found');
         const snapshot = JSON.parse(snapshotRaw);
-        await env.REPORTS.put('leaderboard:alltime', JSON.stringify(snapshot.data));
+        await env.REPORTS.put(lbKey(resolvedMode), JSON.stringify(snapshot.data));
         return jsonResponse({ status: 'restored', timestamp: snapshot.timestamp }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
 
-    // ── POST /leaderboard/edit — requires admin token ────────────────────
+    // ── POST /leaderboard/edit ───────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/edit') {
-      if (!await validateAdminToken(request, env)) {
-        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
-      }
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
-        const { key, stats } = await request.json();
+        const { key, stats, mode } = await request.json();
         if (!key || !stats) throw new Error('key and stats required');
-        const lbRaw = await env.REPORTS.get('leaderboard:alltime');
+        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        const lbRaw = await env.REPORTS.get(lbKey(resolvedMode));
         if (!lbRaw) throw new Error('Leaderboard is empty');
         const leaderboard = JSON.parse(lbRaw);
         if (!leaderboard[key]) throw new Error(`Player "${key}" not found`);
@@ -358,25 +347,23 @@ export default {
         leaderboard[key].flagCaps = stats.flagCaps;
         leaderboard[key].hillSecs = stats.hillSecs;
         leaderboard[key].ballSecs = stats.ballSecs;
-        await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
-        // Save snapshot after manual edit too
-        await saveSnapshot(leaderboard, env);
+        await env.REPORTS.put(lbKey(resolvedMode), JSON.stringify(leaderboard));
+        await saveSnapshot(leaderboard, env, resolvedMode);
         return jsonResponse({ status: 'saved' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
 
-    // ── POST /leaderboard/merge — requires admin token ───────────────────
+    // ── POST /leaderboard/merge ──────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/merge') {
-      if (!await validateAdminToken(request, env)) {
-        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
-      }
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
-        const { fromKey, toKey } = await request.json();
+        const { fromKey, toKey, mode } = await request.json();
         if (!fromKey || !toKey) throw new Error('fromKey and toKey required');
         if (fromKey === toKey) throw new Error('Cannot merge a player into themselves');
-        const lbRaw = await env.REPORTS.get('leaderboard:alltime');
+        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        const lbRaw = await env.REPORTS.get(lbKey(resolvedMode));
         if (!lbRaw) throw new Error('Leaderboard is empty');
         const leaderboard = JSON.parse(lbRaw);
         const from = leaderboard[fromKey];
@@ -393,31 +380,28 @@ export default {
         to.hillSecs += from.hillSecs;
         to.ballSecs += from.ballSecs;
         delete leaderboard[fromKey];
-        await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
-        // Save snapshot after merge too
-        await saveSnapshot(leaderboard, env);
+        await env.REPORTS.put(lbKey(resolvedMode), JSON.stringify(leaderboard));
+        await saveSnapshot(leaderboard, env, resolvedMode);
         return jsonResponse({ status: 'merged' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
 
-    // ── POST /leaderboard/delete — requires admin token ──────────────────
+    // ── POST /leaderboard/delete ─────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/delete') {
-      if (!await validateAdminToken(request, env)) {
-        return jsonResponse({ error: 'Unauthorized' }, 401, origin);
-      }
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
-        const { key } = await request.json();
+        const { key, mode } = await request.json();
         if (!key) throw new Error('key required');
-        const lbRaw = await env.REPORTS.get('leaderboard:alltime');
+        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        const lbRaw = await env.REPORTS.get(lbKey(resolvedMode));
         if (!lbRaw) throw new Error('Leaderboard is empty');
         const leaderboard = JSON.parse(lbRaw);
         if (!leaderboard[key]) throw new Error(`Player "${key}" not found`);
         delete leaderboard[key];
-        await env.REPORTS.put('leaderboard:alltime', JSON.stringify(leaderboard));
-        // Save snapshot after delete too
-        await saveSnapshot(leaderboard, env);
+        await env.REPORTS.put(lbKey(resolvedMode), JSON.stringify(leaderboard));
+        await saveSnapshot(leaderboard, env, resolvedMode);
         return jsonResponse({ status: 'deleted' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
