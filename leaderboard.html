@@ -13,6 +13,8 @@
     --accent-dim: rgba(74,158,255,0.12); --red: #ff5555;
     --red-dim: rgba(255,85,85,0.12); --red-border: rgba(255,85,85,0.25);
     --green: #4ade80; --gold: #f59e0b;
+    --s1: #a78bfa; --s1-dim: rgba(167,139,250,0.12); --s1-border: rgba(167,139,250,0.25);
+    --s2: #fb923c; --s2-dim: rgba(251,146,60,0.12); --s2-border: rgba(251,146,60,0.25);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
@@ -26,7 +28,13 @@
   .nav-link:hover { color: var(--accent); border-color: var(--accent); }
   .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
   .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
-  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 2rem; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+  /* Mode tabs */
+  .mode-tabs { display: flex; gap: 6px; margin-bottom: 2rem; }
+  .mode-tab { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 10px 24px; border-radius: 8px; border: 1.5px solid var(--border2); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active-4v4 { border-color: var(--s1-border); background: var(--s1-dim); color: var(--s1); }
+  .mode-tab.active-2v2 { border-color: var(--s2-border); background: var(--s2-dim); color: var(--s2); }
   .loading { text-align: center; padding: 4rem; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
   .empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
   .empty h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 0.5rem; }
@@ -46,7 +54,7 @@
   .sort-btn:hover { color: var(--text); }
   .sort-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
   .lb-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  table { width: 100%; border-collapse: collapse; min-width: 700px; }
   thead th { padding: 10px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
   thead th:hover { color: var(--text); }
   thead th.sorted { color: var(--accent); }
@@ -74,6 +82,7 @@
   .admin-panel.visible { display: block; }
   .admin-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; color: var(--red); }
   .admin-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+  .admin-mode-note { font-size: 13px; color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(74,158,255,0.2); border-radius: 6px; padding: 8px 12px; margin-bottom: 1.25rem; }
   .admin-password-wrap { display: flex; gap: 8px; margin-bottom: 1.5rem; }
   .admin-input { flex: 1; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 9px 12px; color: var(--text); font-family: monospace; font-size: 14px; outline: none; }
   .admin-input:focus { border-color: var(--accent); }
@@ -141,13 +150,22 @@
   </header>
   <div class="page-title">All-Time Leaderboard</div>
   <div class="page-sub">Cumulative stats across all series — updated manually after each verified report</div>
+
+  <!-- Mode tabs -->
+  <div class="mode-tabs">
+    <button class="mode-tab active-4v4" id="tab4v4" onclick="switchMode('4v4')">4v4</button>
+    <button class="mode-tab" id="tab2v2" onclick="switchMode('2v2')">2v2</button>
+  </div>
+
   <div id="content"><div class="loading">Loading leaderboard...</div></div>
+
   <div class="admin-toggle">
     <button class="admin-toggle-btn" onclick="toggleAdmin()">⚙ Manage Players</button>
   </div>
   <div class="admin-panel" id="adminPanel">
     <div class="admin-title">⚠ Player Management</div>
     <div class="admin-sub">Edit stats, restore backups, merge duplicates, or delete entries.</div>
+    <div class="admin-mode-note" id="adminModeNote">Currently managing: <strong>4v4 Leaderboard</strong></div>
     <div id="adminLocked">
       <div class="admin-password-wrap">
         <input type="password" class="admin-input" id="adminPwInput" placeholder="Enter password..." onkeydown="if(event.key==='Enter')checkPassword()">
@@ -158,7 +176,7 @@
     <div class="admin-unlocked" id="adminUnlocked">
       <div class="admin-section">
         <div class="admin-section-title">📦 Restore a Backup</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">A snapshot is automatically saved every time stats are added or edited. Click Restore to roll the leaderboard back to that exact moment.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Snapshots are saved automatically every time stats change. Click Restore to roll back to that moment.</p>
         <div class="snapshot-list" id="snapshotList">
           <div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading snapshots...</div>
         </div>
@@ -174,14 +192,8 @@
         <div class="admin-section-title">🔀 Merge Duplicate Players</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect duplicate and the correct name to merge into.</p>
         <div class="merge-form">
-          <div>
-            <label>Duplicate / Wrong Name</label>
-            <select class="merge-select" id="mergeFrom"></select>
-          </div>
-          <div>
-            <label>Correct Name (merge into)</label>
-            <select class="merge-select" id="mergeTo"></select>
-          </div>
+          <div><label>Duplicate / Wrong Name</label><select class="merge-select" id="mergeFrom"></select></div>
+          <div><label>Correct Name (merge into)</label><select class="merge-select" id="mergeTo"></select></div>
           <button class="admin-btn" onclick="doMerge()" style="margin-bottom:0">Merge</button>
         </div>
         <div class="admin-msg" id="mergeMsg"></div>
@@ -194,7 +206,7 @@
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <div class="modal-title" id="modalPlayerName">Edit Player</div>
-    <div class="modal-sub">Enter the correct stats from your records. Every field will be saved exactly as entered.</div>
+    <div class="modal-sub">Enter the correct stats from your records.</div>
     <input type="hidden" id="editKey">
     <div class="modal-grid">
       <div class="modal-section-label">Series Record</div>
@@ -207,10 +219,10 @@
       <div class="modal-field"><label>Deaths</label><input type="number" id="editDeaths" min="0"></div>
       <div class="modal-field full"><label>Assists</label><input type="number" id="editAssists" min="0"></div>
       <hr class="modal-divider">
-      <div class="modal-section-label">Objective Stats</div>
-      <div class="modal-field"><label>Flag Caps</label><input type="number" id="editFlagCaps" min="0"></div>
-      <div class="modal-field"><label>Hill Time (seconds)</label><input type="number" id="editHillSecs" min="0"></div>
-      <div class="modal-field"><label>Ball Time (seconds)</label><input type="number" id="editBallSecs" min="0"></div>
+      <div class="modal-section-label" id="objSectionLabel">Objective Stats</div>
+      <div class="modal-field" id="flagCapsField"><label>Flag Caps</label><input type="number" id="editFlagCaps" min="0"></div>
+      <div class="modal-field" id="hillSecsField"><label>Hill Time (seconds)</label><input type="number" id="editHillSecs" min="0"></div>
+      <div class="modal-field" id="ballSecsField"><label>Ball Time (seconds)</label><input type="number" id="editBallSecs" min="0"></div>
     </div>
     <div class="admin-msg" id="modalMsg"></div>
     <div class="modal-actions" style="margin-top:1rem">
@@ -225,24 +237,20 @@ const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
 
 let adminToken = null;
 let allPlayersData = {};
+let currentMode = '4v4';
+let currentSort = 'kills';
+let leaderboardData = [];
 
 function fmtTime(sec) {
   if (!sec) return '—';
   const m = Math.floor(sec/60), s = sec%60;
   return `${m}:${String(s).padStart(2,'0')}`;
 }
-function fmtTimeDecimal(sec) {
-  if (!sec) return '—';
-  return fmtTime(Math.round(sec));
-}
+function fmtTimeDecimal(sec) { if (!sec) return '—'; return fmtTime(Math.round(sec)); }
 function fmtDateTime(isoStr) {
   try {
     const d = new Date(isoStr);
-    return d.toLocaleString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric',
-      hour: 'numeric', minute: '2-digit', hour12: true,
-      timeZoneName: 'short'
-    });
+    return d.toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true, timeZoneName:'short' });
   } catch(e) { return isoStr; }
 }
 function kd(k,d) { return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2); }
@@ -259,26 +267,46 @@ function calcObjScore(p, totals) {
   return shares.reduce((a,b)=>a+b,0) / shares.length;
 }
 
-let currentSort = 'kills';
-let leaderboardData = [];
+async function switchMode(mode) {
+  currentMode = mode;
+  currentSort = 'kills';
+  document.getElementById('tab4v4').className = 'mode-tab' + (mode === '4v4' ? ' active-4v4' : '');
+  document.getElementById('tab2v2').className = 'mode-tab' + (mode === '2v2' ? ' active-2v2' : '');
+  document.getElementById('adminModeNote').innerHTML = `Currently managing: <strong>${mode} Leaderboard</strong>`;
+  document.getElementById('content').innerHTML = '<div class="loading">Loading leaderboard...</div>';
+  // Hide obj fields in modal for 2v2
+  const objSection = document.getElementById('objSectionLabel');
+  const flagField = document.getElementById('flagCapsField');
+  const hillField = document.getElementById('hillSecsField');
+  const ballField = document.getElementById('ballSecsField');
+  if (mode === '2v2') {
+    objSection.style.display = 'none';
+    flagField.style.display = 'none';
+    hillField.style.display = 'none';
+    ballField.style.display = 'none';
+  } else {
+    objSection.style.display = '';
+    flagField.style.display = '';
+    hillField.style.display = '';
+    ballField.style.display = '';
+  }
+  await load();
+}
 
 async function load() {
   try {
-    const resp = await fetch(WORKER_URL + '/leaderboard');
+    const resp = await fetch(WORKER_URL + '/leaderboard?mode=' + currentMode);
     if (!resp.ok) throw new Error('Failed to load');
     const raw = await resp.json();
     allPlayersData = raw;
     const players = Object.values(raw);
     if (!players.length) {
-      document.getElementById('content').innerHTML = `<div class="empty"><h2>No data yet</h2><p>Run your first series report and add it to the leaderboard to get started.</p></div>`;
+      document.getElementById('content').innerHTML = `<div class="empty"><h2>No ${currentMode} data yet</h2><p>Run a ${currentMode} series report and add it to the leaderboard to get started.</p></div>`;
       return;
     }
     leaderboardData = players;
     render();
-    if (adminToken) {
-      populateAdminPanel(raw);
-      loadSnapshots();
-    }
+    if (adminToken) { populateAdminPanel(raw); loadSnapshots(); }
   } catch(e) {
     document.getElementById('content').innerHTML = `<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;
   }
@@ -287,15 +315,16 @@ async function load() {
 function render() {
   const players = leaderboardData;
   if (!players.length) return;
+  const is2v2 = currentMode === '2v2';
   const totals = {
     ball: players.reduce((s,p)=>s+(p.ballSecs||0),0),
     caps: players.reduce((s,p)=>s+(p.flagCaps||0),0),
     hill: players.reduce((s,p)=>s+(p.hillSecs||0),0),
   };
-  const hasObj = totals.ball > 0 || totals.caps > 0 || totals.hill > 0;
-  const hasCaps = totals.caps > 0;
-  const hasHill = totals.hill > 0;
-  const hasBall = totals.ball > 0;
+  const hasObj = !is2v2 && (totals.ball > 0 || totals.caps > 0 || totals.hill > 0);
+  const hasCaps = !is2v2 && totals.caps > 0;
+  const hasHill = !is2v2 && totals.hill > 0;
+  const hasBall = !is2v2 && totals.ball > 0;
 
   const topFragger = [...players].sort((a,b)=>b.kills-a.kills)[0];
   const topShitter = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
@@ -319,35 +348,35 @@ function render() {
         const bKD = b.deaths>0?b.kills/b.deaths:b.kills;
         return bKD - aKD;
       }
-      case 'caps': return (b.flagCaps||0) - (a.flagCaps||0);
-      case 'caps_s': return perSeries(b.flagCaps||0,b.seriesPlayed) - perSeries(a.flagCaps||0,a.seriesPlayed);
-      case 'hill': return (b.hillSecs||0) - (a.hillSecs||0);
-      case 'hill_s': return perSeries(b.hillSecs||0,b.seriesPlayed) - perSeries(a.hillSecs||0,a.seriesPlayed);
-      case 'ball': return (b.ballSecs||0) - (a.ballSecs||0);
-      case 'ball_s': return perSeries(b.ballSecs||0,b.seriesPlayed) - perSeries(a.ballSecs||0,a.seriesPlayed);
+      case 'caps': return (b.flagCaps||0)-(a.flagCaps||0);
+      case 'caps_s': return perSeries(b.flagCaps||0,b.seriesPlayed)-perSeries(a.flagCaps||0,a.seriesPlayed);
+      case 'hill': return (b.hillSecs||0)-(a.hillSecs||0);
+      case 'hill_s': return perSeries(b.hillSecs||0,b.seriesPlayed)-perSeries(a.hillSecs||0,a.seriesPlayed);
+      case 'ball': return (b.ballSecs||0)-(a.ballSecs||0);
+      case 'ball_s': return perSeries(b.ballSecs||0,b.seriesPlayed)-perSeries(a.ballSecs||0,a.seriesPlayed);
       default: return b.kills - a.kills;
     }
   });
 
-  let html = `<div class="alltime-grid">
-    <div>
-      <div class="callout-card callout-gold" style="margin-bottom:0.75rem">
-        <div class="callout-icon">⭐</div>
-        <div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div></div>
+  // Callouts — 2v2 has 3 (no OBJ MVP), 4v4 has 4 in 2x2 grid
+  const calloutsHtml = is2v2 ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2.5rem;">
+      <div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div></div></div>
+      <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div></div></div>
+      <div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div></div></div>
+    </div>` : `
+    <div class="alltime-grid">
+      <div>
+        <div class="callout-card callout-gold" style="margin-bottom:0.75rem"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div></div></div>
+        <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div></div></div>
       </div>
-      <div class="callout-card callout-red">
-        <div class="callout-icon">🍆</div>
-        <div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div></div>
+      <div>
+        <div class="callout-card callout-blue" style="margin-bottom:0.75rem"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div></div></div>
+        ${objMVP?`<div class="callout-card callout-green"><div class="callout-icon">🎯</div><div><div class="callout-eyebrow ey-green">All-Time OBJ MVP</div><div class="callout-name">${objMVP.displayName}</div><div class="callout-stat">${objMVP.flagCaps>0?objMVP.flagCaps+' Caps &nbsp;·&nbsp; ':''}${objMVP.hillSecs>0?fmtTime(objMVP.hillSecs)+' Hill &nbsp;·&nbsp; ':''}${objMVP.ballSecs>0?fmtTime(objMVP.ballSecs)+' Ball':''}</div></div></div>`:''}
       </div>
-    </div>
-    <div>
-      <div class="callout-card callout-blue" style="margin-bottom:0.75rem">
-        <div class="callout-icon">🤝</div>
-        <div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div></div>
-      </div>
-      ${objMVP?`<div class="callout-card callout-green"><div class="callout-icon">🎯</div><div><div class="callout-eyebrow ey-green">All-Time OBJ MVP</div><div class="callout-name">${objMVP.displayName}</div><div class="callout-stat">${objMVP.flagCaps>0?objMVP.flagCaps+' Caps &nbsp;·&nbsp; ':''}${objMVP.hillSecs>0?fmtTime(objMVP.hillSecs)+' Hill &nbsp;·&nbsp; ':''}${objMVP.ballSecs>0?fmtTime(objMVP.ballSecs)+' Ball':''}</div></div></div>`:''}
-    </div>
-  </div>
+    </div>`;
+
+  let html = calloutsHtml + `
   <div class="section-title">Player Stats</div>
   <div class="sort-wrap">
     <button class="sort-btn ${currentSort==='kills'?'active':''}" onclick="setSort('kills')">Kills</button>
@@ -356,12 +385,9 @@ function render() {
     <button class="sort-btn ${currentSort==='assists'?'active':''}" onclick="setSort('assists')">Assists</button>
     <button class="sort-btn ${currentSort==='deaths'?'active':''}" onclick="setSort('deaths')">Deaths</button>
     <button class="sort-btn ${currentSort==='wins'?'active':''}" onclick="setSort('wins')">Series Wins</button>
-    ${hasCaps?`<button class="sort-btn ${currentSort==='caps'?'active':''}" onclick="setSort('caps')">Flag Caps</button>
-    <button class="sort-btn ${currentSort==='caps_s'?'active':''}" onclick="setSort('caps_s')">Caps/S</button>`:''}
-    ${hasHill?`<button class="sort-btn ${currentSort==='hill'?'active':''}" onclick="setSort('hill')">Hill Time</button>
-    <button class="sort-btn ${currentSort==='hill_s'?'active':''}" onclick="setSort('hill_s')">Hill/S</button>`:''}
-    ${hasBall?`<button class="sort-btn ${currentSort==='ball'?'active':''}" onclick="setSort('ball')">Ball Time</button>
-    <button class="sort-btn ${currentSort==='ball_s'?'active':''}" onclick="setSort('ball_s')">Ball/S</button>`:''}
+    ${hasCaps?`<button class="sort-btn ${currentSort==='caps'?'active':''}" onclick="setSort('caps')">Flag Caps</button><button class="sort-btn ${currentSort==='caps_s'?'active':''}" onclick="setSort('caps_s')">Caps/S</button>`:''}
+    ${hasHill?`<button class="sort-btn ${currentSort==='hill'?'active':''}" onclick="setSort('hill')">Hill Time</button><button class="sort-btn ${currentSort==='hill_s'?'active':''}" onclick="setSort('hill_s')">Hill/S</button>`:''}
+    ${hasBall?`<button class="sort-btn ${currentSort==='ball'?'active':''}" onclick="setSort('ball')">Ball Time</button><button class="sort-btn ${currentSort==='ball_s'?'active':''}" onclick="setSort('ball_s')">Ball/S</button>`:''}
   </div>
   <div class="lb-table-wrap"><table>
     <thead><tr>
@@ -373,15 +399,9 @@ function render() {
       <th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th>
       <th class="${currentSort==='kd'?'sorted':''}" onclick="setSort('kd')">K/D</th>
       <th class="${currentSort==='kda'?'sorted':''}" onclick="setSort('kda')">KDA</th>
-      ${hasCaps?`
-      <th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th>
-      <th class="obj-per ${currentSort==='caps_s'?'sorted':''}" onclick="setSort('caps_s')">Caps/S</th>`:''}
-      ${hasHill?`
-      <th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th>
-      <th class="obj-per ${currentSort==='hill_s'?'sorted':''}" onclick="setSort('hill_s')">Hill/S</th>`:''}
-      ${hasBall?`
-      <th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th>
-      <th class="obj-per ${currentSort==='ball_s'?'sorted':''}" onclick="setSort('ball_s')">Ball/S</th>`:''}
+      ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th><th class="obj-per ${currentSort==='caps_s'?'sorted':''}" onclick="setSort('caps_s')">Caps/S</th>`:''}
+      ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th><th class="obj-per ${currentSort==='hill_s'?'sorted':''}" onclick="setSort('hill_s')">Hill/S</th>`:''}
+      ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th><th class="obj-per ${currentSort==='ball_s'?'sorted':''}" onclick="setSort('ball_s')">Ball/S</th>`:''}
     </tr></thead><tbody>`;
 
   sorted.forEach((p,i) => {
@@ -396,14 +416,12 @@ function render() {
       <td class="player-cell">${p.displayName}</td>
       <td>${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span></td>
       <td>${p.seriesPlayed}</td>
-      <td>${p.kills}</td>
-      <td>${p.deaths}</td>
-      <td>${p.assists}</td>
+      <td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td>
       <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
       <td class="${kdaClass(p.kills,p.assists,p.deaths)}">${kda(p.kills,p.assists,p.deaths)}</td>
-      ${hasCaps?`<td>${p.flagCaps||0}</td><td class="obj-per-val">${capsPS > 0 ? capsPS.toFixed(2) : '—'}</td>`:''}
-      ${hasHill?`<td>${fmtTime(p.hillSecs)}</td><td class="obj-per-val">${hillPS > 0 ? fmtTimeDecimal(hillPS) : '—'}</td>`:''}
-      ${hasBall?`<td>${fmtTime(p.ballSecs)}</td><td class="obj-per-val">${ballPS > 0 ? fmtTimeDecimal(ballPS) : '—'}</td>`:''}
+      ${hasCaps?`<td>${p.flagCaps||0}</td><td class="obj-per-val">${capsPS>0?capsPS.toFixed(2):'—'}</td>`:''}
+      ${hasHill?`<td>${fmtTime(p.hillSecs)}</td><td class="obj-per-val">${hillPS>0?fmtTimeDecimal(hillPS):'—'}</td>`:''}
+      ${hasBall?`<td>${fmtTime(p.ballSecs)}</td><td class="obj-per-val">${ballPS>0?fmtTimeDecimal(ballPS):'—'}</td>`:''}
     </tr>`;
   });
   html += `</tbody></table></div>`;
@@ -446,43 +464,43 @@ async function loadSnapshots() {
   const listEl = document.getElementById('snapshotList');
   listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading snapshots...</div>';
   try {
-    const resp = await fetch(WORKER_URL + '/leaderboard/snapshots', {
+    const resp = await fetch(WORKER_URL + '/leaderboard/snapshots?mode=' + currentMode, {
       headers: { 'X-Admin-Token': adminToken },
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
     const { snapshots } = result;
     if (!snapshots.length) {
-      listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">No snapshots yet — one will be saved automatically next time stats are added.</div>';
+      listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">No snapshots yet for this leaderboard.</div>';
       return;
     }
     listEl.innerHTML = snapshots.map((s, i) => `
       <div class="snapshot-row">
         <div class="snapshot-info">
-          <div class="snapshot-date">${i === 0 ? '🟢 Latest — ' : ''}${fmtDateTime(s.timestamp)}</div>
+          <div class="snapshot-date">${i===0?'🟢 Latest — ':''}${fmtDateTime(s.timestamp)}</div>
           <div class="snapshot-key">${s.key}</div>
         </div>
         <button class="snapshot-restore-btn" onclick="doRestore('${s.key}', '${fmtDateTime(s.timestamp)}')">Restore</button>
       </div>
     `).join('');
   } catch(e) {
-    listEl.innerHTML = `<div style="font-size:13px;color:var(--red);padding:0.5rem 0">Error loading snapshots: ${e.message}</div>`;
+    listEl.innerHTML = `<div style="font-size:13px;color:var(--red);padding:0.5rem 0">Error: ${e.message}</div>`;
   }
 }
 
 async function doRestore(key, label) {
   const msgEl = document.getElementById('snapshotMsg');
   msgEl.className = 'admin-msg'; msgEl.style.display = 'none';
-  if (!confirm(`Restore the leaderboard to the snapshot from:\n\n${label}\n\nThis will overwrite all current stats. Cannot be undone.`)) return;
+  if (!confirm(`Restore the ${currentMode} leaderboard to:\n\n${label}\n\nThis will overwrite all current stats. Cannot be undone.`)) return;
   try {
     const resp = await fetch(WORKER_URL + '/leaderboard/restore', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
-      body: JSON.stringify({ key }),
+      body: JSON.stringify({ key, mode: currentMode }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
-    msgEl.textContent = `✓ Leaderboard restored to ${label}. Refreshing...`;
+    msgEl.textContent = `✓ Restored to ${label}. Refreshing...`;
     msgEl.className = 'admin-msg success';
     setTimeout(() => load(), 1500);
   } catch(e) {
@@ -519,15 +537,15 @@ function openEditModal(key) {
   if (!p) return;
   document.getElementById('editKey').value = key;
   document.getElementById('modalPlayerName').textContent = `Edit — ${p.displayName}`;
-  document.getElementById('editPlayed').value = p.seriesPlayed || 0;
-  document.getElementById('editWon').value = p.seriesWon || 0;
-  document.getElementById('editLost').value = p.seriesLost || 0;
-  document.getElementById('editKills').value = p.kills || 0;
-  document.getElementById('editDeaths').value = p.deaths || 0;
-  document.getElementById('editAssists').value = p.assists || 0;
-  document.getElementById('editFlagCaps').value = p.flagCaps || 0;
-  document.getElementById('editHillSecs').value = p.hillSecs || 0;
-  document.getElementById('editBallSecs').value = p.ballSecs || 0;
+  document.getElementById('editPlayed').value = p.seriesPlayed||0;
+  document.getElementById('editWon').value = p.seriesWon||0;
+  document.getElementById('editLost').value = p.seriesLost||0;
+  document.getElementById('editKills').value = p.kills||0;
+  document.getElementById('editDeaths').value = p.deaths||0;
+  document.getElementById('editAssists').value = p.assists||0;
+  document.getElementById('editFlagCaps').value = p.flagCaps||0;
+  document.getElementById('editHillSecs').value = p.hillSecs||0;
+  document.getElementById('editBallSecs').value = p.ballSecs||0;
   document.getElementById('modalMsg').className = 'admin-msg';
   document.getElementById('modalMsg').style.display = 'none';
   document.getElementById('editModal').classList.add('visible');
@@ -555,7 +573,7 @@ async function saveEdit() {
     const resp = await fetch(WORKER_URL + '/leaderboard/edit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
-      body: JSON.stringify({ key, stats }),
+      body: JSON.stringify({ key, stats, mode: currentMode }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
@@ -581,11 +599,11 @@ async function doMerge() {
     const resp = await fetch(WORKER_URL + '/leaderboard/merge', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
-      body: JSON.stringify({ fromKey, toKey }),
+      body: JSON.stringify({ fromKey, toKey, mode: currentMode }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
-    msgEl.textContent = '✓ Merged successfully. Refreshing...';
+    msgEl.textContent = '✓ Merged. Refreshing...';
     msgEl.className = 'admin-msg success';
     setTimeout(() => load(), 1500);
   } catch(e) {
@@ -597,12 +615,12 @@ async function doMerge() {
 async function doDelete(key, displayName) {
   const msgEl = document.getElementById('editMsg');
   msgEl.className = 'admin-msg'; msgEl.style.display = 'none';
-  if (!confirm(`Permanently delete "${displayName}"?\n\nCannot be undone.`)) return;
+  if (!confirm(`Permanently delete "${displayName}" from the ${currentMode} leaderboard?\n\nCannot be undone.`)) return;
   try {
     const resp = await fetch(WORKER_URL + '/leaderboard/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
-      body: JSON.stringify({ key }),
+      body: JSON.stringify({ key, mode: currentMode }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
