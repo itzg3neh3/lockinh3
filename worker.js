@@ -99,6 +99,46 @@ async function saveSnapshot(leaderboard, env, mode) {
   }
 }
 
+// Save a history entry for a series
+async function saveHistoryEntry(games, seriesWinner, mode, reportId, playedAt, env) {
+  const g1 = games[0];
+  const squad1 = (g1.redTeam || []).map(p => p.name).filter(Boolean);
+  const squad2 = (g1.blueTeam || []).map(p => p.name).filter(Boolean);
+
+  // Count wins per squad
+  let s1Wins = 0, s2Wins = 0;
+  games.forEach(g => {
+    const wt = g.winner === 'Red' ? (g.redTeam || []) : (g.blueTeam || []);
+    if (wt.length > 0) {
+      const firstName = wt[0].name;
+      const inSquad1 = squad1.some(n => n && firstName && n.toLowerCase() === firstName.toLowerCase());
+      if (inSquad1) s1Wins++; else s2Wins++;
+    }
+  });
+
+  const timestamp = playedAt || new Date().toISOString();
+  const historyKey = `history:${timestamp}:${reportId}`;
+  const entry = {
+    reportId,
+    reportUrl: `https://itzg3neh3.github.io/lockinh3/?r=${reportId}`,
+    playedAt: timestamp,
+    mode: mode || '4v4',
+    squad1,
+    squad2,
+    squad1Wins: s1Wins,
+    squad2Wins: s2Wins,
+    seriesWinner,
+    gamesPlayed: games.length,
+    gameTypes: games.map(g => g.gameType || 'Unknown'),
+  };
+
+  await env.REPORTS.put(historyKey, JSON.stringify(entry), {
+    expirationTtl: 60 * 60 * 24 * 365 * 2, // 2 years
+  });
+
+  return entry;
+}
+
 async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
   const key = lbKey(mode);
   const lbRaw = await env.REPORTS.get(key);
@@ -276,7 +316,21 @@ export default {
         const leaderboard = await mergeSeriesIntoLeaderboard(games, seriesWinner, env, resolvedMode);
         await saveSnapshot(leaderboard, env, resolvedMode);
         await env.REPORTS.put(fpKey, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
-        return jsonResponse({ status: 'saved' }, 200, origin);
+
+        // Auto-save report and history entry
+        const reportBody = JSON.stringify(games);
+        let reportId;
+        let attempts = 0;
+        do {
+          reportId = randomId(6);
+          const existing = await env.REPORTS.get(reportId);
+          if (!existing) break;
+          attempts++;
+        } while (attempts < 5);
+        await env.REPORTS.put(reportId, reportBody, { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+        await saveHistoryEntry(games, seriesWinner, resolvedMode, reportId, new Date().toISOString(), env);
+
+        return jsonResponse({ status: 'saved', reportId }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
@@ -402,6 +456,87 @@ export default {
         delete leaderboard[key];
         await env.REPORTS.put(lbKey(resolvedMode), JSON.stringify(leaderboard));
         await saveSnapshot(leaderboard, env, resolvedMode);
+        return jsonResponse({ status: 'deleted' }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── GET /history ─────────────────────────────────────────────────────
+    if (request.method === 'GET' && url.pathname === '/history') {
+      try {
+        const list = await env.REPORTS.list({ prefix: 'history:' });
+        const entries = [];
+        for (const k of list.keys) {
+          const raw = await env.REPORTS.get(k.name);
+          if (raw) {
+            try { entries.push(JSON.parse(raw)); } catch(e) {}
+          }
+        }
+        // Sort newest first
+        entries.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
+        return jsonResponse({ entries }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── POST /history/import — requires admin token ───────────────────────
+    if (request.method === 'POST' && url.pathname === '/history/import') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { reportUrl, playedAt, mode } = await request.json();
+        if (!reportUrl || !playedAt) throw new Error('reportUrl and playedAt required');
+
+        // Extract report ID from URL
+        const match = reportUrl.match(/[?&]r=([a-z2-9]{4,10})/);
+        if (!match) throw new Error('Could not extract report ID from URL');
+        const reportId = match[1];
+
+        // Fetch the report data
+        const reportRaw = await env.REPORTS.get(reportId);
+        if (!reportRaw) throw new Error(`Report "${reportId}" not found — link may have expired`);
+        const games = JSON.parse(reportRaw);
+        if (!Array.isArray(games)) throw new Error('Invalid report data');
+
+        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+
+        // Determine series winner from game data
+        const g1 = games[0];
+        const squad1 = new Set((g1.redTeam || []).map(p => p.name).filter(Boolean));
+        let s1Wins = 0, s2Wins = 0;
+        games.forEach(g => {
+          const wt = g.winner === 'Red' ? (g.redTeam || []) : (g.blueTeam || []);
+          if (wt.length > 0) {
+            const inSquad1 = squad1.has(wt[0].name) ||
+              [...squad1].some(n => n && wt[0].name && n.toLowerCase() === wt[0].name.toLowerCase());
+            if (inSquad1) s1Wins++; else s2Wins++;
+          }
+        });
+        const seriesWinner = s1Wins > s2Wins ? 1 : s2Wins > s1Wins ? 2 : 0;
+
+        // Check for duplicate history entry
+        const list = await env.REPORTS.list({ prefix: 'history:' });
+        for (const k of list.keys) {
+          if (k.name.includes(reportId)) {
+            return jsonResponse({ error: 'This report is already in history' }, 400, origin);
+          }
+        }
+
+        const entry = await saveHistoryEntry(games, seriesWinner, resolvedMode, reportId, playedAt, env);
+        return jsonResponse({ status: 'imported', entry }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── POST /history/delete — requires admin token ───────────────────────
+    if (request.method === 'POST' && url.pathname === '/history/delete') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { key } = await request.json();
+        if (!key) throw new Error('key required');
+        await env.REPORTS.delete(key);
         return jsonResponse({ status: 'deleted' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
