@@ -542,7 +542,42 @@ export default {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
+// ── POST /history/get — requires admin token ──────────────────────────
+if (request.method === 'POST' && url.pathname === '/history/get') {
+  if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+  try {
+    const { key } = await request.json();
+    if (!key) throw new Error('key required');
+    const raw = await env.REPORTS.get(key);
+    if (!raw) throw new Error('Entry not found');
+    return jsonResponse({ entry: JSON.parse(raw) }, 200, origin);
+  } catch (err) {
+    return jsonResponse({ error: err.message }, 500, origin);
+  }
+}
 
+// ── POST /history/update — requires admin token ───────────────────────
+if (request.method === 'POST' && url.pathname === '/history/update') {
+  if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+  try {
+    const { key, newPlayedAt, entry } = await request.json();
+    if (!key || !newPlayedAt || !entry) throw new Error('key, newPlayedAt, and entry required');
+
+    // Delete old key
+    await env.REPORTS.delete(key);
+
+    // Save with new timestamp
+    const newKey = `history:${newPlayedAt}:${entry.reportId}`;
+    const updatedEntry = { ...entry, playedAt: newPlayedAt };
+    await env.REPORTS.put(newKey, JSON.stringify(updatedEntry), {
+      expirationTtl: 60 * 60 * 24 * 365 * 2,
+    });
+
+    return jsonResponse({ status: 'updated' }, 200, origin);
+  } catch (err) {
+    return jsonResponse({ error: err.message }, 500, origin);
+  }
+}
     return new Response('Not found', { status: 404 });
   },
 };
