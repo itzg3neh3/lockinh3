@@ -29,7 +29,6 @@
   .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
   .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
   .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 2rem; }
-  /* Filters */
   .filters { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-bottom: 1.5rem; align-items: end; }
   .filter-group { display: flex; flex-direction: column; gap: 4px; }
   .filter-label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
@@ -39,11 +38,9 @@
   .filter-tab { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 9px 16px; border-radius: 6px; border: 1px solid var(--border2); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .filter-tab:hover { color: var(--text); }
   .filter-tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
-  /* Stats bar */
   .stats-bar { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
   .stat-pill { font-size: 13px; color: var(--muted); }
   .stat-pill strong { color: var(--text); }
-  /* History list */
   .history-list { display: flex; flex-direction: column; gap: 10px; }
   .history-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; transition: border-color 0.15s; }
   .history-card:hover { border-color: var(--border2); }
@@ -67,12 +64,14 @@
   .history-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
   .view-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 7px 16px; background: var(--accent); color: #000; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.15s; white-space: nowrap; }
   .view-btn:hover { background: #74b4ff; }
+  .admin-action-btns { display: flex; gap: 8px; align-items: center; }
+  .edit-date-btn { background: none; border: 1px solid var(--border2); color: var(--accent); border-radius: 4px; padding: 3px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .edit-date-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
   .delete-history-btn { background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline; transition: color 0.15s; }
   .delete-history-btn:hover { color: var(--red); }
   .loading { text-align: center; padding: 4rem; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
   .empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
   .empty h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 0.5rem; }
-  /* Admin import section */
   .admin-toggle { margin-top: 3rem; text-align: center; }
   .admin-toggle-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; cursor: pointer; transition: all 0.15s; }
   .admin-toggle-btn:hover { color: var(--text); }
@@ -101,6 +100,21 @@
   .admin-msg.success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: var(--green); display: block; }
   .admin-msg.error { background: var(--red-dim); border: 1px solid var(--red-border); color: var(--red); display: block; }
   .admin-locked-msg { color: var(--muted); font-size: 13px; text-align: center; padding: 0.5rem; }
+  /* Edit date modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.visible { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 420px; }
+  .modal-title { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.25rem; }
+  .modal-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.25rem; }
+  .modal-field label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .modal-field input { background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 10px 12px; color: var(--text); font-size: 15px; outline: none; width: 100%; }
+  .modal-field input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-cancel { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 9px 18px; cursor: pointer; transition: all 0.15s; }
+  .modal-cancel:hover { color: var(--text); }
+  .modal-msg { margin-top: 0.75rem; font-size: 13px; padding: 8px 12px; border-radius: 6px; display: none; }
+  .modal-msg.error { background: var(--red-dim); border: 1px solid var(--red-border); color: var(--red); display: block; }
   @media (max-width: 600px) {
     .filters { grid-template-columns: 1fr; }
     .history-card { grid-template-columns: 1fr; }
@@ -145,13 +159,12 @@
   <div class="stats-bar" id="statsBar"></div>
   <div id="historyList"><div class="loading">Loading history...</div></div>
 
-  <!-- Admin import panel -->
   <div class="admin-toggle">
     <button class="admin-toggle-btn" onclick="toggleAdmin()">📥 Import Previous Series</button>
   </div>
   <div class="admin-panel" id="adminPanel">
     <div class="admin-title">Import a Previous Series</div>
-    <div class="admin-sub">Paste a shareable report link to add it to the history. The player names and series score will be read automatically from the report.</div>
+    <div class="admin-sub">Paste a shareable report link to add it to the history. Player names and series score are read automatically from the report.</div>
     <div id="adminLocked">
       <div class="admin-password-wrap">
         <input type="password" class="admin-input" id="adminPwInput" placeholder="Enter admin password..." onkeydown="if(event.key==='Enter')checkPassword()">
@@ -185,6 +198,25 @@
   </div>
 </div>
 
+<!-- Edit Date Modal -->
+<div class="modal-overlay" id="editDateModal">
+  <div class="modal">
+    <div class="modal-title">Edit Date</div>
+    <div class="modal-sub" id="editDateSub">Update the date for this series.</div>
+    <input type="hidden" id="editDateKey">
+    <input type="hidden" id="editDateReportId">
+    <div class="modal-field">
+      <label>Date Played</label>
+      <input type="date" id="editDateInput">
+    </div>
+    <div class="modal-msg" id="editDateMsg"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="admin-btn" onclick="saveEditDate()">Save Date</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
 
@@ -208,8 +240,9 @@ function getDateParts(isoStr) {
       month: d.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
       year: d.getFullYear(),
       time: d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+      isoDate: d.toISOString().slice(0, 10),
     };
-  } catch(e) { return { day: '?', month: '???', year: '????', time: '' }; }
+  } catch(e) { return { day: '?', month: '???', year: '????', time: '', isoDate: '' }; }
 }
 
 async function load() {
@@ -237,14 +270,11 @@ function applyFilters() {
   const dateQ = document.getElementById('dateFilter').value || '';
 
   let filtered = allEntries.filter(e => {
-    // Mode filter
     if (modeFilter !== 'all' && e.mode !== modeFilter) return false;
-    // Player filter
     if (playerQ) {
       const allPlayers = [...(e.squad1||[]), ...(e.squad2||[])].map(n => n.toLowerCase());
       if (!allPlayers.some(n => n.includes(playerQ))) return false;
     }
-    // Date filter
     if (dateQ) {
       const entryDate = new Date(e.playedAt).toISOString().slice(0, 10);
       if (entryDate !== dateQ) return false;
@@ -252,7 +282,6 @@ function applyFilters() {
     return true;
   });
 
-  // Stats bar
   const total = filtered.length;
   const v4 = filtered.filter(e => e.mode === '4v4').length;
   const v2 = filtered.filter(e => e.mode === '2v2').length;
@@ -273,8 +302,10 @@ function applyFilters() {
     const s2Score = e.squad2Wins || 0;
     const winnerLabel = e.seriesWinner === 1 ? 'Squad 1 Wins' : e.seriesWinner === 2 ? 'Squad 2 Wins' : 'Tied';
     const gameTypesStr = (e.gameTypes || []).join(' · ') || '';
-    // Build history key for delete
     const histKey = `history:${e.playedAt}:${e.reportId}`;
+    const escapedKey = histKey.replace(/'/g, "\\'");
+    const escapedLabel = `${dp.month} ${dp.day} ${dp.year}`.replace(/'/g, "\\'");
+    const escapedSub = `${(e.squad1||[]).join(', ')} vs ${(e.squad2||[]).join(', ')}`.replace(/'/g, "\\'");
 
     return `<div class="history-card">
       <div class="history-date-col">
@@ -302,7 +333,11 @@ function applyFilters() {
       </div>
       <div class="history-actions">
         <a href="${e.reportUrl}" target="_blank" class="view-btn">View Report</a>
-        ${adminToken ? `<button class="delete-history-btn" onclick="deleteEntry('${histKey}', '${dp.month} ${dp.day} ${dp.year}')">Remove</button>` : ''}
+        ${adminToken ? `
+        <div class="admin-action-btns">
+          <button class="edit-date-btn" onclick="openEditModal('${escapedKey}', '${e.reportId}', '${dp.isoDate}', '${escapedSub}')">Edit Date</button>
+          <button class="delete-history-btn" onclick="deleteEntry('${escapedKey}', '${escapedLabel}')">Remove</button>
+        </div>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -326,7 +361,7 @@ async function checkPassword() {
       input.value = '';
       document.getElementById('adminLocked').style.display = 'none';
       document.getElementById('adminUnlocked').classList.add('visible');
-      applyFilters(); // Re-render to show delete buttons
+      applyFilters();
     } else {
       errEl.style.display = 'block';
       input.value = '';
@@ -353,9 +388,7 @@ async function doImport() {
   if (!urlInput) { msgEl.textContent = 'Please paste a report URL.'; msgEl.className = 'admin-msg error'; return; }
   if (!dateInput) { msgEl.textContent = 'Please select the date this series was played.'; msgEl.className = 'admin-msg error'; return; }
 
-  // Convert date to ISO string (use noon UTC to avoid timezone issues)
   const playedAt = new Date(dateInput + 'T12:00:00.000Z').toISOString();
-
   msgEl.textContent = 'Importing...';
   msgEl.className = 'admin-msg';
   msgEl.style.display = 'block';
@@ -368,15 +401,70 @@ async function doImport() {
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
-    msgEl.textContent = `✓ Series imported successfully — ${(result.entry.squad1||[]).join(', ')} vs ${(result.entry.squad2||[]).join(', ')}`;
+    msgEl.textContent = `✓ Series imported — ${(result.entry.squad1||[]).join(', ')} vs ${(result.entry.squad2||[]).join(', ')}`;
     msgEl.className = 'admin-msg success';
     document.getElementById('importUrl').value = '';
     document.getElementById('importDate').value = '';
-    // Reload history
     await load();
   } catch(e) {
     msgEl.textContent = `Error: ${e.message}`;
     msgEl.className = 'admin-msg error';
+  }
+}
+
+function openEditModal(histKey, reportId, currentDate, subLabel) {
+  document.getElementById('editDateKey').value = histKey;
+  document.getElementById('editDateReportId').value = reportId;
+  document.getElementById('editDateInput').value = currentDate;
+  document.getElementById('editDateSub').textContent = subLabel;
+  document.getElementById('editDateMsg').className = 'modal-msg';
+  document.getElementById('editDateMsg').style.display = 'none';
+  document.getElementById('editDateModal').classList.add('visible');
+}
+
+function closeEditModal() {
+  document.getElementById('editDateModal').classList.remove('visible');
+}
+
+document.getElementById('editDateModal').addEventListener('click', function(e) {
+  if (e.target === this) closeEditModal();
+});
+
+async function saveEditDate() {
+  const oldKey = document.getElementById('editDateKey').value;
+  const reportId = document.getElementById('editDateReportId').value;
+  const newDate = document.getElementById('editDateInput').value;
+  const msgEl = document.getElementById('editDateMsg');
+  msgEl.className = 'modal-msg'; msgEl.style.display = 'none';
+
+  if (!newDate) { msgEl.textContent = 'Please select a date.'; msgEl.className = 'modal-msg error'; return; }
+
+  const newPlayedAt = new Date(newDate + 'T12:00:00.000Z').toISOString();
+
+  try {
+    // Fetch the existing entry
+    const resp = await fetch(WORKER_URL + '/history/get', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ key: oldKey }),
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+
+    // Save with new date
+    const updateResp = await fetch(WORKER_URL + '/history/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ key: oldKey, newPlayedAt, entry: result.entry }),
+    });
+    const updateResult = await updateResp.json();
+    if (updateResult.error) throw new Error(updateResult.error);
+
+    closeEditModal();
+    await load();
+  } catch(e) {
+    msgEl.textContent = `Error: ${e.message}`;
+    msgEl.className = 'modal-msg error';
   }
 }
 
