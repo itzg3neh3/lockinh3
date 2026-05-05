@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lock in H3 — Series History</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10; --surface: #111318; --surface2: #181c24;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0; --muted: #6b7280; --accent: #4a9eff;
+    --accent-dim: rgba(74,158,255,0.12); --red: #ff5555;
+    --red-dim: rgba(255,85,85,0.12); --red-border: rgba(255,85,85,0.25);
+    --green: #4ade80; --gold: #f59e0b;
+    --s1: #a78bfa; --s1-dim: rgba(167,139,250,0.12); --s1-border: rgba(167,139,250,0.25);
+    --s2: #fb923c; --s2-dim: rgba(251,146,60,0.12); --s2-border: rgba(251,146,60,0.25);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 1000; }
+  .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+  header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
+  .logo em { font-style: normal; color: var(--accent); }
+  .nav-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
+  .nav-link:hover { color: var(--accent); border-color: var(--accent); }
+  .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+  .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 2rem; }
+  /* Filters */
+  .filters { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-bottom: 1.5rem; align-items: end; }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .filter-input { background: var(--surface); border: 1px solid var(--border2); border-radius: 6px; padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; width: 100%; }
+  .filter-input:focus { border-color: var(--accent); }
+  .filter-tabs { display: flex; gap: 6px; }
+  .filter-tab { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 9px 16px; border-radius: 6px; border: 1px solid var(--border2); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .filter-tab:hover { color: var(--text); }
+  .filter-tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
+  /* Stats bar */
+  .stats-bar { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .stat-pill { font-size: 13px; color: var(--muted); }
+  .stat-pill strong { color: var(--text); }
+  /* History list */
+  .history-list { display: flex; flex-direction: column; gap: 10px; }
+  .history-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; transition: border-color 0.15s; }
+  .history-card:hover { border-color: var(--border2); }
+  .history-date-col { text-align: center; min-width: 70px; }
+  .history-date-day { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; line-height: 1; color: var(--text); }
+  .history-date-month { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .history-date-year { font-size: 11px; color: var(--muted); }
+  .history-main { flex: 1; }
+  .history-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .history-score { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 1px; }
+  .score-s1 { color: var(--s1); }
+  .score-sep { color: var(--muted); margin: 0 2px; }
+  .score-s2 { color: var(--s2); }
+  .history-mode-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; }
+  .badge-4v4 { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
+  .badge-2v2 { background: var(--s2-dim); color: var(--s2); border: 1px solid var(--s2-border); }
+  .winner-tag { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: rgba(74,222,128,0.1); color: var(--green); border: 1px solid rgba(74,222,128,0.25); }
+  .history-squads { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .squad-label { font-weight: 600; color: var(--text); }
+  .history-gametypes { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .history-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .view-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 7px 16px; background: var(--accent); color: #000; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.15s; white-space: nowrap; }
+  .view-btn:hover { background: #74b4ff; }
+  .delete-history-btn { background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline; transition: color 0.15s; }
+  .delete-history-btn:hover { color: var(--red); }
+  .loading { text-align: center; padding: 4rem; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
+  .empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+  .empty h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 0.5rem; }
+  /* Admin import section */
+  .admin-toggle { margin-top: 3rem; text-align: center; }
+  .admin-toggle-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; cursor: pointer; transition: all 0.15s; }
+  .admin-toggle-btn:hover { color: var(--text); }
+  .admin-panel { display: none; margin-top: 1.5rem; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 1.5rem; }
+  .admin-panel.visible { display: block; }
+  .admin-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; color: var(--accent); }
+  .admin-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+  .admin-password-wrap { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+  .admin-input { flex: 1; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 9px 12px; color: var(--text); font-family: monospace; font-size: 14px; outline: none; }
+  .admin-input:focus { border-color: var(--accent); }
+  .admin-btn { padding: 9px 18px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+  .admin-btn:hover { background: #74b4ff; }
+  .admin-unlocked { display: none; }
+  .admin-unlocked.visible { display: block; }
+  .import-form { display: flex; flex-direction: column; gap: 12px; }
+  .import-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .import-field { display: flex; flex-direction: column; gap: 4px; }
+  .import-field label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .import-field input { background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; }
+  .import-field input:focus { border-color: var(--accent); }
+  .import-mode-btns { display: flex; gap: 8px; }
+  .import-mode-btn { flex: 1; padding: 9px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .import-mode-btn.active-4v4 { border-color: var(--s1-border); background: var(--s1-dim); color: var(--s1); }
+  .import-mode-btn.active-2v2 { border-color: var(--s2-border); background: var(--s2-dim); color: var(--s2); }
+  .admin-msg { margin-top: 0.75rem; font-size: 13px; padding: 8px 12px; border-radius: 6px; display: none; }
+  .admin-msg.success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: var(--green); display: block; }
+  .admin-msg.error { background: var(--red-dim); border: 1px solid var(--red-border); color: var(--red); display: block; }
+  .admin-locked-msg { color: var(--muted); font-size: 13px; text-align: center; padding: 0.5rem; }
+  @media (max-width: 600px) {
+    .filters { grid-template-columns: 1fr; }
+    .history-card { grid-template-columns: 1fr; }
+    .history-date-col { display: flex; gap: 8px; align-items: baseline; }
+    .import-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Lock in <em>H3</em></div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Report</a>
+      <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+      <a href="history.html" class="nav-link active">History</a>
+    </div>
+  </header>
+
+  <div class="page-title">Series History</div>
+  <div class="page-sub">Every series ever played — filter by player, mode, or date</div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-label">Search by player name</span>
+      <input type="text" class="filter-input" id="playerFilter" placeholder="e.g. BackOnMyBsss" oninput="applyFilters()">
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Filter by date</span>
+      <input type="date" class="filter-input" id="dateFilter" oninput="applyFilters()">
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Mode</span>
+      <div class="filter-tabs">
+        <button class="filter-tab active" id="tabAll" onclick="setModeFilter('all')">All</button>
+        <button class="filter-tab" id="tab4v4" onclick="setModeFilter('4v4')">4v4</button>
+        <button class="filter-tab" id="tab2v2" onclick="setModeFilter('2v2')">2v2</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-bar" id="statsBar"></div>
+  <div id="historyList"><div class="loading">Loading history...</div></div>
+
+  <!-- Admin import panel -->
+  <div class="admin-toggle">
+    <button class="admin-toggle-btn" onclick="toggleAdmin()">📥 Import Previous Series</button>
+  </div>
+  <div class="admin-panel" id="adminPanel">
+    <div class="admin-title">Import a Previous Series</div>
+    <div class="admin-sub">Paste a shareable report link to add it to the history. The player names and series score will be read automatically from the report.</div>
+    <div id="adminLocked">
+      <div class="admin-password-wrap">
+        <input type="password" class="admin-input" id="adminPwInput" placeholder="Enter admin password..." onkeydown="if(event.key==='Enter')checkPassword()">
+        <button class="admin-btn" onclick="checkPassword()">Unlock</button>
+      </div>
+      <div class="admin-locked-msg" id="adminPwError" style="display:none;color:var(--red)">Incorrect password.</div>
+    </div>
+    <div class="admin-unlocked" id="adminUnlocked">
+      <div class="import-form">
+        <div class="import-field">
+          <label>Shareable Report Link</label>
+          <input type="text" id="importUrl" placeholder="https://itzg3neh3.github.io/lockinh3/?r=abc123">
+        </div>
+        <div class="import-row">
+          <div class="import-field">
+            <label>Date Played</label>
+            <input type="date" id="importDate">
+          </div>
+          <div class="import-field">
+            <label>Mode</label>
+            <div class="import-mode-btns">
+              <button class="import-mode-btn active-4v4" id="importMode4v4" onclick="setImportMode('4v4')">4v4</button>
+              <button class="import-mode-btn" id="importMode2v2" onclick="setImportMode('2v2')">2v2</button>
+            </div>
+          </div>
+        </div>
+        <button class="admin-btn" onclick="doImport()" style="align-self:flex-start">Import Series</button>
+      </div>
+      <div class="admin-msg" id="importMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
+
+let adminToken = null;
+let importMode = '4v4';
+let allEntries = [];
+let modeFilter = 'all';
+
+function fmtDateTime(isoStr) {
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+  } catch(e) { return isoStr; }
+}
+
+function getDateParts(isoStr) {
+  try {
+    const d = new Date(isoStr);
+    return {
+      day: d.getDate(),
+      month: d.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+      year: d.getFullYear(),
+      time: d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+    };
+  } catch(e) { return { day: '?', month: '???', year: '????', time: '' }; }
+}
+
+async function load() {
+  try {
+    const resp = await fetch(WORKER_URL + '/history');
+    if (!resp.ok) throw new Error('Failed to load');
+    const { entries } = await resp.json();
+    allEntries = entries || [];
+    applyFilters();
+  } catch(e) {
+    document.getElementById('historyList').innerHTML = `<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;
+  }
+}
+
+function setModeFilter(mode) {
+  modeFilter = mode;
+  document.getElementById('tabAll').className = 'filter-tab' + (mode === 'all' ? ' active' : '');
+  document.getElementById('tab4v4').className = 'filter-tab' + (mode === '4v4' ? ' active' : '');
+  document.getElementById('tab2v2').className = 'filter-tab' + (mode === '2v2' ? ' active' : '');
+  applyFilters();
+}
+
+function applyFilters() {
+  const playerQ = (document.getElementById('playerFilter').value || '').toLowerCase().trim();
+  const dateQ = document.getElementById('dateFilter').value || '';
+
+  let filtered = allEntries.filter(e => {
+    // Mode filter
+    if (modeFilter !== 'all' && e.mode !== modeFilter) return false;
+    // Player filter
+    if (playerQ) {
+      const allPlayers = [...(e.squad1||[]), ...(e.squad2||[])].map(n => n.toLowerCase());
+      if (!allPlayers.some(n => n.includes(playerQ))) return false;
+    }
+    // Date filter
+    if (dateQ) {
+      const entryDate = new Date(e.playedAt).toISOString().slice(0, 10);
+      if (entryDate !== dateQ) return false;
+    }
+    return true;
+  });
+
+  // Stats bar
+  const total = filtered.length;
+  const v4 = filtered.filter(e => e.mode === '4v4').length;
+  const v2 = filtered.filter(e => e.mode === '2v2').length;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-pill"><strong>${total}</strong> Series</div>
+    <div class="stat-pill"><strong>${v4}</strong> 4v4</div>
+    <div class="stat-pill"><strong>${v2}</strong> 2v2</div>
+  `;
+
+  if (!filtered.length) {
+    document.getElementById('historyList').innerHTML = `<div class="empty"><h2>No series found</h2><p>${allEntries.length === 0 ? 'No series have been logged yet. Add a series to the leaderboard to start building history, or import previous series below.' : 'Try adjusting your filters.'}</p></div>`;
+    return;
+  }
+
+  document.getElementById('historyList').innerHTML = filtered.map(e => {
+    const dp = getDateParts(e.playedAt);
+    const s1Score = e.squad1Wins || 0;
+    const s2Score = e.squad2Wins || 0;
+    const winnerLabel = e.seriesWinner === 1 ? 'Squad 1 Wins' : e.seriesWinner === 2 ? 'Squad 2 Wins' : 'Tied';
+    const gameTypesStr = (e.gameTypes || []).join(' · ') || '';
+    // Build history key for delete
+    const histKey = `history:${e.playedAt}:${e.reportId}`;
+
+    return `<div class="history-card">
+      <div class="history-date-col">
+        <div class="history-date-day">${dp.day}</div>
+        <div class="history-date-month">${dp.month}</div>
+        <div class="history-date-year">${dp.year}</div>
+        <div class="history-date-year">${dp.time}</div>
+      </div>
+      <div class="history-main">
+        <div class="history-header">
+          <span class="history-score">
+            <span class="score-s1">${s1Score}</span>
+            <span class="score-sep">–</span>
+            <span class="score-s2">${s2Score}</span>
+          </span>
+          <span class="history-mode-badge ${e.mode === '2v2' ? 'badge-2v2' : 'badge-4v4'}">${e.mode || '4v4'}</span>
+          <span class="winner-tag">${winnerLabel}</span>
+        </div>
+        <div class="history-squads">
+          <span class="squad-label" style="color:var(--s1)">Squad 1:</span> ${(e.squad1||[]).join(', ')}
+          &nbsp;&nbsp;
+          <span class="squad-label" style="color:var(--s2)">Squad 2:</span> ${(e.squad2||[]).join(', ')}
+        </div>
+        ${gameTypesStr ? `<div class="history-gametypes">${gameTypesStr}</div>` : ''}
+      </div>
+      <div class="history-actions">
+        <a href="${e.reportUrl}" target="_blank" class="view-btn">View Report</a>
+        ${adminToken ? `<button class="delete-history-btn" onclick="deleteEntry('${histKey}', '${dp.month} ${dp.day} ${dp.year}')">Remove</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAdmin() { document.getElementById('adminPanel').classList.toggle('visible'); }
+
+async function checkPassword() {
+  const input = document.getElementById('adminPwInput');
+  const errEl = document.getElementById('adminPwError');
+  errEl.style.display = 'none';
+  try {
+    const resp = await fetch(WORKER_URL + '/admin/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: input.value }),
+    });
+    const result = await resp.json();
+    if (result.token) {
+      adminToken = result.token;
+      input.value = '';
+      document.getElementById('adminLocked').style.display = 'none';
+      document.getElementById('adminUnlocked').classList.add('visible');
+      applyFilters(); // Re-render to show delete buttons
+    } else {
+      errEl.style.display = 'block';
+      input.value = '';
+    }
+  } catch(e) {
+    errEl.textContent = 'Connection error — try again';
+    errEl.style.display = 'block';
+    input.value = '';
+  }
+}
+
+function setImportMode(mode) {
+  importMode = mode;
+  document.getElementById('importMode4v4').className = 'import-mode-btn' + (mode === '4v4' ? ' active-4v4' : '');
+  document.getElementById('importMode2v2').className = 'import-mode-btn' + (mode === '2v2' ? ' active-2v2' : '');
+}
+
+async function doImport() {
+  const urlInput = document.getElementById('importUrl').value.trim();
+  const dateInput = document.getElementById('importDate').value;
+  const msgEl = document.getElementById('importMsg');
+  msgEl.className = 'admin-msg'; msgEl.style.display = 'none';
+
+  if (!urlInput) { msgEl.textContent = 'Please paste a report URL.'; msgEl.className = 'admin-msg error'; return; }
+  if (!dateInput) { msgEl.textContent = 'Please select the date this series was played.'; msgEl.className = 'admin-msg error'; return; }
+
+  // Convert date to ISO string (use noon UTC to avoid timezone issues)
+  const playedAt = new Date(dateInput + 'T12:00:00.000Z').toISOString();
+
+  msgEl.textContent = 'Importing...';
+  msgEl.className = 'admin-msg';
+  msgEl.style.display = 'block';
+
+  try {
+    const resp = await fetch(WORKER_URL + '/history/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ reportUrl: urlInput, playedAt, mode: importMode }),
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    msgEl.textContent = `✓ Series imported successfully — ${(result.entry.squad1||[]).join(', ')} vs ${(result.entry.squad2||[]).join(', ')}`;
+    msgEl.className = 'admin-msg success';
+    document.getElementById('importUrl').value = '';
+    document.getElementById('importDate').value = '';
+    // Reload history
+    await load();
+  } catch(e) {
+    msgEl.textContent = `Error: ${e.message}`;
+    msgEl.className = 'admin-msg error';
+  }
+}
+
+async function deleteEntry(key, label) {
+  if (!confirm(`Remove this series from history (${label})?\n\nThis only removes it from history — it does NOT affect leaderboard stats. Cannot be undone.`)) return;
+  try {
+    const resp = await fetch(WORKER_URL + '/history/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ key }),
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    await load();
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+load();
+</script>
+</body>
+</html>
