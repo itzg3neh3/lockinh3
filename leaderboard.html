@@ -415,7 +415,7 @@ function render() {
     const ballPS = perSeries(p.ballSecs||0, p.seriesPlayed);
     html += `<tr>
       <td class="rank-cell ${rankClass}">${rank}</td>
-      <td class="player-cell">${p.displayName}</td>
+      <td class="player-cell"><a href="player.html?p=${encodeURIComponent(p.displayName)}" style="color:inherit;text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:1px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)';this.style.color='inherit'">${p.displayName}</a></td>
       <td>${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span></td>
       <td>${p.seriesPlayed}</td>
       <td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td>
