@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lock in H3 — Head to Head</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10; --surface: #111318; --surface2: #181c24;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0; --muted: #6b7280; --accent: #4a9eff;
+    --accent-dim: rgba(74,158,255,0.12); --red: #ff5555;
+    --red-dim: rgba(255,85,85,0.12); --red-border: rgba(255,85,85,0.25);
+    --green: #4ade80; --gold: #f59e0b;
+    --s1: #a78bfa; --s1-dim: rgba(167,139,250,0.12); --s1-border: rgba(167,139,250,0.25);
+    --s2: #fb923c; --s2-dim: rgba(251,146,60,0.12); --s2-border: rgba(251,146,60,0.25);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 1000; }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+  header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
+  .logo em { font-style: normal; color: var(--accent); }
+  .nav-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
+  .nav-link:hover { color: var(--accent); border-color: var(--accent); }
+  .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+  .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 2rem; }
+  /* Player picker */
+  .picker-wrap { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
+  .picker-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: end; }
+  .picker-field { display: flex; flex-direction: column; gap: 6px; }
+  .picker-label { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .picker-select { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px; padding: 11px 14px; color: var(--text); font-size: 15px; font-family: 'Barlow', sans-serif; outline: none; cursor: pointer; appearance: none; }
+  .picker-select:focus { border-color: var(--accent); }
+  .vs-label { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; color: var(--muted); text-align: center; padding-bottom: 11px; }
+  .compare-btn { width: 100%; padding: 13px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; margin-top: 1rem; }
+  .compare-btn:hover { background: #74b4ff; transform: translateY(-1px); }
+  .compare-btn:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; transform: none; }
+  /* Results */
+  .results { display: none; }
+  .h2h-header { text-align: center; margin-bottom: 2rem; }
+  .h2h-names { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .h2h-names .p1-name { color: var(--s1); }
+  .h2h-names .p2-name { color: var(--s2); }
+  .h2h-names .vs { color: var(--muted); margin: 0 12px; }
+  .h2h-sub { font-size: 13px; color: var(--muted); }
+  /* Stat cards */
+  .h2h-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+  .h2h-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; }
+  .h2h-card-title { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 1rem; }
+  .h2h-record { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 0.75rem; }
+  .h2h-record-num { font-family: 'Barlow Condensed', sans-serif; font-size: 56px; font-weight: 800; line-height: 1; }
+  .h2h-record-sep { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; color: var(--muted); margin: 0 8px; padding-bottom: 4px; }
+  .h2h-record-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .h2h-lead { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-top: 8px; }
+  .lead-p1 { color: var(--s1); }
+  .lead-p2 { color: var(--s2); }
+  .lead-tied { color: var(--muted); }
+  .lead-none { color: var(--muted); font-family: 'Barlow', sans-serif; font-weight: 400; font-size: 13px; letter-spacing: 0; text-transform: none; }
+  .win-pct-bar { height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin: 10px 0 6px; }
+  .win-pct-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+  .win-pct-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  /* Section */
+  .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  /* Series list */
+  .series-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 2rem; }
+  .series-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; transition: border-color 0.15s; }
+  .series-row:hover { border-color: var(--border2); }
+  .series-date { font-size: 12px; color: var(--muted); min-width: 90px; }
+  .series-mode-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
+  .badge-4v4 { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
+  .badge-2v2 { background: var(--s2-dim); color: var(--s2); border: 1px solid var(--s2-border); }
+  .series-result { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 1px; min-width: 40px; }
+  .result-win { color: var(--green); }
+  .result-loss { color: var(--red); }
+  .result-draw { color: var(--muted); }
+  .series-score { font-size: 13px; color: var(--muted); flex: 1; }
+  .series-view-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 5px 12px; background: none; color: var(--accent); border: 1px solid var(--border2); border-radius: 4px; cursor: pointer; text-decoration: none; transition: all 0.15s; flex-shrink: 0; }
+  .series-view-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
+  .no-data { font-size: 13px; color: var(--muted); padding: 1rem 0; text-align: center; }
+  .loading { text-align: center; padding: 3rem; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 600px) {
+    .picker-grid { grid-template-columns: 1fr; }
+    .vs-label { padding-bottom: 0; }
+    .h2h-cards { grid-template-columns: 1fr; }
+    .h2h-names { font-size: 20px; }
+    .series-row { flex-wrap: wrap; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Lock in <em>H3</em></div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Report</a>
+      <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+      <a href="history.html" class="nav-link">History</a>
+      <a href="headtohead.html" class="nav-link active">H2H</a>
+    </div>
+  </header>
+
+  <div class="page-title">Head to Head</div>
+  <div class="page-sub">Compare two players across every series they've shared — as opponents and as teammates</div>
+
+  <div class="picker-wrap">
+    <div class="picker-grid">
+      <div class="picker-field">
+        <span class="picker-label">Player 1</span>
+        <select class="picker-select" id="p1Select">
+          <option value="">Select a player...</option>
+        </select>
+      </div>
+      <div class="vs-label">VS</div>
+      <div class="picker-field">
+        <span class="picker-label">Player 2</span>
+        <select class="picker-select" id="p2Select">
+          <option value="">Select a player...</option>
+        </select>
+      </div>
+    </div>
+    <button class="compare-btn" id="compareBtn" onclick="loadH2H()" disabled>Compare</button>
+  </div>
+
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
+
+async function loadPlayers() {
+  try {
+    const resp = await fetch(WORKER_URL + '/history/players');
+    if (!resp.ok) throw new Error('Failed to load players');
+    const { players } = await resp.json();
+    const p1 = document.getElementById('p1Select');
+    const p2 = document.getElementById('p2Select');
+    players.forEach(name => {
+      p1.innerHTML += `<option value="${name}">${name}</option>`;
+      p2.innerHTML += `<option value="${name}">${name}</option>`;
+    });
+  } catch(e) {
+    console.error('Could not load players:', e.message);
+  }
+}
+
+function onSelectChange() {
+  const p1 = document.getElementById('p1Select').value;
+  const p2 = document.getElementById('p2Select').value;
+  document.getElementById('compareBtn').disabled = !p1 || !p2 || p1 === p2;
+}
+
+document.getElementById('p1Select').addEventListener('change', onSelectChange);
+document.getElementById('p2Select').addEventListener('change', onSelectChange);
+
+function fmtDate(isoStr) {
+  try {
+    return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch(e) { return isoStr; }
+}
+
+async function loadH2H() {
+  const p1 = document.getElementById('p1Select').value;
+  const p2 = document.getElementById('p2Select').value;
+  if (!p1 || !p2 || p1 === p2) return;
+
+  const resultsEl = document.getElementById('results');
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = `<div class="loading"><span class="spinner"></span>Loading...</div>`;
+
+  try {
+    const resp = await fetch(`${WORKER_URL}/history/h2h?p1=${encodeURIComponent(p1)}&p2=${encodeURIComponent(p2)}`);
+    if (!resp.ok) throw new Error('Failed to load');
+    const { asOpponents, asTeammates } = await resp.json();
+
+    const totalOpponent = asOpponents.p1Wins + asOpponents.p2Wins;
+    const totalTeammate = asTeammates.wins + asTeammates.losses;
+    const totalSeries = totalOpponent + totalTeammate;
+
+    // Opponent card
+    const oppP1Pct = totalOpponent > 0 ? Math.round((asOpponents.p1Wins / totalOpponent) * 100) : 0;
+    const oppP2Pct = totalOpponent > 0 ? Math.round((asOpponents.p2Wins / totalOpponent) * 100) : 0;
+    let oppLead = `<span class="lead-tied">Even</span>`;
+    if (asOpponents.p1Wins > asOpponents.p2Wins) oppLead = `<span class="lead-p1">${p1} leads</span>`;
+    else if (asOpponents.p2Wins > asOpponents.p1Wins) oppLead = `<span class="lead-p2">${p2} leads</span>`;
+
+    // Teammate card
+    const tmtWinPct = totalTeammate > 0 ? Math.round((asTeammates.wins / totalTeammate) * 100) : 0;
+    let tmtLead = `<span class="lead-none">No series together yet</span>`;
+    if (totalTeammate > 0) {
+      if (tmtWinPct >= 60) tmtLead = `<span class="lead-p1" style="color:var(--green)">Strong together</span>`;
+      else if (tmtWinPct >= 50) tmtLead = `<span class="lead-p1" style="color:var(--green)">Winning together</span>`;
+      else if (tmtWinPct === 50) tmtLead = `<span class="lead-tied">Even together</span>`;
+      else tmtLead = `<span class="lead-p2" style="color:var(--red)">Struggling together</span>`;
+    }
+
+    let html = `
+    <div class="h2h-header">
+      <div class="h2h-names">
+        <span class="p1-name">${p1}</span>
+        <span class="vs">VS</span>
+        <span class="p2-name">${p2}</span>
+      </div>
+      <div class="h2h-sub">${totalSeries} series together · ${totalOpponent} as opponents · ${totalTeammate} as teammates</div>
+    </div>
+
+    <div class="h2h-cards">
+      <div class="h2h-card">
+        <div class="h2h-card-title">⚔️ As Opponents</div>
+        ${totalOpponent > 0 ? `
+        <div class="h2h-record">
+          <div>
+            <div class="h2h-record-num" style="color:var(--s1)">${asOpponents.p1Wins}</div>
+          </div>
+          <div class="h2h-record-sep">–</div>
+          <div>
+            <div class="h2h-record-num" style="color:var(--s2)">${asOpponents.p2Wins}</div>
+          </div>
+        </div>
+        <div class="win-pct-bar">
+          <div class="win-pct-fill" style="width:${oppP1Pct}%;background:linear-gradient(90deg,var(--s1),var(--s2))"></div>
+        </div>
+        <div class="win-pct-labels">
+          <span style="color:var(--s1)">${oppP1Pct}%</span>
+          <span style="color:var(--s2)">${oppP2Pct}%</span>
+        </div>
+        <div class="h2h-lead">${oppLead}</div>
+        ` : `<div class="lead-none" style="margin-top:1rem">Never faced each other</div>`}
+      </div>
+
+      <div class="h2h-card">
+        <div class="h2h-card-title">🤝 As Teammates</div>
+        ${totalTeammate > 0 ? `
+        <div class="h2h-record">
+          <div>
+            <div class="h2h-record-num" style="color:var(--green)">${asTeammates.wins}</div>
+          </div>
+          <div class="h2h-record-sep">–</div>
+          <div>
+            <div class="h2h-record-num" style="color:var(--red)">${asTeammates.losses}</div>
+          </div>
+        </div>
+        <div class="win-pct-bar">
+          <div class="win-pct-fill" style="width:${tmtWinPct}%;background:var(--green)"></div>
+        </div>
+        <div class="win-pct-labels">
+          <span style="color:var(--green)">${tmtWinPct}% win rate</span>
+          <span>${totalTeammate} series</span>
+        </div>
+        <div class="h2h-lead">${tmtLead}</div>
+        ` : `<div class="lead-none" style="margin-top:1rem">Never been on the same team</div>`}
+      </div>
+    </div>`;
+
+    // Opponent series list
+    html += `<div class="section-title">⚔️ Series as Opponents</div><div class="series-list">`;
+    if (asOpponents.series.length === 0) {
+      html += `<div class="no-data">No series found where these players faced each other.</div>`;
+    } else {
+      asOpponents.series.forEach(s => {
+        const resultLabel = s.seriesWinner === 0 ? 'TIE' : s.p1Won ? 'WIN' : 'LOSS';
+        const resultClass = s.seriesWinner === 0 ? 'result-draw' : s.p1Won ? 'result-win' : 'result-loss';
+        const scoreStr = `${s.squad1Wins}–${s.squad2Wins}`;
+        const p1Squad = (s.squad1||[]).map(n=>n.toLowerCase()).includes(p1.toLowerCase()) ? 1 : 2;
+        const p2Squad = p1Squad === 1 ? 2 : 1;
+        const p1Team = p1Squad === 1 ? (s.squad1||[]).join(', ') : (s.squad2||[]).join(', ');
+        const p2Team = p2Squad === 1 ? (s.squad1||[]).join(', ') : (s.squad2||[]).join(', ');
+        html += `<div class="series-row">
+          <span class="series-date">${fmtDate(s.playedAt)}</span>
+          <span class="series-mode-badge ${s.mode==='2v2'?'badge-2v2':'badge-4v4'}">${s.mode||'4v4'}</span>
+          <span class="series-result ${resultClass}" title="${p1} perspective">${resultLabel}</span>
+          <span class="series-score">
+            <span style="color:var(--s1)">${p1Team}</span>
+            <span style="color:var(--muted)"> ${scoreStr} </span>
+            <span style="color:var(--s2)">${p2Team}</span>
+          </span>
+          <a href="${s.reportUrl}" target="_blank" class="series-view-btn">View</a>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+
+    // Teammate series list
+    html += `<div class="section-title">🤝 Series as Teammates</div><div class="series-list">`;
+    if (asTeammates.series.length === 0) {
+      html += `<div class="no-data">No series found where these players were on the same team.</div>`;
+    } else {
+      asTeammates.series.forEach(s => {
+        const resultLabel = s.seriesWinner === 0 ? 'TIE' : s.teammateWon ? 'WIN' : 'LOSS';
+        const resultClass = s.seriesWinner === 0 ? 'result-draw' : s.teammateWon ? 'result-win' : 'result-loss';
+        const theirSquad = (s.squad1||[]).map(n=>n.toLowerCase()).includes(p1.toLowerCase()) ? 1 : 2;
+        const oppSquad = theirSquad === 1 ? 2 : 1;
+        const theirTeam = theirSquad === 1 ? (s.squad1||[]).join(', ') : (s.squad2||[]).join(', ');
+        const oppTeam = oppSquad === 1 ? (s.squad1||[]).join(', ') : (s.squad2||[]).join(', ');
+        const scoreStr = theirSquad === 1 ? `${s.squad1Wins}–${s.squad2Wins}` : `${s.squad2Wins}–${s.squad1Wins}`;
+        html += `<div class="series-row">
+          <span class="series-date">${fmtDate(s.playedAt)}</span>
+          <span class="series-mode-badge ${s.mode==='2v2'?'badge-2v2':'badge-4v4'}">${s.mode||'4v4'}</span>
+          <span class="series-result ${resultClass}">${resultLabel}</span>
+          <span class="series-score">
+            <span style="color:var(--accent)">${theirTeam}</span>
+            <span style="color:var(--muted)"> ${scoreStr} vs </span>
+            <span style="color:var(--muted)">${oppTeam}</span>
+          </span>
+          <a href="${s.reportUrl}" target="_blank" class="series-view-btn">View</a>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+
+    resultsEl.innerHTML = html;
+
+  } catch(e) {
+    resultsEl.innerHTML = `<div class="no-data" style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+loadPlayers();
+</script>
+</body>
+</html>
