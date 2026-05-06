@@ -656,6 +656,105 @@ if (request.method === 'GET' && url.pathname === '/history/h2h') {
     return jsonResponse({ error: err.message }, 500, origin);
   }
 }
+    // ── GET /player ──────────────────────────────────────────────────────
+if (request.method === 'GET' && url.pathname === '/player') {
+  try {
+    const name = url.searchParams.get('name');
+    if (!name) return jsonResponse({ error: 'name required' }, 400, origin);
+
+    const nameLow = name.toLowerCase().trim();
+
+    // Fetch 4v4 and 2v2 leaderboard stats
+    const [lb4Raw, lb2Raw] = await Promise.all([
+      env.REPORTS.get('leaderboard:alltime'),
+      env.REPORTS.get('leaderboard:2v2'),
+    ]);
+
+    const lb4 = lb4Raw ? JSON.parse(lb4Raw) : {};
+    const lb2 = lb2Raw ? JSON.parse(lb2Raw) : {};
+
+    // Find player in each leaderboard by normalized name
+    const find = (lb) => {
+      for (const [key, val] of Object.entries(lb)) {
+        if (key === normalizeName(name) ||
+            (val.displayName || '').toLowerCase() === nameLow) {
+          return { ...val, key };
+        }
+      }
+      return null;
+    };
+
+    const stats4v4 = find(lb4);
+    const stats2v2 = find(lb2);
+
+    if (!stats4v4 && !stats2v2) {
+      return jsonResponse({ error: 'Player not found' }, 404, origin);
+    }
+
+    // Fetch all history entries for this player
+    const list = await env.REPORTS.list({ prefix: 'history:' });
+    const seriesHistory = [];
+
+    for (const k of list.keys) {
+      const raw = await env.REPORTS.get(k.name);
+      if (!raw) continue;
+      try {
+        const entry = JSON.parse(raw);
+        const allPlayers = [...(entry.squad1||[]), ...(entry.squad2||[])];
+        const inSeries = allPlayers.some(n => n.toLowerCase() === nameLow);
+        if (inSeries) {
+          // Determine if player won this series
+          const inSquad1 = (entry.squad1||[]).some(n => n.toLowerCase() === nameLow);
+          const playerSquad = inSquad1 ? 1 : 2;
+          const won = entry.seriesWinner === playerSquad;
+          const tied = entry.seriesWinner === 0;
+          seriesHistory.push({
+            ...entry,
+            histKey: k.name,
+            playerSquad,
+            playerWon: won,
+            playerTied: tied,
+            teammates: inSquad1 ? (entry.squad1||[]).filter(n => n.toLowerCase() !== nameLow) : (entry.squad2||[]).filter(n => n.toLowerCase() !== nameLow),
+            opponents: inSquad1 ? (entry.squad2||[]) : (entry.squad1||[]),
+          });
+        }
+      } catch(e) {}
+    }
+
+    // Sort newest first
+    seriesHistory.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
+
+    // Build opponent records from history
+    const opponentRecords = {};
+    seriesHistory.forEach(s => {
+      (s.opponents || []).forEach(opp => {
+        const key = opp.toLowerCase();
+        if (!opponentRecords[key]) opponentRecords[key] = { name: opp, wins: 0, losses: 0, ties: 0 };
+        if (s.playerWon) opponentRecords[key].wins++;
+        else if (s.playerTied) opponentRecords[key].ties++;
+        else opponentRecords[key].losses++;
+      });
+    });
+
+    // Sort opponents by most played
+    const opponents = Object.values(opponentRecords).sort((a, b) =>
+      (b.wins + b.losses + b.ties) - (a.wins + a.losses + a.ties)
+    );
+
+    const displayName = (stats4v4 || stats2v2).displayName || name;
+
+    return jsonResponse({
+      displayName,
+      stats4v4,
+      stats2v2,
+      seriesHistory,
+      opponents,
+    }, 200, origin);
+
+  } catch (err) {
+    return jsonResponse({ error: err.message }, 500, origin);
+  }
+}
     return new Response('Not found', { status: 404 });
   },
 };
