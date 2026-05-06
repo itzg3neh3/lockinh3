@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lock in H3 — Player Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10; --surface: #111318; --surface2: #181c24;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0; --muted: #6b7280; --accent: #4a9eff;
+    --accent-dim: rgba(74,158,255,0.12); --red: #ff5555;
+    --red-dim: rgba(255,85,85,0.12); --red-border: rgba(255,85,85,0.25);
+    --green: #4ade80; --gold: #f59e0b;
+    --s1: #a78bfa; --s1-dim: rgba(167,139,250,0.12); --s1-border: rgba(167,139,250,0.25);
+    --s2: #fb923c; --s2-dim: rgba(251,146,60,0.12); --s2-border: rgba(251,146,60,0.25);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 1000; }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+  header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
+  .logo em { font-style: normal; color: var(--accent); }
+  .nav-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
+  .nav-link:hover { color: var(--accent); border-color: var(--accent); }
+  .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+  /* Profile header */
+  .profile-header { margin-bottom: 2rem; }
+  .profile-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem; }
+  .profile-name { font-family: 'Barlow Condensed', sans-serif; font-size: 48px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; line-height: 1; margin-bottom: 0.75rem; }
+  .profile-quick-stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .quick-stat { font-size: 13px; color: var(--muted); }
+  .quick-stat strong { color: var(--text); font-size: 15px; }
+  .quick-stat .kd-pos { color: var(--green); }
+  .quick-stat .kd-neg { color: var(--red); }
+  .quick-stat .kd-neu { color: var(--muted); }
+  /* Mode tabs */
+  .mode-tabs { display: flex; gap: 6px; margin-bottom: 1.5rem; }
+  .mode-tab { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 9px 20px; border-radius: 8px; border: 1.5px solid var(--border2); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active-4v4 { border-color: var(--s1-border); background: var(--s1-dim); color: var(--s1); }
+  .mode-tab.active-2v2 { border-color: var(--s2-border); background: var(--s2-dim); color: var(--s2); }
+  .mode-tab.inactive-dim { opacity: 0.4; cursor: not-allowed; }
+  /* Stats grid */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 2rem; }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+  .stat-box-label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .stat-box-value { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; line-height: 1; }
+  .stat-box-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .val-green { color: var(--green); }
+  .val-red { color: var(--red); }
+  .val-muted { color: var(--muted); }
+  .val-gold { color: var(--gold); }
+  /* Win rate bar */
+  .win-rate-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; }
+  .win-rate-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .win-rate-title { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .win-rate-pct { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; color: var(--green); }
+  .win-rate-bar { height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }
+  .win-rate-fill { height: 100%; border-radius: 99px; background: var(--green); transition: width 0.6s ease; }
+  .win-rate-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  /* Section title */
+  .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  /* Obj stats row */
+  .obj-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 2rem; }
+  /* Form dots */
+  .form-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; }
+  .form-title { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .form-dots { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .form-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 0; }
+  .dot-win { background: rgba(74,222,128,0.15); color: var(--green); border: 1.5px solid rgba(74,222,128,0.4); }
+  .dot-loss { background: var(--red-dim); color: var(--red); border: 1.5px solid var(--red-border); }
+  .dot-tie { background: rgba(107,114,128,0.15); color: var(--muted); border: 1.5px solid rgba(107,114,128,0.3); }
+  .form-label { font-size: 12px; color: var(--muted); margin-left: 4px; }
+  /* Opponent records */
+  .opp-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; }
+  .opp-table { width: 100%; border-collapse: collapse; }
+  .opp-table thead th { padding: 9px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .opp-table thead th:not(:first-child) { text-align: center; }
+  .opp-table tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .opp-table tbody td:not(:first-child) { text-align: center; }
+  .opp-table tbody tr:last-child td { border-bottom: none; }
+  .opp-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .opp-name-cell { font-weight: 600; }
+  .opp-name-link { color: inherit; text-decoration: none; transition: color 0.15s; }
+  .opp-name-link:hover { color: var(--accent); }
+  .opp-win { color: var(--green); font-weight: 600; }
+  .opp-loss { color: var(--red); }
+  .opp-win-pct-bar { height: 4px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin-top: 4px; min-width: 60px; }
+  .opp-win-pct-fill { height: 100%; background: var(--green); border-radius: 99px; }
+  /* Series history list */
+  .series-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 2rem; }
+  .series-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; transition: border-color 0.15s; }
+  .series-row:hover { border-color: var(--border2); }
+  .series-date { font-size: 12px; color: var(--muted); min-width: 90px; }
+  .series-mode-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
+  .badge-4v4 { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
+  .badge-2v2 { background: var(--s2-dim); color: var(--s2); border: 1px solid var(--s2-border); }
+  .series-result { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 1px; min-width: 42px; }
+  .result-win { color: var(--green); }
+  .result-loss { color: var(--red); }
+  .result-draw { color: var(--muted); }
+  .series-detail { flex: 1; font-size: 13px; color: var(--muted); }
+  .series-detail .teammates { color: var(--text); }
+  .series-view-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 5px 12px; background: none; color: var(--accent); border: 1px solid var(--border2); border-radius: 4px; cursor: pointer; text-decoration: none; transition: all 0.15s; flex-shrink: 0; }
+  .series-view-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
+  .show-more-btn { width: 100%; padding: 10px; background: none; border: 1px solid var(--border2); border-radius: 8px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; margin-top: 4px; }
+  .show-more-btn:hover { color: var(--text); border-color: var(--border2); }
+  .no-data { font-size: 13px; color: var(--muted); padding: 1rem 0; text-align: center; }
+  .not-found { text-align: center; padding: 4rem 1rem; }
+  .not-found h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--text); margin-bottom: 0.5rem; }
+  .loading { text-align: center; padding: 4rem; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 600px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .obj-row { grid-template-columns: repeat(3, 1fr); }
+    .profile-name { font-size: 32px; }
+    .series-row { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Lock in <em>H3</em></div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Report</a>
+      <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+      <a href="history.html" class="nav-link">History</a>
+      <a href="headtohead.html" class="nav-link">H2H</a>
+    </div>
+  </header>
+  <div id="content"><div class="loading"><span class="spinner"></span>Loading profile...</div></div>
+</div>
+
+<script>
+const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
+
+function kd(k,d) { return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2); }
+function kda(k,a,d) { return d===0?(k+a>0?(k+a).toFixed(2):'0.00'):((k+a)/d).toFixed(2); }
+function kdClass(r) { return r>1.1?'val-green':r<0.9?'val-red':'val-muted'; }
+function fmtTime(sec) {
+  if (!sec) return '—';
+  const m = Math.floor(sec/60), s = sec%60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function fmtDate(isoStr) {
+  try { return new Date(isoStr).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
+  catch(e) { return isoStr; }
+}
+
+let playerData = null;
+let currentMode = '4v4';
+let showAllSeries = false;
+let showAllOpponents = false;
+const SERIES_LIMIT = 8;
+const OPP_LIMIT = 8;
+
+async function load() {
+  const params = new URLSearchParams(window.location.search);
+  const playerName = params.get('p');
+  if (!playerName) {
+    document.getElementById('content').innerHTML = `<div class="not-found"><h2>No player specified</h2><p>Go back to the <a href="leaderboard.html" style="color:var(--accent)">leaderboard</a> and click a player name.</p></div>`;
+    return;
+  }
+
+  // Update page title
+  document.title = `Lock in H3 — ${playerName}`;
+
+  try {
+    const resp = await fetch(`${WORKER_URL}/player?name=${encodeURIComponent(playerName)}`);
+    if (resp.status === 404) {
+      document.getElementById('content').innerHTML = `<div class="not-found"><h2>Player not found</h2><p>"${playerName}" doesn't exist in the leaderboard yet.</p></div>`;
+      return;
+    }
+    if (!resp.ok) throw new Error('Failed to load player data');
+    playerData = await resp.json();
+
+    // Set default mode to whichever has data
+    if (!playerData.stats4v4 && playerData.stats2v2) currentMode = '2v2';
+    else currentMode = '4v4';
+
+    render();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `<div class="not-found"><h2>Could not load</h2><p>${e.message}</p></div>`;
+  }
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  showAllSeries = false;
+  render();
+}
+
+function render() {
+  const { displayName, stats4v4, stats2v2, seriesHistory, opponents } = playerData;
+  const stats = currentMode === '4v4' ? stats4v4 : stats2v2;
+
+  // Filter history and opponents by mode
+  const modeHistory = seriesHistory.filter(s => (s.mode || '4v4') === currentMode);
+  const modeOpponents = opponents.filter(o => {
+    // Check if this opponent appears in any series of this mode
+    return seriesHistory.some(s => (s.mode || '4v4') === currentMode &&
+      (s.opponents||[]).some(n => n.toLowerCase() === o.name.toLowerCase()));
+  });
+
+  // Recalculate opponent records for this mode only
+  const modeOppRecords = {};
+  modeHistory.forEach(s => {
+    (s.opponents||[]).forEach(opp => {
+      const key = opp.toLowerCase();
+      if (!modeOppRecords[key]) modeOppRecords[key] = { name: opp, wins: 0, losses: 0, ties: 0 };
+      if (s.playerWon) modeOppRecords[key].wins++;
+      else if (s.playerTied) modeOppRecords[key].ties++;
+      else modeOppRecords[key].losses++;
+    });
+  });
+  const modeOppList = Object.values(modeOppRecords).sort((a,b) =>
+    (b.wins+b.losses+b.ties) - (a.wins+a.losses+a.ties)
+  );
+
+  // Form — last 10 series for this mode
+  const recentForm = modeHistory.slice(0, 10);
+
+  // Quick stats from leaderboard
+  const played = stats ? stats.seriesPlayed : 0;
+  const won = stats ? stats.seriesWon : 0;
+  const lost = stats ? stats.seriesLost : 0;
+  const winPct = played > 0 ? Math.round((won / played) * 100) : 0;
+  const kills = stats ? stats.kills : 0;
+  const deaths = stats ? stats.deaths : 0;
+  const assists = stats ? stats.assists : 0;
+  const kdVal = deaths === 0 ? kills : kills / deaths;
+  const kdStr = kd(kills, deaths);
+  const kdaStr = kda(kills, assists, deaths);
+  const flagCaps = stats ? (stats.flagCaps || 0) : 0;
+  const hillSecs = stats ? (stats.hillSecs || 0) : 0;
+  const ballSecs = stats ? (stats.ballSecs || 0) : 0;
+  const hasObj = currentMode === '4v4' && (flagCaps > 0 || hillSecs > 0 || ballSecs > 0);
+
+  const tab4Class = currentMode === '4v4' ? 'active-4v4' : (stats4v4 ? '' : 'inactive-dim');
+  const tab2Class = currentMode === '2v2' ? 'active-2v2' : (stats2v2 ? '' : 'inactive-dim');
+
+  let html = `
+  <div class="profile-header">
+    <div class="profile-eyebrow">Player Profile</div>
+    <div class="profile-name">${displayName}</div>
+    <div class="profile-quick-stats">
+      ${stats ? `
+      <div class="quick-stat"><strong>${played}</strong> Series</div>
+      <div class="quick-stat"><strong>${won}W–${lost}L</strong></div>
+      <div class="quick-stat"><strong class="${kdClass(kdVal)}">${kdStr}</strong> K/D</div>
+      <div class="quick-stat"><strong class="${kdClass((kills+assists)/(deaths||1))}">${kdaStr}</strong> KDA</div>
+      ` : `<div class="quick-stat" style="color:var(--muted)">No ${currentMode} data yet</div>`}
+    </div>
+  </div>
+
+  <div class="mode-tabs">
+    <button class="mode-tab ${tab4Class}" onclick="${stats4v4 ? "setMode('4v4')" : ''}" ${!stats4v4 ? 'title="No 4v4 data"' : ''}>
+      4v4 ${stats4v4 ? `<span style="font-size:11px;opacity:0.7">${stats4v4.seriesPlayed} series</span>` : '<span style="font-size:11px;opacity:0.5">No data</span>'}
+    </button>
+    <button class="mode-tab ${tab2Class}" onclick="${stats2v2 ? "setMode('2v2')" : ''}" ${!stats2v2 ? 'title="No 2v2 data"' : ''}>
+      2v2 ${stats2v2 ? `<span style="font-size:11px;opacity:0.7">${stats2v2.seriesPlayed} series</span>` : '<span style="font-size:11px;opacity:0.5">No data</span>'}
+    </button>
+  </div>`;
+
+  if (!stats) {
+    html += `<div class="no-data" style="padding:2rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;text-align:center;">No ${currentMode} leaderboard data for this player yet.</div>`;
+  } else {
+    // Win rate bar
+    html += `
+    <div class="win-rate-wrap">
+      <div class="win-rate-header">
+        <span class="win-rate-title">Series Win Rate</span>
+        <span class="win-rate-pct">${winPct}%</span>
+      </div>
+      <div class="win-rate-bar"><div class="win-rate-fill" style="width:${winPct}%"></div></div>
+      <div class="win-rate-labels"><span>${won}W</span><span>${played} Series</span><span>${lost}L</span></div>
+    </div>`;
+
+    // Stats grid
+    html += `<div class="section-title">Combat Stats</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-box-label">Kills</div>
+        <div class="stat-box-value">${kills.toLocaleString()}</div>
+        <div class="stat-box-sub">${played > 0 ? (kills/played).toFixed(1) + '/series' : '—'}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-label">Deaths</div>
+        <div class="stat-box-value">${deaths.toLocaleString()}</div>
+        <div class="stat-box-sub">${played > 0 ? (deaths/played).toFixed(1) + '/series' : '—'}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-label">Assists</div>
+        <div class="stat-box-value">${assists.toLocaleString()}</div>
+        <div class="stat-box-sub">${played > 0 ? (assists/played).toFixed(1) + '/series' : '—'}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-label">K/D</div>
+        <div class="stat-box-value ${kdClass(kdVal)}">${kdStr}</div>
+        <div class="stat-box-sub">KDA ${kdaStr}</div>
+      </div>
+    </div>`;
+
+    // OBJ stats for 4v4
+    if (hasObj) {
+      html += `<div class="section-title">Objective Stats</div>
+      <div class="obj-row">
+        ${flagCaps > 0 ? `<div class="stat-box"><div class="stat-box-label">Flag Caps</div><div class="stat-box-value val-gold">${flagCaps}</div><div class="stat-box-sub">${played > 0 ? (flagCaps/played).toFixed(2) + '/series' : '—'}</div></div>` : ''}
+        ${hillSecs > 0 ? `<div class="stat-box"><div class="stat-box-label">Hill Time</div><div class="stat-box-value val-gold">${fmtTime(hillSecs)}</div><div class="stat-box-sub">${played > 0 ? fmtTime(Math.round(hillSecs/played)) + '/series' : '—'}</div></div>` : ''}
+        ${ballSecs > 0 ? `<div class="stat-box"><div class="stat-box-label">Ball Time</div><div class="stat-box-value val-gold">${fmtTime(ballSecs)}</div><div class="stat-box-sub">${played > 0 ? fmtTime(Math.round(ballSecs/played)) + '/series' : '—'}</div></div>` : ''}
+      </div>`;
+    }
+  }
+
+  // Recent form
+  if (recentForm.length > 0) {
+    html += `<div class="section-title">Recent Form</div>
+    <div class="form-wrap">
+      <div class="form-title">Last ${Math.min(recentForm.length, 10)} series</div>
+      <div class="form-dots">
+        ${recentForm.map(s => {
+          const cls = s.playerTied ? 'dot-tie' : s.playerWon ? 'dot-win' : 'dot-loss';
+          const lbl = s.playerTied ? 'T' : s.playerWon ? 'W' : 'L';
+          const score = `${s.squad1Wins}–${s.squad2Wins}`;
+          return `<div class="form-dot ${cls}" title="${fmtDate(s.playedAt)} · ${score}">${lbl}</div>`;
+        }).join('')}
+        <span class="form-label">← most recent</span>
+      </div>
+    </div>`;
+  }
+
+  // Opponent records
+  if (modeOppList.length > 0) {
+    const displayOpp = showAllOpponents ? modeOppList : modeOppList.slice(0, OPP_LIMIT);
+    html += `<div class="section-title">Record vs Opponents</div>
+    <div class="opp-table-wrap"><table class="opp-table">
+      <thead><tr>
+        <th>Opponent</th>
+        <th>W</th><th>L</th><th>T</th>
+        <th>Series</th>
+        <th>Win %</th>
+      </tr></thead>
+      <tbody>
+        ${displayOpp.map(o => {
+          const total = o.wins + o.losses + o.ties;
+          const pct = total > 0 ? Math.round((o.wins / total) * 100) : 0;
+          return `<tr>
+            <td class="opp-name-cell"><a href="player.html?p=${encodeURIComponent(o.name)}" class="opp-name-link">${o.name}</a></td>
+            <td class="opp-win">${o.wins}</td>
+            <td class="opp-loss">${o.losses}</td>
+            <td style="color:var(--muted)">${o.ties||0}</td>
+            <td>${total}</td>
+            <td>
+              <div>${pct}%</div>
+              <div class="opp-win-pct-bar"><div class="opp-win-pct-fill" style="width:${pct}%"></div></div>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>
+    ${!showAllOpponents && modeOppList.length > OPP_LIMIT ?
+      `<button class="show-more-btn" onclick="showAllOpponents=true;render()">Show all ${modeOppList.length} opponents</button>` : ''}`;
+  }
+
+  // Series history
+  if (modeHistory.length > 0) {
+    const displaySeries = showAllSeries ? modeHistory : modeHistory.slice(0, SERIES_LIMIT);
+    html += `<div class="section-title">Series History <span style="font-size:13px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted)">${modeHistory.length} total</span></div>
+    <div class="series-list">
+      ${displaySeries.map(s => {
+        const resultLabel = s.playerTied ? 'TIE' : s.playerWon ? 'WIN' : 'LOSS';
+        const resultClass = s.playerTied ? 'result-draw' : s.playerWon ? 'result-win' : 'result-loss';
+        const score = s.playerSquad === 1 ? `${s.squad1Wins}–${s.squad2Wins}` : `${s.squad2Wins}–${s.squad1Wins}`;
+        const teammates = (s.teammates||[]).join(', ') || '—';
+        const opponents = (s.opponents||[]).join(', ') || '—';
+        return `<div class="series-row">
+          <span class="series-date">${fmtDate(s.playedAt)}</span>
+          <span class="series-mode-badge ${s.mode==='2v2'?'badge-2v2':'badge-4v4'}">${s.mode||'4v4'}</span>
+          <span class="series-result ${resultClass}">${resultLabel} ${score}</span>
+          <span class="series-detail">
+            <span class="teammates">w/ ${teammates}</span>
+            <span style="color:var(--muted)"> vs ${opponents}</span>
+          </span>
+          <a href="${s.reportUrl}" target="_blank" class="series-view-btn">View</a>
+        </div>`;
+      }).join('')}
+    </div>
+    ${!showAllSeries && modeHistory.length > SERIES_LIMIT ?
+      `<button class="show-more-btn" onclick="showAllSeries=true;render()">Show all ${modeHistory.length} series</button>` : ''}`;
+  } else {
+    html += `<div class="section-title">Series History</div><div class="no-data">No ${currentMode} series in history yet. Import previous series on the History page.</div>`;
+  }
+
+  document.getElementById('content').innerHTML = html;
+}
+
+load();
+</script>
+</body>
+</html>
