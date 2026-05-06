@@ -578,6 +578,84 @@ if (request.method === 'POST' && url.pathname === '/history/update') {
     return jsonResponse({ error: err.message }, 500, origin);
   }
 }
+    // ── GET /history/players ─────────────────────────────────────────────
+if (request.method === 'GET' && url.pathname === '/history/players') {
+  try {
+    const list = await env.REPORTS.list({ prefix: 'history:' });
+    const playerSet = new Set();
+    for (const k of list.keys) {
+      const raw = await env.REPORTS.get(k.name);
+      if (raw) {
+        try {
+          const entry = JSON.parse(raw);
+          [...(entry.squad1||[]), ...(entry.squad2||[])].forEach(n => { if (n) playerSet.add(n); });
+        } catch(e) {}
+      }
+    }
+    const players = [...playerSet].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    return jsonResponse({ players }, 200, origin);
+  } catch (err) {
+    return jsonResponse({ error: err.message }, 500, origin);
+  }
+}
+
+// ── GET /history/h2h ─────────────────────────────────────────────────
+if (request.method === 'GET' && url.pathname === '/history/h2h') {
+  try {
+    const p1 = url.searchParams.get('p1');
+    const p2 = url.searchParams.get('p2');
+    if (!p1 || !p2) throw new Error('p1 and p2 required');
+
+    const list = await env.REPORTS.list({ prefix: 'history:' });
+    const asOpponents = { p1Wins: 0, p2Wins: 0, series: [] };
+    const asTeammates = { wins: 0, losses: 0, series: [] };
+
+    for (const k of list.keys) {
+      const raw = await env.REPORTS.get(k.name);
+      if (!raw) continue;
+      try {
+        const entry = JSON.parse(raw);
+        const s1 = (entry.squad1 || []).map(n => n.toLowerCase());
+        const s2 = (entry.squad2 || []).map(n => n.toLowerCase());
+        const p1Low = p1.toLowerCase();
+        const p2Low = p2.toLowerCase();
+
+        const p1InS1 = s1.includes(p1Low);
+        const p1InS2 = s2.includes(p1Low);
+        const p2InS1 = s1.includes(p2Low);
+        const p2InS2 = s2.includes(p2Low);
+
+        const p1Present = p1InS1 || p1InS2;
+        const p2Present = p2InS1 || p2InS2;
+        if (!p1Present || !p2Present) continue;
+
+        const sameTeam = (p1InS1 && p2InS1) || (p1InS2 && p2InS2);
+
+        if (sameTeam) {
+          // Determine if their shared team won
+          const theirSquad = p1InS1 ? 1 : 2;
+          const won = entry.seriesWinner === theirSquad;
+          if (won) asTeammates.wins++; else asTeammates.losses++;
+          asTeammates.series.push({ ...entry, histKey: k.name, teammateWon: won });
+        } else {
+          // Opponents — who won?
+          const p1Squad = p1InS1 ? 1 : 2;
+          const p1Won = entry.seriesWinner === p1Squad;
+          if (p1Won) asOpponents.p1Wins++; else asOpponents.p2Wins++;
+          asOpponents.series.push({ ...entry, histKey: k.name, p1Won });
+        }
+      } catch(e) {}
+    }
+
+    // Sort each list newest first
+    asOpponents.series.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
+    asTeammates.series.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
+
+    return jsonResponse({ asOpponents, asTeammates, p1, p2 }, 200, origin);
+  } catch (err) {
+    return jsonResponse({ error: err.message }, 500, origin);
+  }
+}
     return new Response('Not found', { status: 404 });
   },
 };
