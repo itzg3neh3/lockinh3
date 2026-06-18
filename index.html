@@ -26,7 +26,7 @@
   header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; }
   .logo { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
   .logo em { font-style: normal; color: var(--accent); }
-  .nav-links { display: flex; align-items: center; gap: 1rem; }
+  .nav-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
   .nav-link:hover { color: var(--accent); border-color: var(--accent); }
   .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
@@ -42,7 +42,6 @@
   .pw-btn:hover { background: #74b4ff; }
   .pw-error { font-size: 13px; color: var(--red); margin-top: 0.6rem; display: none; }
   .pw-unlocked-badge { display: none; align-items: center; gap: 8px; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); border-radius: 6px; padding: 8px 14px; font-size: 13px; color: #4ade80; margin-bottom: 1.5rem; }
-  /* Mode selector */
   .mode-select-wrap { margin-bottom: 1.5rem; }
   .mode-select-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem; display: block; }
   .mode-btns { display: flex; gap: 8px; }
@@ -136,6 +135,23 @@
   .color-tag-blue { background: var(--blue-dim); color: var(--blue); }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  /* Name review screen */
+  .name-review-wrap { margin-top: 1rem; }
+  .name-review-title { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.5rem; color: var(--gold); }
+  .name-review-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.5; }
+  .name-review-card { background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+  .name-review-card.dupe { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.05); }
+  .name-review-flag { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+  .name-review-variants { font-size: 14px; margin-bottom: 10px; }
+  .name-variant { font-weight: 600; }
+  .variant-count { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .variant-sep { color: var(--muted); margin: 0 4px; }
+  .name-review-field { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .name-review-field label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .name-review-input { flex: 1; min-width: 180px; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; transition: border-color 0.15s; }
+  .name-review-input:focus { border-color: var(--accent); }
+  .name-review-btn { width: 100%; padding: 14px; background: var(--gold); color: #000; border: none; border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; margin-top: 0.5rem; }
+  .name-review-btn:hover { background: #fcd34d; transform: translateY(-1px); }
   @media (max-width: 600px) { .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; } .team-wins { font-size: 38px; } thead th, tbody td { padding: 8px 10px; font-size: 12px; } .callouts-grid { grid-template-columns: 1fr; } .pw-row { flex-direction: column; } .mode-btns { flex-direction: column; } }
   @media print {
     body { background: #fff !important; color: #111 !important; font-size: 12px; }
@@ -187,14 +203,14 @@
 <div class="container">
   <header>
     <a href="index.html" style="display:flex;align-items:center;text-decoration:none;">
-  <img src="stat_tracker_logo.png" alt="Lock in H3" style="height:135px;width:auto;display:block;">
-</a>
+      <img src="https://itzg3neh3.github.io/lockinh3/stat_tracker_logo.png" alt="Lock in H3" style="height:52px;width:auto;display:block;">
+    </a>
     <div class="nav-links">
-  <a href="index.html" class="nav-link active">Report</a>
-  <a href="leaderboard.html" class="nav-link">Leaderboard</a>
-  <a href="history.html" class="nav-link">History</a>
-  <a href="headtohead.html" class="nav-link">H2H</a>
-</div>
+      <a href="index.html" class="nav-link active">Report</a>
+      <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+      <a href="history.html" class="nav-link">History</a>
+      <a href="headtohead.html" class="nav-link">H2H</a>
+    </div>
   </header>
 
   <div class="pw-gate" id="pwGate">
@@ -216,7 +232,6 @@
 
   <div id="appContent" style="display:none">
 
-    <!-- Mode selector -->
     <div class="mode-select-wrap">
       <span class="mode-select-label">Select Series Type</span>
       <div class="mode-btns">
@@ -291,7 +306,6 @@ function setMode(mode) {
   document.getElementById('uploadTitle').textContent = mode === '2v2'
     ? 'Drop 2v2 scoreboard screenshots here'
     : 'Drop 4v4 scoreboard screenshots here';
-  // Clear files when switching mode
   files = [];
   renderList();
   document.getElementById('analyzeBtn').disabled = true;
@@ -299,7 +313,6 @@ function setMode(mode) {
   document.getElementById('lbBtnWrap').style.display = 'none';
   document.getElementById('exportWrap').style.display = 'none';
   document.getElementById('shareBtnWrap').style.display = 'none';
-  // Update leaderboard button label
   document.getElementById('lbBtnLabel').textContent = mode === '2v2'
     ? 'Add to 2v2 Leaderboard Stats'
     : 'Add to Leaderboard Stats';
@@ -439,7 +452,7 @@ analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.innerHTML = 'Analyze Series';
     analyzeBtn.disabled = false;
     if (!results.length) { showError('Could not analyze any screenshots.\n\nErrors:\n' + errors.map(e=>`Game ${e.gameNumber}: ${e.message}`).join('\n')); return; }
-    renderReport(results, errors, currentMode);
+    prepareNameReview(results, errors, currentMode);
   }, 400);
 });
 
@@ -502,7 +515,7 @@ For BALL games: team with more ballTime wins.
 For Slayer/TS: team with more kills wins.`}
 Always verify winner from actual scores, not just the title banner.
 
-PLAYER NAMES: TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this).
+PLAYER NAMES: TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this). Read each character carefully — letters like "l" (lowercase L), "i", and "1" can look similar; double check against the visual shape of each character rather than guessing.
 Never duplicate. ${teamSize}v${teamSize} = exactly ${teamSize} per team.
 
 - gameType: exact title text
@@ -546,8 +559,145 @@ function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|ball/); 
 function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30/); }
 function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 
+// ── Name Review (catches likely OCR misspellings before stats are calculated) ──
+let pendingReviewGames = null;
+let pendingReviewErrors = null;
+let pendingReviewMode = null;
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i-1] === b[j-1]) dp[i][j] = dp[i-1][j-1];
+      else dp[i][j] = 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function collectPlayerNameCounts(games) {
+  const counts = {};
+  games.forEach(g => {
+    [...(g.redTeam||[]), ...(g.blueTeam||[])].forEach(p => {
+      if (!p.name) return;
+      counts[p.name] = (counts[p.name] || 0) + 1;
+    });
+  });
+  return Object.entries(counts).map(([name, count]) => ({ name, count }));
+}
+
+function buildNameGroups(nameCounts) {
+  const sorted = [...nameCounts].sort((a, b) => b.count - a.count);
+  const used = new Set();
+  const groups = [];
+  sorted.forEach(n => {
+    if (used.has(n.name)) return;
+    const group = [n];
+    used.add(n.name);
+    sorted.forEach(m => {
+      if (used.has(m.name) || m.name === n.name) return;
+      const dist = levenshtein(n.name.toLowerCase(), m.name.toLowerCase());
+      const maxLen = Math.max(n.name.length, m.name.length);
+      if (dist <= 2 && maxLen >= 4) {
+        group.push(m);
+        used.add(m.name);
+      }
+    });
+    groups.push(group);
+  });
+  return groups;
+}
+
+function prepareNameReview(games, errors, mode) {
+  pendingReviewGames = games;
+  pendingReviewErrors = errors;
+  pendingReviewMode = mode;
+
+  const nameCounts = collectPlayerNameCounts(games);
+  const groups = buildNameGroups(nameCounts);
+  const hasDuplicates = groups.some(g => g.length > 1);
+
+  if (!hasDuplicates) {
+    renderReport(games, errors, mode);
+    return;
+  }
+
+  renderNameReview(groups);
+}
+
+function renderNameReview(groups) {
+  let html = `
+  <div class="name-review-wrap">
+    <div class="name-review-title">⚠️ Review Player Names</div>
+    <div class="name-review-sub">We found names that might be the same player misspelled across different screenshots — this usually happens when one screenshot is slightly lower quality. Confirm or correct each name below before the final report is generated.</div>
+    <div id="nameReviewList">`;
+
+  groups.forEach((group, gi) => {
+    const isDupe = group.length > 1;
+    const suggested = group[0].name;
+    const namesAttr = JSON.stringify(group.map(g => g.name)).replace(/"/g, '&quot;');
+    if (isDupe) {
+      html += `
+      <div class="name-review-card dupe">
+        <div class="name-review-flag">⚠ Possible duplicate — found as ${group.length} different spellings</div>
+        <div class="name-review-variants">
+          ${group.map(g => `<span class="name-variant">${g.name}</span> <span class="variant-count">(${g.count} game${g.count!==1?'s':''})</span>`).join('<span class="variant-sep">·</span>')}
+        </div>
+        <div class="name-review-field">
+          <label>Use this name for all:</label>
+          <input type="text" class="name-review-input" id="nameFix_${gi}" data-original-names="${namesAttr}" value="${suggested}">
+        </div>
+      </div>`;
+    } else {
+      html += `
+      <div class="name-review-card">
+        <div class="name-review-variants">
+          <span class="name-variant">${group[0].name}</span> <span class="variant-count">(${group[0].count} game${group[0].count!==1?'s':''})</span>
+        </div>
+        <div class="name-review-field">
+          <label>Name:</label>
+          <input type="text" class="name-review-input" id="nameFix_${gi}" data-original-names="${namesAttr}" value="${group[0].name}">
+        </div>
+      </div>`;
+    }
+  });
+
+  html += `
+    </div>
+    <button class="name-review-btn" onclick="applyNameFixesAndRender()">Confirm Names &amp; Generate Report</button>
+  </div>`;
+
+  reportEl.innerHTML = html;
+  reportEl.style.display = 'block';
+  reportEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function applyNameFixesAndRender() {
+  const inputs = document.querySelectorAll('.name-review-input');
+  const mapping = {};
+  inputs.forEach(input => {
+    const originals = JSON.parse(input.getAttribute('data-original-names').replace(/&quot;/g, '"'));
+    const fixed = input.value.trim();
+    if (!fixed) return;
+    originals.forEach(orig => { mapping[orig] = fixed; });
+  });
+
+  const updatedGames = pendingReviewGames.map(g => ({
+    ...g,
+    redTeam: (g.redTeam || []).map(p => ({ ...p, name: mapping[p.name] || p.name })),
+    blueTeam: (g.blueTeam || []).map(p => ({ ...p, name: mapping[p.name] || p.name })),
+  }));
+
+  renderReport(updatedGames, pendingReviewErrors, pendingReviewMode);
+}
+
 function verifyWinner(game, mode) {
-  if (mode === '2v2') return game.winner; // Slayer only — trust kills
+  if (mode === '2v2') return game.winner;
   const gt = game.gameType || '';
   const red = game.redTeam || [];
   const blue = game.blueTeam || [];
@@ -690,7 +840,6 @@ function renderReport(games, errors, mode) {
   const topKiller = [...players].sort((a,b)=>b.kills-a.kills)[0];
   const bottomFragger = [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   const assistKing = [...players].sort((a,b)=>b.assists-a.assists)[0];
-  // OBJ MVP only for 4v4
   const objMVP = mode === '4v4' ? calcObjMVP(players, games) : null;
   const hasOddball = mode === '4v4' && games.some(g=>isOddball(g.gameType));
   const hasCTF = mode === '4v4' && games.some(g=>isCTF(g.gameType));
@@ -710,7 +859,6 @@ function renderReport(games, errors, mode) {
     return parts.join(' &nbsp;·&nbsp; ') || 'Objective contributor';
   }
 
-  // For 2v2 callouts are 3 in a row, for 4v4 use 2x2 grid
   const calloutHtml = mode === '2v2' ? `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2rem;">
       ${topKiller?`<div class="mvp-strip mvp-strip-gold"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D</div></div></div>`:''}
@@ -795,7 +943,6 @@ function renderReport(games, errors, mode) {
   document.getElementById('exportWrap').style.display = 'block';
   document.getElementById('shareBtnWrap').style.display = 'block';
   document.getElementById('lbBtnWrap').style.display = winner !== 0 ? 'block' : 'none';
-  // Update leaderboard button label based on mode
   const lbBtn = document.getElementById('lbBtn');
   lbBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> ${mode === '2v2' ? 'Add to 2v2 Leaderboard Stats' : 'Add to Leaderboard Stats'}`;
   window._lastGames = games;
@@ -867,7 +1014,6 @@ document.getElementById('copyBtn').addEventListener('click', () => {
   try {
     const games = await loadReport(id);
     if (!games) { reportEl.innerHTML='<div class="not-found-msg"><h2>Report not found</h2><p>This link may have expired — reports are stored for 90 days.</p></div>'; return; }
-    // Detect mode from game data — 2v2 has 2 players per team
     const detectedMode = games[0] && (games[0].redTeam||[]).length <= 2 ? '2v2' : '4v4';
     renderReport(games, [], detectedMode);
     document.getElementById('exportWrap').style.display='block';
