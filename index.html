@@ -135,7 +135,6 @@
   .color-tag-blue { background: var(--blue-dim); color: var(--blue); }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  /* Name review screen */
   .name-review-wrap { margin-top: 1rem; }
   .name-review-title { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.5rem; color: var(--gold); }
   .name-review-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.5; }
@@ -231,7 +230,6 @@
   </div>
 
   <div id="appContent" style="display:none">
-
     <div class="mode-select-wrap">
       <span class="mode-select-label">Select Series Type</span>
       <div class="mode-btns">
@@ -459,7 +457,7 @@ analyzeBtn.addEventListener('click', async () => {
 async function callClaude(b64, mediaType, gameNum, mode) {
   const teamSize = mode === '2v2' ? 2 : 4;
   const modeNote = mode === '2v2'
-    ? `This is a 2v2 SLAYER game. There are exactly 2 players per team. Score column = Kills for all Slayer games.`
+    ? `This is a 2v2 SLAYER game. There are exactly 2 players per team.`
     : `This is a 4v4 game.`;
 
   const response = await fetch(WORKER_URL + '/analyze', {
@@ -475,69 +473,98 @@ async function callClaude(b64, mediaType, gameNum, mode) {
           { type: 'text', text: `This is a Halo 3 MCC end-of-game scoreboard screenshot (game ${gameNum} in a series). ${modeNote}
 
 Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra text:
-{"gameType":"Slayer","winner":"Red","redTeam":[{"name":"xXPlayerXx","kills":12,"deaths":8,"assists":3,"ballTime":null,"flagCaps":null,"hillTime":null}],"blueTeam":[{"name":"AnotherPlayer","kills":9,"deaths":11,"assists":1,"ballTime":null,"flagCaps":null,"hillTime":null}]}
+{"gameType":"Slayer","winner":"Red","redTeam":[{"name":"xXPlayerXx","col1":15,"col2":16,"col3":9,"col4":13,"ballTime":null,"flagCaps":null,"hillTime":null}],"blueTeam":[{"name":"AnotherPlayer","col1":12,"col2":12,"col3":7,"col4":11,"ballTime":null,"flagCaps":null,"hillTime":null}]}
 
-STEP 1 — READ THE GAME TYPE FROM THE TITLE TEXT at the top of the scoreboard.
+STEP 1 — READ THE GAME TYPE from the title text at the top of the scoreboard. Store it exactly as written.
 
-STEP 2 — THE GOLDEN RULE: The scoreboard ALWAYS has 4 columns in this order: SCORE | KILLS | ASSISTS | DEATHS. Read every column by its header label, not its position.
+STEP 2 — READ THE FOUR STAT COLUMNS STRICTLY LEFT TO RIGHT BY POSITION:
+The scoreboard always has exactly 4 stat columns. Read them purely by their left-to-right position. Do NOT interpret what they mean — just read the numbers in order and store as col1, col2, col3, col4.
+col1 = the leftmost stat column (first number column after the player name)
+col2 = the second stat column
+col3 = the third stat column
+col4 = the rightmost stat column (always Deaths)
+This is critical: read ALL FOUR columns independently. Do not skip any column or combine any two columns.
 
-${mode === '2v2' ? `STEP 3 — 2v2 SLAYER RULES:
-This is always a Slayer game. Score column = Kills. There are exactly 2 players per team.
-Set ballTime, flagCaps, and hillTime to null for all players.` : `STEP 3 — IDENTIFY MODE AND MAP SCORE COLUMN:
-
-HARDCORE BALL / ODDBALL (title contains "BALL" or "ODDBALL"):
-Score column = Ball Time in SECONDS → store in ballTime. NEVER store in kills.
-ballTime must NEVER be null for these games.
-REAL EXAMPLE: Plague NYC: Score=71, Kills=21 → ballTime=71, kills=21
-
-HARDCORE KING / KING OF THE HILL (title contains "KING" or "HILL" or "KOTH"):
-Score column = Hill Time in SECONDS → store in hillTime. NEVER store in kills.
-hillTime must NEVER be null for these games.
-REAL EXAMPLE: Rights: Score=76, Kills=28 → hillTime=76, kills=28
-
-CTF / FLAG CAPS (title contains "30" OR "CTF" OR "FLAG" OR "5FLAG"):
-Score column = Flag Caps (small integer 0-5) → store in flagCaps. NEVER store in kills.
-REAL EXAMPLE: Score=3, Kills=11 → flagCaps=3, kills=11
-
-SLAYER / HARDCORE TS (title contains "SLAYER" or "TS", no "30", no "KING", no "BALL", no "CTF", no "FLAG"):
-KILLS = use the SCORE column value. In Hardcore TS, Score = net kills after betrayal deductions, which is the correct kill count. A player with 16 raw kills but 1 betrayal will show Score=15 — use 15 as their kills.
-ASSISTS = read from the column with header "ASSISTS". This is a separate column and will usually be a different number from Score.
-DEATHS = read from the column with header "DEATHS".
-COMPLETELY IGNORE the column with header "KILLS" in Slayer games — it includes betrayals and is not used.
-SELF-CHECK: After reading each player verify your assists value does NOT equal your Score/kills value. If they match for most players you have read the wrong column for assists — go back and read the ASSISTS header column specifically.`}
+STEP 3 — EXTRA FIELDS FOR OBJ GAME TYPES:
+For BALL/ODDBALL games: also copy col1 into ballTime field.
+For KING/HILL/KOTH games: also copy col1 into hillTime field.
+For CTF/FLAG/30/5FLAG games: also copy col1 into flagCaps field.
+For all other fields not relevant to this game type set to null.
 
 STEP 4 — READ TEAM COLORS:
 Every player row has a colored background.
 BLUE background rows → blueTeam array.
 RED background rows → redTeam array.
-The team at the TOP of the scoreboard is NOT always redTeam. Only use row background color.
+The team at the TOP is NOT always redTeam — only use row background color.
 
-STEP 5 — VERIFY THE WINNER USING SCORES:
-${mode === '2v2' ? 'For Slayer: team with more kills wins.' : `For CTF/"30" games: team with more flagCaps wins.
-For KOTH games: team with more hillTime wins.
-For BALL games: team with more ballTime wins.
-For Slayer/TS: team with more kills wins.`}
-Always verify winner from actual scores, not just the title banner.
+STEP 5 — VERIFY THE WINNER using the actual scores:
+For CTF/FLAG games: team with higher col1 total wins.
+For KOTH/KING games: team with higher col1 total wins.
+For BALL/ODDBALL games: team with higher col1 total wins.
+For Slayer/TS: team with higher col1 total wins.
+Always verify from actual column values, not just the title banner.
 
-PLAYER NAMES: TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this). Read each character carefully — letters like "l" (lowercase L), "i", and "1" can look similar; double check against the visual shape of each character rather than guessing.
+PLAYER NAMES: TOP line = clan tag (ignore). BOTTOM line = real gamertag (use this).
+Read each character carefully — letters like "l" (lowercase L), "i", and "1" can look similar.
 Never duplicate. ${teamSize}v${teamSize} = exactly ${teamSize} per team.
 
+Return fields:
 - gameType: exact title text
 - winner: "Red" or "Blue"
-- ballTime: ${mode === '2v2' ? 'always null for 2v2' : 'seconds integer for BALL/ODDBALL only'}
-- hillTime: ${mode === '2v2' ? 'always null for 2v2' : 'seconds integer for KING/HILL/KOTH only'}
-- flagCaps: ${mode === '2v2' ? 'always null for 2v2' : 'integer for CTF/"30"/"5FLAG" games only'}
-- kills: the KILLS column value` }
+- col1, col2, col3, col4: four stat column values read strictly left to right
+- ballTime: same as col1 for BALL/ODDBALL games only, else null
+- hillTime: same as col1 for KING/HILL/KOTH games only, else null
+- flagCaps: same as col1 for CTF/FLAG/30/5FLAG games only, else null` }
         ]
       }]
     })
   });
+
   if (!response.ok) { const t = await response.text().catch(() => ''); throw new Error(`API error ${response.status}: ${t.slice(0,200)}`); }
   const data = await response.json();
   const raw = (data.content || []).map(c => c.text || '').join('').trim();
   const cleaned = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
   let parsed;
   try { parsed = JSON.parse(cleaned); } catch(e) { throw new Error(`Could not parse response: ${raw.slice(0,200)}`); }
+
+  // ── Remap raw columns → correct stat fields based on game type ──────────
+  // Claude reads columns left to right as col1/col2/col3/col4.
+  // JavaScript handles the game-type-specific meaning of each column.
+  //
+  // All game types:   col1=Score/OBJ  col2=Kills  col3=Assists  col4=Deaths
+  // Slayer special:   col1=Score(net kills, betrayals deducted) — use as kills
+  //                   col2=Raw kills (includes betrayals) — IGNORED
+  //                   col3=Assists  col4=Deaths
+  const gt = (parsed.gameType || '').toLowerCase();
+  const isSlayer = !gt.match(/oddball|ball|king|hill|koth|ctf|flag|30|5flag/);
+  const isBall   = !!gt.match(/oddball|ball/);
+  const isCTF    = !!gt.match(/ctf|flag|30|5flag/);
+  const isKOTH   = !!gt.match(/king|hill|koth/);
+
+  const remapPlayer = (p) => {
+    const c1 = p.col1 ?? 0;
+    const c2 = p.col2 ?? 0;
+    const c3 = p.col3 ?? 0;
+    const c4 = p.col4 ?? 0;
+    if (isSlayer) {
+      // col1=Score(net kills)  col2=raw kills(ignored)  col3=assists  col4=deaths
+      return { ...p, kills: c1, assists: c3, deaths: c4 };
+    } else if (isCTF) {
+      // col1=flagCaps  col2=kills  col3=assists  col4=deaths
+      return { ...p, flagCaps: c1, kills: c2, assists: c3, deaths: c4 };
+    } else if (isKOTH) {
+      // col1=hillTime  col2=kills  col3=assists  col4=deaths
+      return { ...p, hillTime: c1, kills: c2, assists: c3, deaths: c4 };
+    } else if (isBall) {
+      // col1=ballTime  col2=kills  col3=assists  col4=deaths
+      return { ...p, ballTime: c1, kills: c2, assists: c3, deaths: c4 };
+    }
+    return p;
+  };
+
+  if (parsed.redTeam) parsed.redTeam = parsed.redTeam.map(remapPlayer);
+  if (parsed.blueTeam) parsed.blueTeam = parsed.blueTeam.map(remapPlayer);
+
   return parsed;
 }
 
@@ -560,18 +587,17 @@ function kdClass(k,d) { const r=d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg
 function pm(k,d) { const v=(k||0)-(d||0); return (v>0?'+':'')+v; }
 function pmClass(k,d) { const v=(k||0)-(d||0); return v>0?'pm-pos':v<0?'pm-neg':'pm-zero'; }
 function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|ball/); }
-function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30/); }
+function isCTF(gt) { return !!(gt||'').toLowerCase().match(/ctf|flag|30|5flag/); }
 function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
 
-// ── Name Review (catches likely OCR misspellings before stats are calculated) ──
+// ── Name Review ────────────────────────────────────────────────────────────
 let pendingReviewGames = null;
 let pendingReviewErrors = null;
 let pendingReviewMode = null;
 
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
-  if (m === 0) return n;
-  if (n === 0) return m;
+  if (m === 0) return n; if (n === 0) return m;
   const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
@@ -607,10 +633,7 @@ function buildNameGroups(nameCounts) {
       if (used.has(m.name) || m.name === n.name) return;
       const dist = levenshtein(n.name.toLowerCase(), m.name.toLowerCase());
       const maxLen = Math.max(n.name.length, m.name.length);
-      if (dist <= 2 && maxLen >= 4) {
-        group.push(m);
-        used.add(m.name);
-      }
+      if (dist <= 2 && maxLen >= 4) { group.push(m); used.add(m.name); }
     });
     groups.push(group);
   });
@@ -621,16 +644,10 @@ function prepareNameReview(games, errors, mode) {
   pendingReviewGames = games;
   pendingReviewErrors = errors;
   pendingReviewMode = mode;
-
   const nameCounts = collectPlayerNameCounts(games);
   const groups = buildNameGroups(nameCounts);
   const hasDuplicates = groups.some(g => g.length > 1);
-
-  if (!hasDuplicates) {
-    renderReport(games, errors, mode);
-    return;
-  }
-
+  if (!hasDuplicates) { renderReport(games, errors, mode); return; }
   renderNameReview(groups);
 }
 
@@ -638,31 +655,24 @@ function renderNameReview(groups) {
   let html = `
   <div class="name-review-wrap">
     <div class="name-review-title">⚠️ Review Player Names</div>
-    <div class="name-review-sub">We found names that might be the same player misspelled across different screenshots — this usually happens when one screenshot is slightly lower quality. Confirm or correct each name below before the final report is generated.</div>
+    <div class="name-review-sub">We found names that might be the same player misspelled across different screenshots. Confirm or correct each name below before the report is generated.</div>
     <div id="nameReviewList">`;
-
   groups.forEach((group, gi) => {
     const isDupe = group.length > 1;
     const suggested = group[0].name;
     const namesAttr = JSON.stringify(group.map(g => g.name)).replace(/"/g, '&quot;');
     if (isDupe) {
-      html += `
-      <div class="name-review-card dupe">
+      html += `<div class="name-review-card dupe">
         <div class="name-review-flag">⚠ Possible duplicate — found as ${group.length} different spellings</div>
-        <div class="name-review-variants">
-          ${group.map(g => `<span class="name-variant">${g.name}</span> <span class="variant-count">(${g.count} game${g.count!==1?'s':''})</span>`).join('<span class="variant-sep">·</span>')}
-        </div>
+        <div class="name-review-variants">${group.map(g => `<span class="name-variant">${g.name}</span> <span class="variant-count">(${g.count} game${g.count!==1?'s':''})</span>`).join('<span class="variant-sep">·</span>')}</div>
         <div class="name-review-field">
           <label>Use this name for all:</label>
           <input type="text" class="name-review-input" id="nameFix_${gi}" data-original-names="${namesAttr}" value="${suggested}">
         </div>
       </div>`;
     } else {
-      html += `
-      <div class="name-review-card">
-        <div class="name-review-variants">
-          <span class="name-variant">${group[0].name}</span> <span class="variant-count">(${group[0].count} game${group[0].count!==1?'s':''})</span>
-        </div>
+      html += `<div class="name-review-card">
+        <div class="name-review-variants"><span class="name-variant">${group[0].name}</span> <span class="variant-count">(${group[0].count} game${group[0].count!==1?'s':''})</span></div>
         <div class="name-review-field">
           <label>Name:</label>
           <input type="text" class="name-review-input" id="nameFix_${gi}" data-original-names="${namesAttr}" value="${group[0].name}">
@@ -670,12 +680,7 @@ function renderNameReview(groups) {
       </div>`;
     }
   });
-
-  html += `
-    </div>
-    <button class="name-review-btn" onclick="applyNameFixesAndRender()">Confirm Names &amp; Generate Report</button>
-  </div>`;
-
+  html += `</div><button class="name-review-btn" onclick="applyNameFixesAndRender()">Confirm Names &amp; Generate Report</button></div>`;
   reportEl.innerHTML = html;
   reportEl.style.display = 'block';
   reportEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -690,13 +695,11 @@ function applyNameFixesAndRender() {
     if (!fixed) return;
     originals.forEach(orig => { mapping[orig] = fixed; });
   });
-
   const updatedGames = pendingReviewGames.map(g => ({
     ...g,
     redTeam: (g.redTeam || []).map(p => ({ ...p, name: mapping[p.name] || p.name })),
     blueTeam: (g.blueTeam || []).map(p => ({ ...p, name: mapping[p.name] || p.name })),
   }));
-
   renderReport(updatedGames, pendingReviewErrors, pendingReviewMode);
 }
 
@@ -706,20 +709,24 @@ function verifyWinner(game, mode) {
   const red = game.redTeam || [];
   const blue = game.blueTeam || [];
   if (isCTF(gt)) {
-    const redCaps = red.reduce((s,p) => s+(p.flagCaps||0), 0);
-    const blueCaps = blue.reduce((s,p) => s+(p.flagCaps||0), 0);
-    if (redCaps !== blueCaps) return redCaps > blueCaps ? 'Red' : 'Blue';
+    const r = red.reduce((s,p)=>s+(p.flagCaps||0),0);
+    const b = blue.reduce((s,p)=>s+(p.flagCaps||0),0);
+    if (r !== b) return r > b ? 'Red' : 'Blue';
   }
   if (isKOTH(gt)) {
-    const redHill = red.reduce((s,p) => s+parseTimeSecs(p.hillTime), 0);
-    const blueHill = blue.reduce((s,p) => s+parseTimeSecs(p.hillTime), 0);
-    if (redHill !== blueHill) return redHill > blueHill ? 'Red' : 'Blue';
+    const r = red.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);
+    const b = blue.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);
+    if (r !== b) return r > b ? 'Red' : 'Blue';
   }
   if (isOddball(gt)) {
-    const redBall = red.reduce((s,p) => s+parseTimeSecs(p.ballTime), 0);
-    const blueBall = blue.reduce((s,p) => s+parseTimeSecs(p.ballTime), 0);
-    if (redBall !== blueBall) return redBall > blueBall ? 'Red' : 'Blue';
+    const r = red.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);
+    const b = blue.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);
+    if (r !== b) return r > b ? 'Red' : 'Blue';
   }
+  // Slayer: compare kills
+  const rk = red.reduce((s,p)=>s+(p.kills||0),0);
+  const bk = blue.reduce((s,p)=>s+(p.kills||0),0);
+  if (rk !== bk) return rk > bk ? 'Red' : 'Blue';
   return game.winner;
 }
 
@@ -821,9 +828,9 @@ function renderReport(games, errors, mode) {
   games.forEach(g => {
     const wt = g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
     if (wt.length>0) {
-      let s1Votes=0, s2Votes=0;
-      wt.forEach(p => { if (getSquad(p.name,squad1,squad2)===1) s1Votes++; else s2Votes++; });
-      if (s1Votes > s2Votes) s1Wins++; else s2Wins++;
+      let s1v=0, s2v=0;
+      wt.forEach(p => { if (getSquad(p.name,squad1,squad2)===1) s1v++; else s2v++; });
+      if (s1v > s2v) s1Wins++; else s2Wins++;
     }
   });
   const winner = s1Wins>s2Wins?1:s2Wins>s1Wins?2:0;
@@ -922,9 +929,9 @@ function renderReport(games, errors, mode) {
   games.forEach(g => {
     const gOdd=isOddball(g.gameType)&&mode==='4v4', gCTF=isCTF(g.gameType)&&mode==='4v4', gKOTH=isKOTH(g.gameType)&&mode==='4v4';
     const wt = g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
-    let ws1Votes=0, ws2Votes=0;
-    wt.forEach(p => { if (getSquad(p.name,squad1,squad2)===1) ws1Votes++; else ws2Votes++; });
-    const ws = ws1Votes >= ws2Votes ? 1 : 2;
+    let ws1=0, ws2=0;
+    wt.forEach(p => { if (getSquad(p.name,squad1,squad2)===1) ws1++; else ws2++; });
+    const ws = ws1 >= ws2 ? 1 : 2;
     const redNames = new Set((g.redTeam||[]).map(p=>p.name));
     html += `<div class="game-card"><div class="game-card-header"><div class="game-card-title">Game ${g.gameNumber} &mdash; ${g.gameType||'Unknown'}</div><div class="game-win-badge badge-s${ws}">Squad ${ws} Wins</div></div><table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}</tr></thead><tbody>`;
     [1,2].forEach(sq => {
