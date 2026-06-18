@@ -500,7 +500,8 @@ Score column = Flag Caps (small integer 0-5) → store in flagCaps. NEVER store 
 REAL EXAMPLE: Score=3, Kills=11 → flagCaps=3, kills=11
 
 SLAYER / HARDCORE TS (title contains "SLAYER" or "TS", no "30", no "KING", no "BALL", no "CTF", no "FLAG"):
-Score column = Kills. Use the Kills column value.`}
+Score column = Kills. Use the Kills column value.
+CRITICAL WARNING FOR SLAYER: In Slayer games, SCORE and KILLS are the same number. This means you will see two columns with identical values side by side. Do NOT use the KILLS column value as ASSISTS. You must read the ASSISTS column using its header label — it will be a DIFFERENT number from the Score and Kills columns. The four columns are always SCORE | KILLS | ASSISTS | DEATHS and each must be read independently by its header, never by position.`}
 
 STEP 4 — READ TEAM COLORS:
 Every player row has a colored background.
