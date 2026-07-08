@@ -572,10 +572,28 @@ function applyNameFixesAndRender() {
 function verifyWinner(game, mode) {
   if(mode==='2v2')return game.winner;
   const gt=game.gameType||''; const red=game.redTeam||[]; const blue=game.blueTeam||[];
-  if(isCTF(gt)){const r=red.reduce((s,p)=>s+(p.flagCaps||0),0),b=blue.reduce((s,p)=>s+(p.flagCaps||0),0);if(r!==b)return r>b?'Red':'Blue';}
-  if(isKOTH(gt)){const r=red.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);if(r!==b)return r>b?'Red':'Blue';}
-  if(isOddball(gt)){const r=red.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);if(r!==b)return r>b?'Red':'Blue';}
-  const rk=red.reduce((s,p)=>s+(p.kills||0),0),bk=blue.reduce((s,p)=>s+(p.kills||0),0);if(rk!==bk)return rk>bk?'Red':'Blue';
+
+  if(isCTF(gt)){
+    const r=red.reduce((s,p)=>s+(p.flagCaps||0),0),b=blue.reduce((s,p)=>s+(p.flagCaps||0),0);
+    if(r!==b)return r>b?'Red':'Blue';
+    return 'Tie';
+  }
+
+  if(isKOTH(gt)){
+    const r=red.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);
+    if(r!==b)return r>b?'Red':'Blue';
+    return 'Tie';
+  }
+
+  if(isOddball(gt)){
+    const r=red.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);
+    if(r!==b)return r>b?'Red':'Blue';
+    return 'Tie';
+  }
+
+  // Slayer — compare kills, tie if equal
+  const rk=red.reduce((s,p)=>s+(p.kills||0),0),bk=blue.reduce((s,p)=>s+(p.kills||0),0);
+  if(rk!==bk)return rk>bk?'Red':'Blue';
   return game.winner;
 }
 
