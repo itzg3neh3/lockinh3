@@ -968,6 +968,7 @@ document.getElementById('copyBtn').addEventListener('click',()=>{
     document.getElementById('exportWrap').style.display='block';
     document.getElementById('shareBtnWrap').style.display='none';
     document.getElementById('lbBtnWrap').style.display='none';
+    document.querySelectorAll('.edit-stats-btn').forEach(b=>b.style.display='none');
   }catch(err){reportEl.innerHTML='<div class="not-found-msg"><h2>Could not load report</h2><p>'+err.message+'</p></div>';}
 })();
 </script>
