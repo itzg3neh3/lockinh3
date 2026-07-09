@@ -101,11 +101,13 @@
   .mvp-stats { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-  .stat-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; }
-  table { width: 100%; border-collapse: collapse; }
-  thead th { padding: 10px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); }
+  /* ── Mobile-scrollable table wrapper ── */
+  .stat-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; margin-bottom: 2rem; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; min-width: 520px; }
+  .game-card table { min-width: 520px; }
+  thead th { padding: 10px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
   thead th:not(:first-child) { text-align: center; }
-  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; white-space: nowrap; }
   tbody td:not(:first-child) { text-align: center; }
   tbody tr:last-child td { border-bottom: none; }
   .team-divider td { padding: 7px 14px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
@@ -122,6 +124,8 @@
   .pm-zero { color: var(--muted); }
   .games-grid { display: flex; flex-direction: column; gap: 1rem; }
   .game-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  /* game card inner table needs its own scroll wrapper */
+  .game-card-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .game-card-header { padding: 12px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .game-card-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
   .game-win-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 12px; border-radius: 4px; }
@@ -156,7 +160,6 @@
   .stat-editor-modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 820px; margin: auto; }
   .stat-editor-title { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
   .stat-editor-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.25rem; line-height: 1.5; }
-  /* Team sections inside editor */
   .se-team-section { margin-bottom: 1.25rem; }
   .se-team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
   .se-team-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
@@ -166,30 +169,21 @@
   .se-add-player-btn:hover { color: var(--green); border-color: var(--green); }
   .se-player-row { display: grid; gap: 6px; align-items: center; margin-bottom: 6px; padding: 8px 10px; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border); }
   .se-player-row-4v4 { grid-template-columns: 1fr 1fr 52px 52px 52px auto; }
-  .se-player-row-2v2 { grid-template-columns: 1fr 1fr 52px 52px 52px auto; }
   .se-player-row-obj { grid-template-columns: 1fr 1fr 52px 52px 52px 52px auto; }
   .se-field-group { display: flex; flex-direction: column; gap: 3px; }
   .se-field-label { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
   .se-input { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 4px; padding: 5px 6px; color: var(--text); font-size: 13px; text-align: center; outline: none; transition: border-color 0.15s; }
   .se-input:focus { border-color: var(--accent); }
   .se-name-input { text-align: left; padding: 5px 8px; }
-  .se-squad-toggle { display: flex; flex-direction: column; gap: 3px; }
-  .se-squad-toggle-label { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
   .se-squad-select { background: var(--bg); border: 1px solid var(--border2); border-radius: 4px; padding: 5px 6px; color: var(--text); font-size: 12px; outline: none; cursor: pointer; width: 100%; }
   .se-squad-select:focus { border-color: var(--accent); }
   .se-remove-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 4px; line-height: 1; transition: color 0.15s; align-self: center; margin-top: 14px; }
   .se-remove-btn:hover { color: var(--red); }
-  .se-col-headers { display: grid; gap: 6px; padding: 0 10px; margin-bottom: 4px; }
-  .se-col-headers-4v4 { grid-template-columns: 1fr 1fr 52px 52px 52px auto; }
-  .se-col-headers-obj { grid-template-columns: 1fr 1fr 52px 52px 52px 52px auto; }
-  .se-col-header { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); text-align: center; }
-  .se-col-header:first-child { text-align: left; }
   .stat-editor-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
   .stat-editor-cancel { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 9px 18px; cursor: pointer; transition: all 0.15s; }
   .stat-editor-cancel:hover { color: var(--text); }
   .stat-editor-save { padding: 9px 24px; background: var(--green); color: #000; border: none; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: background 0.15s; }
   .stat-editor-save:hover { background: #86efac; }
-  /* Buttons */
   .export-btn-wrap { margin-top: 1.5rem; display: none; }
   .export-btn { width: 100%; padding: 13px; background: transparent; color: var(--accent); border: 1.5px solid var(--accent); border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 10px; }
   .export-btn:hover { background: var(--accent-dim); }
@@ -218,7 +212,14 @@
   .print-header { display: none; text-align: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #185FA5; }
   .print-header-logo { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #185FA5; }
   .print-header-date { font-size: 12px; color: #555; margin-top: 4px; }
-  @media (max-width: 600px) { .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; } .team-wins { font-size: 38px; } thead th, tbody td { padding: 8px 10px; font-size: 12px; } .callouts-grid { grid-template-columns: 1fr; } .pw-row { flex-direction: column; } .mode-btns { flex-direction: column; } .se-player-row-4v4, .se-player-row-obj { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) {
+    .series-score { grid-template-columns: 1fr auto 1fr; gap: 0.5rem; }
+    .team-wins { font-size: 38px; }
+    .callouts-grid { grid-template-columns: 1fr; }
+    .pw-row { flex-direction: column; }
+    .mode-btns { flex-direction: column; }
+    .se-player-row-4v4, .se-player-row-obj { grid-template-columns: 1fr 1fr; }
+  }
   @media print {
     body { background: #fff !important; color: #111 !important; font-size: 12px; }
     body::before { display: none; }
@@ -227,6 +228,8 @@
     .container { max-width: 100%; padding: 0 1rem; }
     :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --blue: #185FA5; --blue-dim: #e6f1fb; --blue-border: rgba(24,95,165,0.3); --green: #1a7a3a; --gold: #b8860b; --s1: #6d28d9; --s1-dim: #f3f0ff; --s1-border: rgba(109,40,217,0.3); --s2: #c2410c; --s2-dim: #fff7ed; --s2-border: rgba(194,65,12,0.3); }
     .report-title { font-size: 22px; } .team-wins { font-size: 36px; }
+    .stat-table-wrap { overflow-x: visible !important; }
+    .game-card-table-wrap { overflow-x: visible !important; }
     .stat-table-wrap, .game-card { border: 1px solid #ccc !important; break-inside: avoid; }
     .game-card { margin-bottom: 1rem; page-break-inside: avoid; }
     thead th { background: #ebebeb !important; color: #555 !important; }
@@ -336,108 +339,101 @@ if (appUnlocked) showApp();
 
 function setMode(mode) {
   currentMode = mode;
-  document.getElementById('modeBtn4v4').className = 'mode-btn' + (mode === '4v4' ? ' active-4v4' : '');
-  document.getElementById('modeBtn2v2').className = 'mode-btn' + (mode === '2v2' ? ' active-2v2' : '');
-  document.getElementById('uploadTitle').textContent = mode === '2v2' ? 'Drop 2v2 scoreboard screenshots here' : 'Drop 4v4 scoreboard screenshots here';
-  files = []; renderList();
-  document.getElementById('analyzeBtn').disabled = true;
-  document.getElementById('report').style.display = 'none';
-  document.getElementById('lbBtnWrap').style.display = 'none';
-  document.getElementById('exportWrap').style.display = 'none';
-  document.getElementById('shareBtnWrap').style.display = 'none';
-  document.getElementById('lbBtnLabel').textContent = mode === '2v2' ? 'Add to 2v2 Leaderboard Stats' : 'Add to Leaderboard Stats';
+  document.getElementById('modeBtn4v4').className = 'mode-btn' + (mode==='4v4'?' active-4v4':'');
+  document.getElementById('modeBtn2v2').className = 'mode-btn' + (mode==='2v2'?' active-2v2':'');
+  document.getElementById('uploadTitle').textContent = mode==='2v2' ? 'Drop 2v2 scoreboard screenshots here' : 'Drop 4v4 scoreboard screenshots here';
+  files=[]; renderList();
+  document.getElementById('analyzeBtn').disabled=true;
+  document.getElementById('report').style.display='none';
+  document.getElementById('lbBtnWrap').style.display='none';
+  document.getElementById('exportWrap').style.display='none';
+  document.getElementById('shareBtnWrap').style.display='none';
+  document.getElementById('lbBtnLabel').textContent = mode==='2v2' ? 'Add to 2v2 Leaderboard Stats' : 'Add to Leaderboard Stats';
 }
 
 async function checkPassword() {
-  const input = document.getElementById('pwInput');
-  const errEl = document.getElementById('pwError');
-  errEl.style.display = 'none'; input.classList.remove('error');
+  const input=document.getElementById('pwInput'), errEl=document.getElementById('pwError');
+  errEl.style.display='none'; input.classList.remove('error');
   try {
-    const resp = await fetch(WORKER_URL + '/app/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: input.value }) });
-    const result = await resp.json();
-    if (result.token) { sessionStorage.setItem('mcc_app_token', result.token); appUnlocked = true; input.value = ''; showApp(); }
-    else { input.classList.add('error'); errEl.style.display = 'block'; input.value = ''; setTimeout(() => { input.classList.remove('error'); errEl.style.display = 'none'; }, 3000); }
-  } catch(e) { input.classList.add('error'); errEl.textContent = 'Connection error — try again'; errEl.style.display = 'block'; input.value = ''; }
+    const resp=await fetch(WORKER_URL+'/app/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:input.value})});
+    const result=await resp.json();
+    if(result.token){sessionStorage.setItem('mcc_app_token',result.token);appUnlocked=true;input.value='';showApp();}
+    else{input.classList.add('error');errEl.style.display='block';input.value='';setTimeout(()=>{input.classList.remove('error');errEl.style.display='none';},3000);}
+  }catch(e){input.classList.add('error');errEl.textContent='Connection error — try again';errEl.style.display='block';input.value='';}
 }
 
-function showApp() { document.getElementById('pwGate').style.display = 'none'; document.getElementById('pwBadge').style.display = 'flex'; document.getElementById('appContent').style.display = 'block'; }
-function lockApp() { sessionStorage.removeItem('mcc_app_token'); appUnlocked = false; document.getElementById('pwGate').style.display = 'block'; document.getElementById('pwBadge').style.display = 'none'; document.getElementById('appContent').style.display = 'none'; document.getElementById('pwInput').value = ''; }
+function showApp(){document.getElementById('pwGate').style.display='none';document.getElementById('pwBadge').style.display='flex';document.getElementById('appContent').style.display='block';}
+function lockApp(){sessionStorage.removeItem('mcc_app_token');appUnlocked=false;document.getElementById('pwGate').style.display='block';document.getElementById('pwBadge').style.display='none';document.getElementById('appContent').style.display='none';document.getElementById('pwInput').value='';}
 
-const fileInput = document.getElementById('fileInput');
-const dropZone = document.getElementById('dropZone');
-const fileListEl = document.getElementById('fileList');
-const analyzeBtn = document.getElementById('analyzeBtn');
-const progressWrap = document.getElementById('progressWrap');
-const progressFill = document.getElementById('progressFill');
-const progressText = document.getElementById('progressText');
-const errorBox = document.getElementById('errorBox');
-const reportEl = document.getElementById('report');
-let files = [];
+const fileInput=document.getElementById('fileInput');
+const dropZone=document.getElementById('dropZone');
+const fileListEl=document.getElementById('fileList');
+const analyzeBtn=document.getElementById('analyzeBtn');
+const progressWrap=document.getElementById('progressWrap');
+const progressFill=document.getElementById('progressFill');
+const progressText=document.getElementById('progressText');
+const errorBox=document.getElementById('errorBox');
+const reportEl=document.getElementById('report');
+let files=[];
 
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
-fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value = ''; });
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag');handleFiles(e.dataTransfer.files);});
+fileInput.addEventListener('change',e=>{handleFiles(e.target.files);fileInput.value='';});
 
-function handleFiles(incoming) {
-  for (const f of incoming) { if (!files.find(x => x.name === f.name && x.size === f.size)) files.push(f); }
-  renderList(); analyzeBtn.disabled = files.length === 0;
+function handleFiles(incoming){
+  for(const f of incoming){if(!files.find(x=>x.name===f.name&&x.size===f.size))files.push(f);}
+  renderList();analyzeBtn.disabled=files.length===0;
 }
 
-function renderList() {
-  fileListEl.innerHTML = '';
-  files.forEach((f, i) => {
-    const item = document.createElement('div'); item.className = 'file-item';
-    const thumb = document.createElement('img'); thumb.className = 'file-thumb'; thumb.src = URL.createObjectURL(f);
-    const info = document.createElement('div'); info.className = 'file-info';
-    info.innerHTML = `<div class="file-name">${f.name}</div><div class="file-meta">${(f.size/1024).toFixed(0)} KB</div>`;
-    const badge = document.createElement('div'); badge.className = 'file-game-badge'; badge.textContent = `Game ${i+1}`;
-    const rm = document.createElement('button'); rm.className = 'file-remove'; rm.textContent = '×';
-    rm.onclick = e => { e.stopPropagation(); files.splice(i,1); renderList(); analyzeBtn.disabled = files.length === 0; };
-    item.append(thumb, info, badge, rm); fileListEl.appendChild(item);
+function renderList(){
+  fileListEl.innerHTML='';
+  files.forEach((f,i)=>{
+    const item=document.createElement('div');item.className='file-item';
+    const thumb=document.createElement('img');thumb.className='file-thumb';thumb.src=URL.createObjectURL(f);
+    const info=document.createElement('div');info.className='file-info';
+    info.innerHTML=`<div class="file-name">${f.name}</div><div class="file-meta">${(f.size/1024).toFixed(0)} KB</div>`;
+    const badge=document.createElement('div');badge.className='file-game-badge';badge.textContent=`Game ${i+1}`;
+    const rm=document.createElement('button');rm.className='file-remove';rm.textContent='×';
+    rm.onclick=e=>{e.stopPropagation();files.splice(i,1);renderList();analyzeBtn.disabled=files.length===0;};
+    item.append(thumb,info,badge,rm);fileListEl.appendChild(item);
   });
 }
 
-function toBase64(file) {
-  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
-}
+function toBase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
 
-analyzeBtn.addEventListener('click', async () => {
-  if (!appUnlocked || !files.length) return;
-  errorBox.style.display = 'none'; reportEl.style.display = 'none'; reportEl.innerHTML = '';
-  document.getElementById('lbBtnWrap').style.display = 'none';
-  const lbBtn = document.getElementById('lbBtn'); const lbForceBtn = document.getElementById('lbForceBtn');
-  lbBtn.className = 'lb-btn'; lbBtn.disabled = false; lbForceBtn.style.display = 'none';
-  analyzeBtn.disabled = true; analyzeBtn.innerHTML = '<span class="spinner"></span>Analyzing...';
-  progressWrap.style.display = 'block'; setProgress(0, 'Starting analysis...');
-  const results = [], errors = [];
-  for (let i = 0; i < files.length; i++) {
-    setProgress(Math.round((i / files.length) * 90), `Analyzing game ${i+1} of ${files.length}...`);
-    try { const b64 = await toBase64(files[i]); const data = await callClaude(b64, files[i].type || 'image/jpeg', i+1, currentMode); results.push({...data, gameNumber: i+1}); }
-    catch(err) { errors.push({ gameNumber: i+1, message: err.message }); }
+analyzeBtn.addEventListener('click',async()=>{
+  if(!appUnlocked||!files.length)return;
+  errorBox.style.display='none';reportEl.style.display='none';reportEl.innerHTML='';
+  document.getElementById('lbBtnWrap').style.display='none';
+  const lbBtn=document.getElementById('lbBtn'),lbForceBtn=document.getElementById('lbForceBtn');
+  lbBtn.className='lb-btn';lbBtn.disabled=false;lbForceBtn.style.display='none';
+  analyzeBtn.disabled=true;analyzeBtn.innerHTML='<span class="spinner"></span>Analyzing...';
+  progressWrap.style.display='block';setProgress(0,'Starting analysis...');
+  const results=[],errors=[];
+  for(let i=0;i<files.length;i++){
+    setProgress(Math.round((i/files.length)*90),`Analyzing game ${i+1} of ${files.length}...`);
+    try{const b64=await toBase64(files[i]);const data=await callClaude(b64,files[i].type||'image/jpeg',i+1,currentMode);results.push({...data,gameNumber:i+1});}
+    catch(err){errors.push({gameNumber:i+1,message:err.message});}
   }
-  setProgress(100, 'Building report...');
-  setTimeout(() => {
-    progressWrap.style.display = 'none'; analyzeBtn.innerHTML = 'Analyze Series'; analyzeBtn.disabled = false;
-    if (!results.length) { showError('Could not analyze any screenshots.\n\nErrors:\n' + errors.map(e=>`Game ${e.gameNumber}: ${e.message}`).join('\n')); return; }
-    prepareNameReview(results, errors, currentMode);
-  }, 400);
+  setProgress(100,'Building report...');
+  setTimeout(()=>{
+    progressWrap.style.display='none';analyzeBtn.innerHTML='Analyze Series';analyzeBtn.disabled=false;
+    if(!results.length){showError('Could not analyze any screenshots.\n\nErrors:\n'+errors.map(e=>`Game ${e.gameNumber}: ${e.message}`).join('\n'));return;}
+    prepareNameReview(results,errors,currentMode);
+  },400);
 });
 
-async function callClaude(b64, mediaType, gameNum, mode) {
-  const teamSize = mode === '2v2' ? 2 : 4;
-  const modeNote = mode === '2v2' ? 'This is a 2v2 SLAYER game. Exactly 2 players per team.' : 'This is a 4v4 game.';
-  const response = await fetch(WORKER_URL + '/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-opus-4-5',
-      max_tokens: 1500,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
-          { type: 'text', text: `This is a Halo 3 MCC end-of-game scoreboard screenshot (game ${gameNum}). ${modeNote}
+async function callClaude(b64,mediaType,gameNum,mode){
+  const teamSize=mode==='2v2'?2:4;
+  const modeNote=mode==='2v2'?'This is a 2v2 SLAYER game. Exactly 2 players per team.':'This is a 4v4 game.';
+  const response=await fetch(WORKER_URL+'/analyze',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-opus-4-5',max_tokens:1500,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
+        {type:'text',text:`This is a Halo 3 MCC end-of-game scoreboard screenshot (game ${gameNum}). ${modeNote}
 
 Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra text:
 {"gameType":"Hardcore TS","winner":"Red","redTeam":[{"name":"PlayerName","col1":15,"col2":16,"col3":9,"col4":13,"ballTime":null,"flagCaps":null,"hillTime":null}],"blueTeam":[{"name":"OtherPlayer","col1":12,"col2":12,"col3":7,"col4":11,"ballTime":null,"flagCaps":null,"hillTime":null}]}
@@ -445,10 +441,7 @@ Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra te
 STEP 1 — READ GAME TYPE from the title at the top exactly as written.
 
 STEP 2 — READ FOUR STAT COLUMNS LEFT TO RIGHT BY POSITION ONLY:
-col1 = 1st stat column (leftmost)
-col2 = 2nd stat column
-col3 = 3rd stat column
-col4 = 4th stat column (rightmost, always Deaths)
+col1=1st stat column, col2=2nd, col3=3rd, col4=4th (rightmost, always Deaths).
 Read all four independently. Do NOT skip or repeat any column.
 
 STEP 3 — OBJ EXTRA FIELDS:
@@ -457,176 +450,169 @@ KING/HILL/KOTH: copy col1 into hillTime.
 CTF/FLAG/30/5FLAG: copy col1 into flagCaps.
 All other fields not relevant: set null.
 
-STEP 4 — TEAM COLORS — critical, read carefully:
-Look at the background color of EACH player row individually.
+STEP 4 — TEAM COLORS — read each row's background color individually:
 BLUE background = blueTeam. RED background = redTeam.
-The two teams MUST have different players. redTeam and blueTeam must NEVER contain the same player names.
-Double-check: if any name appears in both arrays, you have made an error — reassign based on row color.
+redTeam and blueTeam must NEVER contain the same player names.
 
 STEP 5 — VERIFY WINNER from col1 totals per team.
 
-PLAYER NAMES: Bottom line = gamertag (use this). Top line = clan tag (ignore).
-${teamSize}v${teamSize} = exactly ${teamSize} players per team, no duplicates across teams.` }
-        ]
-      }]
+PLAYER NAMES: Bottom line=gamertag (use this). Top line=clan tag (ignore).
+${teamSize}v${teamSize} = exactly ${teamSize} players per team, no duplicates across teams.`}
+      ]}]
     })
   });
-
-  if (!response.ok) { const t = await response.text().catch(()=>''); throw new Error(`API error ${response.status}: ${t.slice(0,200)}`); }
-  const data = await response.json();
-  const raw = (data.content || []).map(c => c.text || '').join('').trim();
-  const cleaned = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+  if(!response.ok){const t=await response.text().catch(()=>'');throw new Error(`API error ${response.status}: ${t.slice(0,200)}`);}
+  const data=await response.json();
+  const raw=(data.content||[]).map(c=>c.text||'').join('').trim();
+  const cleaned=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
   let parsed;
-  try { parsed = JSON.parse(cleaned); } catch(e) { throw new Error(`Could not parse response: ${raw.slice(0,200)}`); }
+  try{parsed=JSON.parse(cleaned);}catch(e){throw new Error(`Could not parse response: ${raw.slice(0,200)}`);}
 
-  const gt = (parsed.gameType || '').toLowerCase();
-  const isBall  = !!gt.match(/oddball|ball/);
-  const isCTF   = !!gt.match(/ctf|flag|5flag/) || (gt.includes('30') && !gt.includes('ball'));
-  const isKOTH  = !!gt.match(/king|hill|koth/);
-  const isSlayer = !isBall && !isCTF && !isKOTH;
+  const gt=(parsed.gameType||'').toLowerCase();
+  const isBall=!!gt.match(/oddball|ball/);
+  const isCTF=!!gt.match(/ctf|flag|5flag/)||(gt.includes('30')&&!gt.includes('ball'));
+  const isKOTH=!!gt.match(/king|hill|koth/);
+  const isSlayer=!isBall&&!isCTF&&!isKOTH;
 
-  const remapPlayer = (p) => {
-    const c1=p.col1??0, c2=p.col2??0, c3=p.col3??0, c4=p.col4??0;
-    if (isSlayer) return { ...p, kills:c1, assists:c3, deaths:c4, flagCaps:null, hillTime:null, ballTime:null };
-    if (isCTF)    return { ...p, flagCaps:c1, kills:c2, assists:c3, deaths:c4, hillTime:null, ballTime:null };
-    if (isKOTH)   return { ...p, hillTime:c1, kills:c2, assists:c3, deaths:c4, flagCaps:null, ballTime:null };
-    if (isBall)   return { ...p, ballTime:c1, kills:c2, assists:c3, deaths:c4, flagCaps:null, hillTime:null };
+  const remapPlayer=p=>{
+    const c1=p.col1??0,c2=p.col2??0,c3=p.col3??0,c4=p.col4??0;
+    if(isSlayer)return{...p,kills:c1,assists:c3,deaths:c4,flagCaps:null,hillTime:null,ballTime:null};
+    if(isCTF)return{...p,flagCaps:c1,kills:c2,assists:c3,deaths:c4,hillTime:null,ballTime:null};
+    if(isKOTH)return{...p,hillTime:c1,kills:c2,assists:c3,deaths:c4,flagCaps:null,ballTime:null};
+    if(isBall)return{...p,ballTime:c1,kills:c2,assists:c3,deaths:c4,flagCaps:null,hillTime:null};
     return p;
   };
-
-  if (parsed.redTeam)  parsed.redTeam  = parsed.redTeam.map(remapPlayer);
-  if (parsed.blueTeam) parsed.blueTeam = parsed.blueTeam.map(remapPlayer);
+  if(parsed.redTeam)parsed.redTeam=parsed.redTeam.map(remapPlayer);
+  if(parsed.blueTeam)parsed.blueTeam=parsed.blueTeam.map(remapPlayer);
   return parsed;
 }
 
-function setProgress(pct, label) { progressFill.style.width = pct + '%'; progressText.textContent = label; }
-function showError(msg) { errorBox.textContent = msg; errorBox.style.display = 'block'; }
-function parseTimeSecs(t) {
-  if (t === null || t === undefined || t === 'null' || t === '') return 0;
-  const s = String(t).trim();
-  if (s.includes(':')) { const p = s.split(':'); return parseInt(p[0]||0)*60+parseInt(p[1]||0); }
+function setProgress(pct,label){progressFill.style.width=pct+'%';progressText.textContent=label;}
+function showError(msg){errorBox.textContent=msg;errorBox.style.display='block';}
+function parseTimeSecs(t){
+  if(t===null||t===undefined||t==='null'||t==='')return 0;
+  const s=String(t).trim();
+  if(s.includes(':')){const p=s.split(':');return parseInt(p[0]||0)*60+parseInt(p[1]||0);}
   return parseInt(s)||0;
 }
-function fmtTime(sec) { const m=Math.floor(sec/60),s=sec%60; return `${m}:${String(s).padStart(2,'0')}`; }
-function fmtHillOrBall(val) { if(val===null||val===undefined||val==='null'||val==='')return'—'; const s=parseTimeSecs(val); return s===0?'0:00':fmtTime(s); }
-function kd(k,d) { return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2); }
-function kdClass(k,d) { const r=d===0?k:k/d; return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu'; }
-function pm(k,d) { const v=(k||0)-(d||0); return (v>0?'+':'')+v; }
-function pmClass(k,d) { const v=(k||0)-(d||0); return v>0?'pm-pos':v<0?'pm-neg':'pm-zero'; }
-function isOddball(gt) { return !!(gt||'').toLowerCase().match(/oddball|ball/); }
-function isCTF(gt) { const g=(gt||'').toLowerCase(); return !!(g.match(/ctf|flag|5flag/)||(g.includes('30')&&!g.includes('ball'))); }
-function isKOTH(gt) { return !!(gt||'').toLowerCase().match(/king|hill|koth/); }
+function fmtTime(sec){const m=Math.floor(sec/60),s=sec%60;return`${m}:${String(s).padStart(2,'0')}`;}
+function fmtHillOrBall(val){if(val===null||val===undefined||val==='null'||val==='')return'—';const s=parseTimeSecs(val);return s===0?'0:00':fmtTime(s);}
+function kd(k,d){return d===0?(k>0?k.toFixed(2):'0.00'):(k/d).toFixed(2);}
+function kdClass(k,d){const r=d===0?k:k/d;return r>1.1?'kd-pos':r<0.9?'kd-neg':'kd-neu';}
+function pm(k,d){const v=(k||0)-(d||0);return(v>0?'+':'')+v;}
+function pmClass(k,d){const v=(k||0)-(d||0);return v>0?'pm-pos':v<0?'pm-neg':'pm-zero';}
+function isOddball(gt){return!!(gt||'').toLowerCase().match(/oddball|ball/);}
+function isCTF(gt){const g=(gt||'').toLowerCase();return!!(g.match(/ctf|flag|5flag/)||(g.includes('30')&&!g.includes('ball')));}
+function isKOTH(gt){return!!(gt||'').toLowerCase().match(/king|hill|koth/);}
 
-// ── Name Review ─────────────────────────────────────────────────────────────
-let pendingReviewGames=null, pendingReviewErrors=null, pendingReviewMode=null;
+// ── Name Review ──────────────────────────────────────────────────────────────
+let pendingReviewGames=null,pendingReviewErrors=null,pendingReviewMode=null;
 
-function levenshtein(a,b) {
-  const m=a.length,n=b.length; if(!m)return n; if(!n)return m;
+function levenshtein(a,b){
+  const m=a.length,n=b.length;if(!m)return n;if(!n)return m;
   const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));
-  for(let i=0;i<=m;i++)dp[i][0]=i; for(let j=0;j<=n;j++)dp[0][j]=j;
+  for(let i=0;i<=m;i++)dp[i][0]=i;for(let j=0;j<=n;j++)dp[0][j]=j;
   for(let i=1;i<=m;i++){for(let j=1;j<=n;j++){dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);}}
   return dp[m][n];
 }
 
-function collectPlayerNameCounts(games) {
+function collectPlayerNameCounts(games){
   const counts={};
   games.forEach(g=>{[...(g.redTeam||[]),...(g.blueTeam||[])].forEach(p=>{if(p.name)counts[p.name]=(counts[p.name]||0)+1;});});
   return Object.entries(counts).map(([name,count])=>({name,count}));
 }
 
-function buildNameGroups(nameCounts) {
-  const sorted=[...nameCounts].sort((a,b)=>b.count-a.count); const used=new Set(); const groups=[];
+function buildNameGroups(nameCounts){
+  const sorted=[...nameCounts].sort((a,b)=>b.count-a.count);const used=new Set();const groups=[];
   sorted.forEach(n=>{
-    if(used.has(n.name))return; const group=[n]; used.add(n.name);
-    sorted.forEach(m=>{if(used.has(m.name)||m.name===n.name)return; if(levenshtein(n.name.toLowerCase(),m.name.toLowerCase())<=2&&Math.max(n.name.length,m.name.length)>=4){group.push(m);used.add(m.name);}});
+    if(used.has(n.name))return;const group=[n];used.add(n.name);
+    sorted.forEach(m=>{if(used.has(m.name)||m.name===n.name)return;if(levenshtein(n.name.toLowerCase(),m.name.toLowerCase())<=2&&Math.max(n.name.length,m.name.length)>=4){group.push(m);used.add(m.name);}});
     groups.push(group);
   });
   return groups;
 }
 
-function prepareNameReview(games, errors, mode) {
-  pendingReviewGames=games; pendingReviewErrors=errors; pendingReviewMode=mode;
+function prepareNameReview(games,errors,mode){
+  pendingReviewGames=games;pendingReviewErrors=errors;pendingReviewMode=mode;
   const groups=buildNameGroups(collectPlayerNameCounts(games));
   if(!groups.some(g=>g.length>1)){renderReport(games,errors,mode);return;}
   let html=`<div class="name-review-wrap"><div class="name-review-title">⚠️ Review Player Names</div><div class="name-review-sub">We found names that might be the same player misspelled. Confirm or correct each name before the report is generated.</div><div id="nameReviewList">`;
   groups.forEach((group,gi)=>{
-    const isDupe=group.length>1; const namesAttr=JSON.stringify(group.map(g=>g.name)).replace(/"/g,'&quot;');
+    const isDupe=group.length>1;const namesAttr=JSON.stringify(group.map(g=>g.name)).replace(/"/g,'&quot;');
     if(isDupe){html+=`<div class="name-review-card dupe"><div class="name-review-flag">⚠ Possible duplicate — ${group.length} spellings found</div><div class="name-review-variants">${group.map(g=>`<span class="name-variant">${g.name}</span> <span class="variant-count">(${g.count}x)</span>`).join('<span class="variant-sep">·</span>')}</div><div class="name-review-field"><label>Use this name:</label><input type="text" class="name-review-input" id="nameFix_${gi}" data-original-names="${namesAttr}" value="${group[0].name}"></div></div>`;}
     else{html+=`<div class="name-review-card"><div class="name-review-variants"><span class="name-variant">${group[0].name}</span> <span class="variant-count">(${group[0].count}x)</span></div><div class="name-review-field"><label>Name:</label><input type="text" class="name-review-input" id="nameFix_${gi}" data-original-names="${namesAttr}" value="${group[0].name}"></div></div>`;}
   });
   html+=`</div><button class="name-review-btn" onclick="applyNameFixesAndRender()">Confirm Names &amp; Generate Report</button></div>`;
-  reportEl.innerHTML=html; reportEl.style.display='block'; reportEl.scrollIntoView({behavior:'smooth',block:'start'});
+  reportEl.innerHTML=html;reportEl.style.display='block';reportEl.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-function applyNameFixesAndRender() {
+function applyNameFixesAndRender(){
   const mapping={};
   document.querySelectorAll('.name-review-input').forEach(input=>{
     const originals=JSON.parse(input.getAttribute('data-original-names').replace(/&quot;/g,'"'));
-    const fixed=input.value.trim(); if(!fixed)return;
+    const fixed=input.value.trim();if(!fixed)return;
     originals.forEach(orig=>{mapping[orig]=fixed;});
   });
   const updated=pendingReviewGames.map(g=>({...g,redTeam:(g.redTeam||[]).map(p=>({...p,name:mapping[p.name]||p.name})),blueTeam:(g.blueTeam||[]).map(p=>({...p,name:mapping[p.name]||p.name}))}));
   renderReport(updated,pendingReviewErrors,pendingReviewMode);
 }
 
-function verifyWinner(game, mode) {
+// ── verifyWinner — correct ties for all OBJ game types ──────────────────────
+function verifyWinner(game,mode){
   if(mode==='2v2')return game.winner;
-  const gt=game.gameType||''; const red=game.redTeam||[]; const blue=game.blueTeam||[];
+  const gt=game.gameType||'';const red=game.redTeam||[];const blue=game.blueTeam||[];
 
   if(isCTF(gt)){
     const r=red.reduce((s,p)=>s+(p.flagCaps||0),0),b=blue.reduce((s,p)=>s+(p.flagCaps||0),0);
     if(r!==b)return r>b?'Red':'Blue';
     return 'Tie';
   }
-
   if(isKOTH(gt)){
     const r=red.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);
     if(r!==b)return r>b?'Red':'Blue';
     return 'Tie';
   }
-
   if(isOddball(gt)){
     const r=red.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);
     if(r!==b)return r>b?'Red':'Blue';
     return 'Tie';
   }
-
-  // Slayer — compare kills, tie if equal
+  // Slayer
   const rk=red.reduce((s,p)=>s+(p.kills||0),0),bk=blue.reduce((s,p)=>s+(p.kills||0),0);
   if(rk!==bk)return rk>bk?'Red':'Blue';
   return game.winner;
 }
 
-function calcObjMVP(players,games) {
-  const hasObj=games.some(g=>isOddball(g.gameType)||isCTF(g.gameType)||isKOTH(g.gameType)); if(!hasObj)return null;
+function calcObjMVP(players,games){
+  const hasObj=games.some(g=>isOddball(g.gameType)||isCTF(g.gameType)||isKOTH(g.gameType));if(!hasObj)return null;
   const tb=players.reduce((s,p)=>s+p.ballSecs,0),tc=players.reduce((s,p)=>s+p.flagCaps,0),th=players.reduce((s,p)=>s+p.hillSecs,0);
   let best=null,bestScore=-1;
   players.forEach(p=>{const shares=[];if(tb>0)shares.push(p.ballSecs/tb);if(tc>0)shares.push(p.flagCaps/tc);if(th>0)shares.push(p.hillSecs/th);if(!shares.length)return;const score=shares.reduce((a,b)=>a+b,0)/shares.length;if(score>bestScore){bestScore=score;best=p;}});
   return best;
 }
 
-function buildSquads(games) {
+function buildSquads(games){
   if(!games.length)return{squad1:new Set(),squad2:new Set()};
   const g1=games[0];
   return{squad1:new Set((g1.redTeam||[]).map(p=>p.name).filter(Boolean)),squad2:new Set((g1.blueTeam||[]).map(p=>p.name).filter(Boolean))};
 }
 
-function getSquad(name,squad1,squad2) {
-  if(squad1.has(name))return 1; if(squad2.has(name))return 2;
+function getSquad(name,squad1,squad2){
+  if(squad1.has(name))return 1;if(squad2.has(name))return 2;
   for(const n of squad1){if(n&&name&&n.toLowerCase()===name.toLowerCase())return 1;}
   for(const n of squad2){if(n&&name&&n.toLowerCase()===name.toLowerCase())return 2;}
   return 1;
 }
 
-async function submitToLeaderboard(force=false) {
+async function submitToLeaderboard(force=false){
   if(!appUnlocked)return;
-  const btn=document.getElementById('lbBtn'); const forceBtn=document.getElementById('lbForceBtn');
+  const btn=document.getElementById('lbBtn'),forceBtn=document.getElementById('lbForceBtn');
   if(!window._lastGames||!window._seriesWinner)return;
   if(window._seriesWinner===0){btn.className='lb-btn duplicate';btn.innerHTML='— Tied series not added to leaderboard';btn.disabled=true;return;}
-  btn.disabled=true; forceBtn.style.display='none'; btn.innerHTML='<span class="spinner" style="border-top-color:currentColor"></span> Saving...';
-  try {
+  btn.disabled=true;forceBtn.style.display='none';btn.innerHTML='<span class="spinner" style="border-top-color:currentColor"></span> Saving...';
+  try{
     const resp=await fetch(WORKER_URL+'/leaderboard/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({games:window._lastGames,seriesWinner:window._seriesWinner,force,mode:window._seriesMode})});
-    const result=await resp.json(); if(result.error)throw new Error(result.error);
+    const result=await resp.json();if(result.error)throw new Error(result.error);
     if(result.status==='duplicate'){btn.className='lb-btn duplicate';btn.innerHTML='— Already in leaderboard · not counted twice';btn.disabled=true;forceBtn.style.display='flex';}
     else{btn.className='lb-btn saved';btn.innerHTML=`✓ Added to ${window._seriesMode} leaderboard successfully`;btn.disabled=true;forceBtn.style.display='none';}
   }catch(e){btn.disabled=false;btn.innerHTML='⚠ Save failed — try again';btn.className='lb-btn';}
@@ -636,77 +622,41 @@ document.getElementById('lbBtn').addEventListener('click',()=>submitToLeaderboar
 document.getElementById('lbForceBtn').addEventListener('click',async()=>{
   const fb=document.getElementById('lbForceBtn');
   if(!confirm('This will add the series stats again even though it was already fingerprinted.\n\nOnly use this if stats were missing. Continue?'))return;
-  fb.disabled=true; fb.textContent='Force adding...';
-  await submitToLeaderboard(true); fb.disabled=false;
+  fb.disabled=true;fb.textContent='Force adding...';
+  await submitToLeaderboard(true);fb.disabled=false;
 });
 
-// ── Stat Editor ─────────────────────────────────────────────────────────────
-let _editorGames=null, _editorMode=null;
+// ── Stat Editor ──────────────────────────────────────────────────────────────
+let _editorGames=null,_editorMode=null;
 
-function openStatEditor(gi) {
-  const g = _editorGames[gi];
-  const mode = _editorMode;
-  const gOdd = isOddball(g.gameType) && mode==='4v4';
-  const gCTF  = isCTF(g.gameType)   && mode==='4v4';
-  const gKOTH = isKOTH(g.gameType)  && mode==='4v4';
-  const hasObj = gOdd||gCTF||gKOTH;
+function openStatEditor(gi){
+  const g=_editorGames[gi];const mode=_editorMode;
+  const gOdd=isOddball(g.gameType)&&mode==='4v4';
+  const gCTF=isCTF(g.gameType)&&mode==='4v4';
+  const gKOTH=isKOTH(g.gameType)&&mode==='4v4';
+  const hasObj=gOdd||gCTF||gKOTH;
+  const objLabel=gCTF?'Flag Caps':gKOTH?'Hill (s)':'Ball (s)';
+  const colClass=hasObj?'se-player-row-obj':'se-player-row-4v4';
+  const allPlayers=[...(g.redTeam||[]).map(p=>({...p,_team:'red'})),...(g.blueTeam||[]).map(p=>({...p,_team:'blue'}))];
 
-  // Build combined player list with team assignment
-  const allPlayers = [
-    ...(g.redTeam||[]).map(p=>({...p,_team:'red'})),
-    ...(g.blueTeam||[]).map(p=>({...p,_team:'blue'}))
-  ];
-
-  const colClass = hasObj ? 'se-player-row-obj' : 'se-player-row-4v4';
-  const hdrClass = hasObj ? 'se-col-headers-obj' : 'se-col-headers-4v4';
-
-  const objLabel = gCTF ? 'Flag Caps' : gKOTH ? 'Hill (s)' : 'Ball (s)';
-  const objField = gCTF ? 'flagCaps' : gKOTH ? 'hillTime' : 'ballTime';
-
-  function playerRow(p, idx) {
-    const objVal = gCTF ? (p.flagCaps||0) : gKOTH ? (parseTimeSecs(p.hillTime)||0) : (parseTimeSecs(p.ballTime)||0);
-    return `<div class="se-player-row ${colClass}" id="serow_${gi}_${idx}">
-      <div class="se-field-group">
-        <div class="se-field-label">Name</div>
-        <input type="text" class="se-input se-name-input" id="se_${gi}_${idx}_name" value="${(p.name||'').replace(/"/g,'&quot;')}">
-      </div>
-      <div class="se-field-group">
-        <div class="se-field-label">Squad</div>
-        <select class="se-squad-select" id="se_${gi}_${idx}_team">
-          <option value="red" ${p._team==='red'?'selected':''}>Squad 1 (Red)</option>
-          <option value="blue" ${p._team==='blue'?'selected':''}>Squad 2 (Blue)</option>
-        </select>
-      </div>
-      <div class="se-field-group">
-        <div class="se-field-label">Kills</div>
-        <input type="number" class="se-input" id="se_${gi}_${idx}_kills" value="${p.kills||0}" min="0">
-      </div>
-      <div class="se-field-group">
-        <div class="se-field-label">Deaths</div>
-        <input type="number" class="se-input" id="se_${gi}_${idx}_deaths" value="${p.deaths||0}" min="0">
-      </div>
-      <div class="se-field-group">
-        <div class="se-field-label">Assists</div>
-        <input type="number" class="se-input" id="se_${gi}_${idx}_assists" value="${p.assists||0}" min="0">
-      </div>
-      ${hasObj?`<div class="se-field-group">
-        <div class="se-field-label">${objLabel}</div>
-        <input type="number" class="se-input" id="se_${gi}_${idx}_obj" value="${objVal}" min="0">
-      </div>`:''}
-      <button class="se-remove-btn" onclick="seRemovePlayer(${gi},${idx})" title="Remove player">×</button>
+  function playerRow(p,idx){
+    const objVal=gCTF?(p.flagCaps||0):gKOTH?(parseTimeSecs(p.hillTime)||0):(parseTimeSecs(p.ballTime)||0);
+    return`<div class="se-player-row ${colClass}" id="serow_${gi}_${idx}">
+      <div class="se-field-group"><div class="se-field-label">Name</div><input type="text" class="se-input se-name-input" id="se_${gi}_${idx}_name" value="${(p.name||'').replace(/"/g,'&quot;')}"></div>
+      <div class="se-field-group"><div class="se-field-label">Squad</div><select class="se-squad-select" id="se_${gi}_${idx}_team"><option value="red" ${p._team==='red'?'selected':''}>Squad 1 (Red)</option><option value="blue" ${p._team==='blue'?'selected':''}>Squad 2 (Blue)</option></select></div>
+      <div class="se-field-group"><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se_${gi}_${idx}_kills" value="${p.kills||0}" min="0"></div>
+      <div class="se-field-group"><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se_${gi}_${idx}_deaths" value="${p.deaths||0}" min="0"></div>
+      <div class="se-field-group"><div class="se-field-label">Assists</div><input type="number" class="se-input" id="se_${gi}_${idx}_assists" value="${p.assists||0}" min="0"></div>
+      ${hasObj?`<div class="se-field-group"><div class="se-field-label">${objLabel}</div><input type="number" class="se-input" id="se_${gi}_${idx}_obj" value="${objVal}" min="0"></div>`:''}
+      <button class="se-remove-btn" onclick="seRemovePlayer(${gi},${idx})" title="Remove">×</button>
     </div>`;
   }
 
-  let rows = allPlayers.map((p,i)=>playerRow(p,i)).join('');
-
-  const html = `<div class="stat-editor-overlay" id="statEditorOverlay">
+  const html=`<div class="stat-editor-overlay" id="statEditorOverlay">
     <div class="stat-editor-modal">
       <div class="stat-editor-title">✏ Edit Game ${g.gameNumber} — ${g.gameType||'Unknown'}</div>
-      <div class="stat-editor-sub">
-        Fix player names, reassign players to the correct squad, correct any stat values, or add missing players.<br>
-        <strong style="color:var(--gold)">Squad 1 = Red team &nbsp;·&nbsp; Squad 2 = Blue team</strong>
-      </div>
-      <div id="sePlayerList_${gi}">${rows}</div>
+      <div class="stat-editor-sub">Fix player names, reassign squads, correct stats, or add missing players.<br><strong style="color:var(--gold)">Squad 1 = Red · Squad 2 = Blue</strong></div>
+      <div id="sePlayerList_${gi}">${allPlayers.map((p,i)=>playerRow(p,i)).join('')}</div>
       <button class="se-add-player-btn" onclick="seAddPlayer(${gi})" style="margin-top:0.5rem;width:100%;padding:8px;border-radius:6px;font-size:13px;">+ Add Missing Player</button>
       <div class="stat-editor-actions">
         <button class="stat-editor-cancel" onclick="document.getElementById('statEditorOverlay').remove()">Cancel</button>
@@ -715,111 +665,61 @@ function openStatEditor(gi) {
     </div>
   </div>`;
 
-  document.body.insertAdjacentHTML('beforeend', html);
-  document.getElementById('statEditorOverlay').addEventListener('click', function(e){ if(e.target===this)this.remove(); });
-
-  // Store mutable player list on window for add/remove
-  window._sePlayers = allPlayers.map(p=>({...p}));
-  window._seGi = gi;
-  window._seHasObj = hasObj;
-  window._seObjField = objField;
-  window._seObjLabel = objLabel;
-  window._seColClass = colClass;
+  document.body.insertAdjacentHTML('beforeend',html);
+  document.getElementById('statEditorOverlay').addEventListener('click',function(e){if(e.target===this)this.remove();});
+  window._sePlayers=allPlayers.map(p=>({...p}));
+  window._seGi=gi;window._seHasObj=hasObj;window._seObjLabel=objLabel;window._seColClass=colClass;
 }
 
-window.seRemovePlayer = function(gi, idx) {
-  const row = document.getElementById(`serow_${gi}_${idx}`);
-  if (row) row.remove();
+window.seRemovePlayer=function(gi,idx){const row=document.getElementById(`serow_${gi}_${idx}`);if(row)row.remove();};
+
+window.seAddPlayer=function(gi){
+  const list=document.getElementById(`sePlayerList_${gi}`);
+  const hasObj=window._seHasObj,objLabel=window._seObjLabel,colClass=window._seColClass;
+  const existing=list.querySelectorAll('[id^="serow_"]');
+  const indices=[...existing].map(el=>parseInt(el.id.split('_')[2]));
+  const newIdx=indices.length>0?Math.max(...indices)+1:0;
+  list.insertAdjacentHTML('beforeend',`<div class="se-player-row ${colClass}" id="serow_${gi}_${newIdx}">
+    <div class="se-field-group"><div class="se-field-label">Name</div><input type="text" class="se-input se-name-input" id="se_${gi}_${newIdx}_name" placeholder="Player name"></div>
+    <div class="se-field-group"><div class="se-field-label">Squad</div><select class="se-squad-select" id="se_${gi}_${newIdx}_team"><option value="red">Squad 1 (Red)</option><option value="blue">Squad 2 (Blue)</option></select></div>
+    <div class="se-field-group"><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_kills" value="0" min="0"></div>
+    <div class="se-field-group"><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_deaths" value="0" min="0"></div>
+    <div class="se-field-group"><div class="se-field-label">Assists</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_assists" value="0" min="0"></div>
+    ${hasObj?`<div class="se-field-group"><div class="se-field-label">${objLabel}</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_obj" value="0" min="0"></div>`:''}
+    <button class="se-remove-btn" onclick="seRemovePlayer(${gi},${newIdx})" title="Remove">×</button>
+  </div>`);
 };
 
-window.seAddPlayer = function(gi) {
-  const list = document.getElementById(`sePlayerList_${gi}`);
-  const hasObj = window._seHasObj;
-  const objLabel = window._seObjLabel;
-  const colClass = window._seColClass;
-  // Find next available index
-  const existing = list.querySelectorAll('[id^="serow_"]');
-  const indices = [...existing].map(el => parseInt(el.id.split('_')[2]));
-  const newIdx = indices.length > 0 ? Math.max(...indices) + 1 : 0;
-
-  const newRow = `<div class="se-player-row ${colClass}" id="serow_${gi}_${newIdx}">
-    <div class="se-field-group">
-      <div class="se-field-label">Name</div>
-      <input type="text" class="se-input se-name-input" id="se_${gi}_${newIdx}_name" placeholder="Player name">
-    </div>
-    <div class="se-field-group">
-      <div class="se-field-label">Squad</div>
-      <select class="se-squad-select" id="se_${gi}_${newIdx}_team">
-        <option value="red">Squad 1 (Red)</option>
-        <option value="blue">Squad 2 (Blue)</option>
-      </select>
-    </div>
-    <div class="se-field-group">
-      <div class="se-field-label">Kills</div>
-      <input type="number" class="se-input" id="se_${gi}_${newIdx}_kills" value="0" min="0">
-    </div>
-    <div class="se-field-group">
-      <div class="se-field-label">Deaths</div>
-      <input type="number" class="se-input" id="se_${gi}_${newIdx}_deaths" value="0" min="0">
-    </div>
-    <div class="se-field-group">
-      <div class="se-field-label">Assists</div>
-      <input type="number" class="se-input" id="se_${gi}_${newIdx}_assists" value="0" min="0">
-    </div>
-    ${hasObj?`<div class="se-field-group">
-      <div class="se-field-label">${objLabel}</div>
-      <input type="number" class="se-input" id="se_${gi}_${newIdx}_obj" value="0" min="0">
-    </div>`:''}
-    <button class="se-remove-btn" onclick="seRemovePlayer(${gi},${newIdx})" title="Remove player">×</button>
-  </div>`;
-  list.insertAdjacentHTML('beforeend', newRow);
-};
-
-window.saveStatEdits = function(gi) {
-  const g = _editorGames[gi];
-  const mode = _editorMode;
-  const gOdd = isOddball(g.gameType)&&mode==='4v4';
-  const gCTF  = isCTF(g.gameType)  &&mode==='4v4';
-  const gKOTH = isKOTH(g.gameType) &&mode==='4v4';
-  const objField = window._seObjField;
-
-  const list = document.getElementById(`sePlayerList_${gi}`);
-  const rows = list.querySelectorAll('[id^="serow_"]');
-  const newRed=[], newBlue=[];
-
-  rows.forEach(row => {
-    const idx = row.id.split('_')[2];
-    const name = document.getElementById(`se_${gi}_${idx}_name`)?.value.trim();
-    if (!name) return; // skip blank rows
-    const team  = document.getElementById(`se_${gi}_${idx}_team`)?.value;
-    const kills  = parseInt(document.getElementById(`se_${gi}_${idx}_kills`)?.value)||0;
-    const deaths = parseInt(document.getElementById(`se_${gi}_${idx}_deaths`)?.value)||0;
-    const assists= parseInt(document.getElementById(`se_${gi}_${idx}_assists`)?.value)||0;
-    const objVal = parseInt(document.getElementById(`se_${gi}_${idx}_obj`)?.value)||0;
-
-    const player = { name, kills, deaths, assists, flagCaps: null, hillTime: null, ballTime: null };
-    if (gCTF)  player.flagCaps = objVal;
-    if (gKOTH) player.hillTime = objVal;
-    if (gOdd)  player.ballTime = objVal;
-
-    if (team === 'red') newRed.push(player);
-    else newBlue.push(player);
+window.saveStatEdits=function(gi){
+  const g=_editorGames[gi],mode=_editorMode;
+  const gOdd=isOddball(g.gameType)&&mode==='4v4';
+  const gCTF=isCTF(g.gameType)&&mode==='4v4';
+  const gKOTH=isKOTH(g.gameType)&&mode==='4v4';
+  const list=document.getElementById(`sePlayerList_${gi}`);
+  const rows=list.querySelectorAll('[id^="serow_"]');
+  const newRed=[],newBlue=[];
+  rows.forEach(row=>{
+    const idx=row.id.split('_')[2];
+    const name=document.getElementById(`se_${gi}_${idx}_name`)?.value.trim();if(!name)return;
+    const team=document.getElementById(`se_${gi}_${idx}_team`)?.value;
+    const kills=parseInt(document.getElementById(`se_${gi}_${idx}_kills`)?.value)||0;
+    const deaths=parseInt(document.getElementById(`se_${gi}_${idx}_deaths`)?.value)||0;
+    const assists=parseInt(document.getElementById(`se_${gi}_${idx}_assists`)?.value)||0;
+    const objVal=parseInt(document.getElementById(`se_${gi}_${idx}_obj`)?.value)||0;
+    const player={name,kills,deaths,assists,flagCaps:null,hillTime:null,ballTime:null};
+    if(gCTF)player.flagCaps=objVal;if(gKOTH)player.hillTime=objVal;if(gOdd)player.ballTime=objVal;
+    if(team==='red')newRed.push(player);else newBlue.push(player);
   });
-
-  _editorGames[gi].redTeam  = newRed;
-  _editorGames[gi].blueTeam = newBlue;
-
+  _editorGames[gi].redTeam=newRed;_editorGames[gi].blueTeam=newBlue;
   document.getElementById('statEditorOverlay').remove();
-  renderReport(_editorGames, [], mode);
+  renderReport(_editorGames,[],mode);
 };
 
 // ── Render Report ────────────────────────────────────────────────────────────
-function renderReport(games, errors, mode) {
-  _editorGames = games.map(g=>({...g}));
-  _editorMode  = mode;
-
-  games = games.map(g=>({...g, winner: verifyWinner(g, mode)}));
-  const {squad1,squad2} = buildSquads(games);
+function renderReport(games,errors,mode){
+  _editorGames=games.map(g=>({...g}));_editorMode=mode;
+  games=games.map(g=>({...g,winner:verifyWinner(g,mode)}));
+  const {squad1,squad2}=buildSquads(games);
 
   let s1Wins=0,s2Wins=0;
   games.forEach(g=>{
@@ -831,11 +731,11 @@ function renderReport(games, errors, mode) {
   const agg={};
   games.forEach(g=>{
     [...(g.redTeam||[]).map(p=>({...p})),...(g.blueTeam||[]).map(p=>({...p}))].forEach(p=>{
-      if(!p.name)return; const sq=getSquad(p.name,squad1,squad2);
+      if(!p.name)return;const sq=getSquad(p.name,squad1,squad2);
       if(!agg[p.name])agg[p.name]={name:p.name,squad:sq,kills:0,deaths:0,assists:0,ballSecs:0,flagCaps:0,hillSecs:0};
       const a=agg[p.name];
-      a.kills+=p.kills||0; a.deaths+=p.deaths||0; a.assists+=p.assists||0;
-      a.ballSecs+=parseTimeSecs(p.ballTime); a.flagCaps+=p.flagCaps||0; a.hillSecs+=parseTimeSecs(p.hillTime);
+      a.kills+=p.kills||0;a.deaths+=p.deaths||0;a.assists+=p.assists||0;
+      a.ballSecs+=parseTimeSecs(p.ballTime);a.flagCaps+=p.flagCaps||0;a.hillSecs+=parseTimeSecs(p.hillTime);
     });
   });
 
@@ -847,8 +747,7 @@ function renderReport(games, errors, mode) {
   const hasOddball=mode==='4v4'&&games.some(g=>isOddball(g.gameType));
   const hasCTF=mode==='4v4'&&games.some(g=>isCTF(g.gameType));
   const hasKOTH=mode==='4v4'&&games.some(g=>isKOTH(g.gameType));
-  const s1Players=[...squad1].join(', ');
-  const s2Players=[...squad2].join(', ');
+  const s1Players=[...squad1].join(', ');const s2Players=[...squad2].join(', ');
   const dateStr=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const modeBadge=mode==='2v2'
     ?'<span style="font-size:13px;font-weight:600;background:var(--s2-dim);color:var(--s2);border:1px solid var(--s2-border);padding:2px 10px;border-radius:99px;margin-left:10px;vertical-align:middle;">2v2</span>'
@@ -894,7 +793,8 @@ function renderReport(games, errors, mode) {
   </div>
   ${calloutHtml}`;
 
-  html+=`<div class="section-title">Overall Player Stats</div><div class="stat-table-wrap"><table><thead><tr>
+  html+=`<div class="section-title">Overall Player Stats</div>
+  <div class="stat-table-wrap"><table><thead><tr>
     <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>
     ${hasOddball?'<th>Ball Time</th>':''}${hasCTF?'<th>Flag Caps</th>':''}${hasKOTH?'<th>Hill Time</th>':''}
   </tr></thead><tbody>`;
@@ -911,36 +811,38 @@ function renderReport(games, errors, mode) {
     const gOdd=isOddball(g.gameType)&&mode==='4v4',gCTF=isCTF(g.gameType)&&mode==='4v4',gKOTH=isKOTH(g.gameType)&&mode==='4v4';
     const wt=g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);let ws1=0,ws2=0;
     wt.forEach(p=>{if(getSquad(p.name,squad1,squad2)===1)ws1++;else ws2++;});
-    const ws=ws1>=ws2?1:2; const redNames=new Set((g.redTeam||[]).map(p=>p.name));
-    html+=`<div class="game-card"><div class="game-card-header">
-      <div class="game-card-title">Game ${g.gameNumber} &mdash; ${g.gameType||'Unknown'}</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div class="game-win-badge badge-s${ws}">Squad ${ws} Wins</div>
-        <button class="edit-stats-btn" onclick="openStatEditor(${gi})">✏ Edit Stats</button>
+    const ws=ws1>=ws2?1:2;const redNames=new Set((g.redTeam||[]).map(p=>p.name));
+    html+=`<div class="game-card">
+      <div class="game-card-header">
+        <div class="game-card-title">Game ${g.gameNumber} &mdash; ${g.gameType||'Unknown'}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="game-win-badge badge-s${ws}">Squad ${ws} Wins</div>
+          <button class="edit-stats-btn" onclick="openStatEditor(${gi})">✏ Edit Stats</button>
+        </div>
       </div>
-    </div>
-    <table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}</tr></thead><tbody>`;
+      <div class="game-card-table-wrap">
+      <table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}</tr></thead><tbody>`;
     [1,2].forEach(sq=>{
-      const sqP=sq===1?[...squad1]:[...squad2]; const sqColor=sqP.some(n=>redNames.has(n))?'Red':'Blue';
+      const sqP=sq===1?[...squad1]:[...squad2];const sqColor=sqP.some(n=>redNames.has(n))?'Red':'Blue';
       const pts=sqColor==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
       html+=`<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq} <span class="color-tag color-tag-${sqColor.toLowerCase()}">${sqColor}</span></td></tr>`;
       pts.forEach(p=>{
         html+=`<tr class="row-s${sq}"><td class="player-name-cell">${p.name||'?'}</td><td>${p.kills||0}</td><td>${p.deaths||0}</td><td>${p.assists||0}</td><td class="${kdClass(p.kills||0,p.deaths||0)}">${kd(p.kills||0,p.deaths||0)}</td><td class="${pmClass(p.kills||0,p.deaths||0)}">${pm(p.kills||0,p.deaths||0)}</td>${gOdd?`<td>${fmtHillOrBall(p.ballTime)}</td>`:''}${gCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}${gKOTH?`<td>${fmtHillOrBall(p.hillTime)}</td>`:''}</tr>`;
       });
     });
-    html+=`</tbody></table></div>`;
+    html+=`</tbody></table></div></div>`;
   });
   html+=`</div>`;
 
   if(errors.length)html+=`<div style="background:rgba(255,85,85,0.1);border:1px solid rgba(255,85,85,0.25);border-radius:8px;padding:12px 16px;font-size:13px;color:#ff5555;margin-top:1rem">Could not read: ${errors.map(e=>`Game ${e.gameNumber}`).join(', ')} — try re-uploading clearer screenshots.</div>`;
 
-  reportEl.innerHTML=html; reportEl.style.display='block';
+  reportEl.innerHTML=html;reportEl.style.display='block';
   document.getElementById('exportWrap').style.display='block';
   document.getElementById('shareBtnWrap').style.display='block';
   document.getElementById('lbBtnWrap').style.display=winner!==0?'block':'none';
   const lbBtn=document.getElementById('lbBtn');
   lbBtn.innerHTML=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> ${mode==='2v2'?'Add to 2v2 Leaderboard Stats':'Add to Leaderboard Stats'}`;
-  window._lastGames=games; window._seriesWinner=winner; window._seriesMode=mode;
+  window._lastGames=games;window._seriesWinner=winner;window._seriesMode=mode;
   reportEl.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
@@ -952,8 +854,8 @@ async function loadReport(id){const resp=await fetch(WORKER_URL+'/report?id='+en
 document.getElementById('shareBtn').addEventListener('click',async()=>{
   const panel=document.getElementById('sharePanel'),btn=document.getElementById('shareBtn');
   if(panel.style.display==='block'){panel.style.display='none';return;}
-  if(!window._lastGames)return; panel.style.display='block';
-  document.getElementById('shareUrlInput').value='Saving report...'; document.getElementById('copyBtn').disabled=true; btn.disabled=true;
+  if(!window._lastGames)return;panel.style.display='block';
+  document.getElementById('shareUrlInput').value='Saving report...';document.getElementById('copyBtn').disabled=true;btn.disabled=true;
   try{const id=await saveReport(window._lastGames);document.getElementById('shareUrlInput').value=BASE_URL+'?r='+id;document.getElementById('copyBtn').disabled=false;}
   catch(err){document.getElementById('shareUrlInput').value='Error — check Worker KV binding';}
   btn.disabled=false;
