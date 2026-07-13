@@ -795,13 +795,13 @@ function renderReport(games,errors,mode){
 
   html+=`<div class="section-title">Overall Player Stats</div>
   <div class="stat-table-wrap"><table><thead><tr>
-    <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>
+    <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>KDA</th><th>+/-</th>
     ${hasOddball?'<th>Ball Time</th>':''}${hasCTF?'<th>Flag Caps</th>':''}${hasKOTH?'<th>Hill Time</th>':''}
   </tr></thead><tbody>`;
   [1,2].forEach(sq=>{
     html+=`<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq}</td></tr>`;
     players.filter(p=>p.squad===sq).forEach(p=>{
-      html+=`<tr class="row-s${sq}"><td class="player-name-cell">${p.name}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td><td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td><td class="${pmClass(p.kills,p.deaths)}">${pm(p.kills,p.deaths)}</td>${hasOddball?`<td>${fmtHillOrBall(p.ballSecs)}</td>`:''}${hasCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}${hasKOTH?`<td>${fmtHillOrBall(p.hillSecs)}</td>`:''}</tr>`;
+      html+=`<tr class="row-s${sq}"><td class="player-name-cell">${p.name}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td><td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td><td class="${kdClass(p.kills+p.assists,p.deaths)}">${kd(p.kills+p.assists,p.deaths)}</td><td class="${pmClass(p.kills,p.deaths)}">${pm(p.kills,p.deaths)}</td>${hasOddball?`<td>${fmtHillOrBall(p.ballSecs)}</td>`:''}${hasCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}${hasKOTH?`<td>${fmtHillOrBall(p.hillSecs)}</td>`:''}</tr>`;
     });
   });
   html+=`</tbody></table></div>`;
@@ -821,13 +821,13 @@ function renderReport(games,errors,mode){
         </div>
       </div>
       <div class="game-card-table-wrap">
-      <table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>+/-</th>${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}</tr></thead><tbody>`;
+      <table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>KDA</th><th>+/-</th>${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}</tr></thead><tbody>`;
     [1,2].forEach(sq=>{
       const sqP=sq===1?[...squad1]:[...squad2];const sqColor=sqP.some(n=>redNames.has(n))?'Red':'Blue';
       const pts=sqColor==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
       html+=`<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq} <span class="color-tag color-tag-${sqColor.toLowerCase()}">${sqColor}</span></td></tr>`;
       pts.forEach(p=>{
-        html+=`<tr class="row-s${sq}"><td class="player-name-cell">${p.name||'?'}</td><td>${p.kills||0}</td><td>${p.deaths||0}</td><td>${p.assists||0}</td><td class="${kdClass(p.kills||0,p.deaths||0)}">${kd(p.kills||0,p.deaths||0)}</td><td class="${pmClass(p.kills||0,p.deaths||0)}">${pm(p.kills||0,p.deaths||0)}</td>${gOdd?`<td>${fmtHillOrBall(p.ballTime)}</td>`:''}${gCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}${gKOTH?`<td>${fmtHillOrBall(p.hillTime)}</td>`:''}</tr>`;
+        html+=`<tr class="row-s${sq}"><td class="player-name-cell">${p.name||'?'}</td><td>${p.kills||0}</td><td>${p.deaths||0}</td><td>${p.assists||0}</td><td class="${kdClass(p.kills||0,p.deaths||0)}">${kd(p.kills||0,p.deaths||0)}</td><td class="${kdClass((p.kills||0)+(p.assists||0),p.deaths||0)}">${kd((p.kills||0)+(p.assists||0),p.deaths||0)}</td><td class="${pmClass(p.kills||0,p.deaths||0)}">${pm(p.kills||0,p.deaths||0)}</td>${gOdd?`<td>${fmtHillOrBall(p.ballTime)}</td>`:''}${gCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}${gKOTH?`<td>${fmtHillOrBall(p.hillTime)}</td>`:''}</tr>`;
       });
     });
     html+=`</tbody></table></div></div>`;
