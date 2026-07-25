@@ -785,8 +785,7 @@ function renderReport(games,errors,mode){
   const players=Object.values(agg);
   const topKiller=[...players].sort((a,b)=>b.kills-a.kills)[0];
   const bottomFragger=[...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
-  const assistKing=[...players].sort((a,b)=>b.assists-a.assists)[0];
-  const objMVP=mode==='4v4'?calcObjMVP(players,games):null;
+const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[0];  const objMVP=mode==='4v4'?calcObjMVP(players,games):null;
   const hasOddball=mode==='4v4'&&games.some(g=>isOddball(g.gameType));
   const hasCTF=mode==='4v4'&&games.some(g=>isCTF(g.gameType));
   const hasKOTH=mode==='4v4'&&games.some(g=>isKOTH(g.gameType));
