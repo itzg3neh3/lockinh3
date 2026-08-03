@@ -292,10 +292,12 @@ function render(){
   const hasObj=!is1v1&&(totals.ball>0||totals.caps>0||totals.hill>0);
   const hasCaps=!is1v1&&totals.caps>0;const hasHill=!is1v1&&totals.hill>0;const hasBall=!is1v1&&totals.ball>0;
 
-  const topFragger=[...players].sort((a,b)=>b.kills-a.kills)[0];
-  const topShitter=[...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
-  const assistKing=!is1v1?[...players].sort((a,b)=>b.assists-a.assists)[0]:null;
-  const objMVP=hasObj?[...players].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0]:null;
+  const MIN_SERIES = 5;
+const qualified = players.filter(p => p.seriesPlayed >= MIN_SERIES);
+const topFragger = qualified.length ? [...qualified].sort((a,b)=>b.kills-a.kills)[0] : [...players].sort((a,b)=>b.kills-a.kills)[0];
+const topShitter = qualified.length ? [...qualified].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0] : [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
+const assistKing = !is1v1 ? (qualified.length ? [...qualified].sort((a,b)=>b.assists-a.assists)[0] : [...players].sort((a,b)=>b.assists-a.assists)[0]) : null;
+const objMVP = hasObj ? (qualified.length ? [...qualified].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0] : [...players].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0]) : null;
 
   const sorted=[...players].sort((a,b)=>{
     switch(currentSort){
