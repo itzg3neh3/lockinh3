@@ -77,11 +77,15 @@ function parseTimeSecs(t) {
 }
 
 function lbKey(mode) {
-  return mode === '2v2' ? 'leaderboard:2v2' : 'leaderboard:alltime';
+  if (mode === '2v2') return 'leaderboard:2v2';
+  if (mode === '1v1') return 'leaderboard:1v1';
+  return 'leaderboard:alltime';
 }
 
 function snapshotPrefix(mode) {
-  return mode === '2v2' ? 'snapshot2v2:' : 'snapshot:';
+  if (mode === '2v2') return 'snapshot2v2:';
+  if (mode === '1v1') return 'snapshot1v1:';
+  return 'snapshot:';
 }
 
 async function saveSnapshot(leaderboard, env, mode) {
@@ -99,13 +103,11 @@ async function saveSnapshot(leaderboard, env, mode) {
   }
 }
 
-// Save a history entry for a series
 async function saveHistoryEntry(games, seriesWinner, mode, reportId, playedAt, env) {
   const g1 = games[0];
   const squad1 = (g1.redTeam || []).map(p => p.name).filter(Boolean);
   const squad2 = (g1.blueTeam || []).map(p => p.name).filter(Boolean);
 
-  // Count wins per squad
   let s1Wins = 0, s2Wins = 0;
   games.forEach(g => {
     const wt = g.winner === 'Red' ? (g.redTeam || []) : (g.blueTeam || []);
@@ -133,7 +135,7 @@ async function saveHistoryEntry(games, seriesWinner, mode, reportId, playedAt, e
   };
 
   await env.REPORTS.put(historyKey, JSON.stringify(entry), {
-    expirationTtl: 60 * 60 * 24 * 365 * 2, // 2 years
+    expirationTtl: 60 * 60 * 24 * 365 * 2,
   });
 
   return entry;
@@ -300,7 +302,7 @@ export default {
       try {
         const { games, seriesWinner, force, mode } = await request.json();
         if (!Array.isArray(games)) throw new Error('Invalid data');
-        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        const resolvedMode = mode === '2v2' ? '2v2' : mode === '1v1' ? '1v1' : '4v4';
 
         const fingerprint = await createFingerprint(games);
         const hash = await hashString(fingerprint);
@@ -317,7 +319,6 @@ export default {
         await saveSnapshot(leaderboard, env, resolvedMode);
         await env.REPORTS.put(fpKey, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
 
-        // Auto-save report and history entry
         const reportBody = JSON.stringify(games);
         let reportId;
         let attempts = 0;
@@ -339,7 +340,7 @@ export default {
     // ── GET /leaderboard ─────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/leaderboard') {
       try {
-        const mode = url.searchParams.get('mode') === '2v2' ? '2v2' : '4v4';
+        const mode = url.searchParams.get('mode') === '2v2' ? '2v2' : url.searchParams.get('mode') === '1v1' ? '1v1' : '4v4';
         const data = await env.REPORTS.get(lbKey(mode));
         if (!data) return jsonResponse({}, 200, origin);
         return jsonResponse(JSON.parse(data), 200, origin);
@@ -352,7 +353,7 @@ export default {
     if (request.method === 'GET' && url.pathname === '/leaderboard/snapshots') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
-        const mode = url.searchParams.get('mode') === '2v2' ? '2v2' : '4v4';
+        const mode = url.searchParams.get('mode') === '2v2' ? '2v2' : url.searchParams.get('mode') === '1v1' ? '1v1' : '4v4';
         const prefix = snapshotPrefix(mode);
         const list = await env.REPORTS.list({ prefix });
         const snapshots = list.keys
@@ -369,8 +370,8 @@ export default {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
         const { key, mode } = await request.json();
-        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
-        if (!key || (!key.startsWith('snapshot:') && !key.startsWith('snapshot2v2:'))) throw new Error('Invalid snapshot key');
+        const resolvedMode = mode === '2v2' ? '2v2' : mode === '1v1' ? '1v1' : '4v4';
+        if (!key || (!key.startsWith('snapshot:') && !key.startsWith('snapshot2v2:') && !key.startsWith('snapshot1v1:'))) throw new Error('Invalid snapshot key');
         const snapshotRaw = await env.REPORTS.get(key);
         if (!snapshotRaw) throw new Error('Snapshot not found');
         const snapshot = JSON.parse(snapshotRaw);
@@ -387,7 +388,7 @@ export default {
       try {
         const { key, stats, mode } = await request.json();
         if (!key || !stats) throw new Error('key and stats required');
-        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        const resolvedMode = mode === '2v2' ? '2v2' : mode === '1v1' ? '1v1' : '4v4';
         const lbRaw = await env.REPORTS.get(lbKey(resolvedMode));
         if (!lbRaw) throw new Error('Leaderboard is empty');
         const leaderboard = JSON.parse(lbRaw);
@@ -416,7 +417,7 @@ export default {
         const { fromKey, toKey, mode } = await request.json();
         if (!fromKey || !toKey) throw new Error('fromKey and toKey required');
         if (fromKey === toKey) throw new Error('Cannot merge a player into themselves');
-        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        const resolvedMode = mode === '2v2' ? '2v2' : mode === '1v1' ? '1v1' : '4v4';
         const lbRaw = await env.REPORTS.get(lbKey(resolvedMode));
         if (!lbRaw) throw new Error('Leaderboard is empty');
         const leaderboard = JSON.parse(lbRaw);
@@ -448,7 +449,7 @@ export default {
       try {
         const { key, mode } = await request.json();
         if (!key) throw new Error('key required');
-        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        const resolvedMode = mode === '2v2' ? '2v2' : mode === '1v1' ? '1v1' : '4v4';
         const lbRaw = await env.REPORTS.get(lbKey(resolvedMode));
         if (!lbRaw) throw new Error('Leaderboard is empty');
         const leaderboard = JSON.parse(lbRaw);
@@ -473,7 +474,6 @@ export default {
             try { entries.push(JSON.parse(raw)); } catch(e) {}
           }
         }
-        // Sort newest first
         entries.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
         return jsonResponse({ entries }, 200, origin);
       } catch (err) {
@@ -481,48 +481,37 @@ export default {
       }
     }
 
-    // ── POST /history/import — requires admin token ───────────────────────
+    // ── POST /history/import ─────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/history/import') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
         const { reportUrl, playedAt, mode } = await request.json();
         if (!reportUrl || !playedAt) throw new Error('reportUrl and playedAt required');
-
-        // Extract report ID from URL
         const match = reportUrl.match(/[?&]r=([a-z2-9]{4,10})/);
         if (!match) throw new Error('Could not extract report ID from URL');
         const reportId = match[1];
-
-        // Fetch the report data
         const reportRaw = await env.REPORTS.get(reportId);
         if (!reportRaw) throw new Error(`Report "${reportId}" not found — link may have expired`);
         const games = JSON.parse(reportRaw);
         if (!Array.isArray(games)) throw new Error('Invalid report data');
-
-        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
-
-        // Determine series winner from game data
+        const resolvedMode = mode === '2v2' ? '2v2' : mode === '1v1' ? '1v1' : '4v4';
         const g1 = games[0];
         const squad1 = new Set((g1.redTeam || []).map(p => p.name).filter(Boolean));
         let s1Wins = 0, s2Wins = 0;
         games.forEach(g => {
           const wt = g.winner === 'Red' ? (g.redTeam || []) : (g.blueTeam || []);
           if (wt.length > 0) {
-            const inSquad1 = squad1.has(wt[0].name) ||
-              [...squad1].some(n => n && wt[0].name && n.toLowerCase() === wt[0].name.toLowerCase());
+            const inSquad1 = squad1.has(wt[0].name) || [...squad1].some(n => n && wt[0].name && n.toLowerCase() === wt[0].name.toLowerCase());
             if (inSquad1) s1Wins++; else s2Wins++;
           }
         });
         const seriesWinner = s1Wins > s2Wins ? 1 : s2Wins > s1Wins ? 2 : 0;
-
-        // Check for duplicate history entry
         const list = await env.REPORTS.list({ prefix: 'history:' });
         for (const k of list.keys) {
           if (k.name.includes(reportId)) {
             return jsonResponse({ error: 'This report is already in history' }, 400, origin);
           }
         }
-
         const entry = await saveHistoryEntry(games, seriesWinner, resolvedMode, reportId, playedAt, env);
         return jsonResponse({ status: 'imported', entry }, 200, origin);
       } catch (err) {
@@ -530,7 +519,7 @@ export default {
       }
     }
 
-    // ── POST /history/delete — requires admin token ───────────────────────
+    // ── POST /history/delete ─────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/history/delete') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -542,219 +531,174 @@ export default {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
-// ── POST /history/get — requires admin token ──────────────────────────
-if (request.method === 'POST' && url.pathname === '/history/get') {
-  if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
-  try {
-    const { key } = await request.json();
-    if (!key) throw new Error('key required');
-    const raw = await env.REPORTS.get(key);
-    if (!raw) throw new Error('Entry not found');
-    return jsonResponse({ entry: JSON.parse(raw) }, 200, origin);
-  } catch (err) {
-    return jsonResponse({ error: err.message }, 500, origin);
-  }
-}
 
-// ── POST /history/update — requires admin token ───────────────────────
-if (request.method === 'POST' && url.pathname === '/history/update') {
-  if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
-  try {
-    const { key, newPlayedAt, entry } = await request.json();
-    if (!key || !newPlayedAt || !entry) throw new Error('key, newPlayedAt, and entry required');
+    // ── POST /history/get ────────────────────────────────────────────────
+    if (request.method === 'POST' && url.pathname === '/history/get') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { key } = await request.json();
+        if (!key) throw new Error('key required');
+        const raw = await env.REPORTS.get(key);
+        if (!raw) throw new Error('Entry not found');
+        return jsonResponse({ entry: JSON.parse(raw) }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
 
-    // Delete old key
-    await env.REPORTS.delete(key);
+    // ── POST /history/update ─────────────────────────────────────────────
+    if (request.method === 'POST' && url.pathname === '/history/update') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { key, newPlayedAt, entry } = await request.json();
+        if (!key || !newPlayedAt || !entry) throw new Error('key, newPlayedAt, and entry required');
+        await env.REPORTS.delete(key);
+        const newKey = `history:${newPlayedAt}:${entry.reportId}`;
+        const updatedEntry = { ...entry, playedAt: newPlayedAt };
+        await env.REPORTS.put(newKey, JSON.stringify(updatedEntry), {
+          expirationTtl: 60 * 60 * 24 * 365 * 2,
+        });
+        return jsonResponse({ status: 'updated' }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
 
-    // Save with new timestamp
-    const newKey = `history:${newPlayedAt}:${entry.reportId}`;
-    const updatedEntry = { ...entry, playedAt: newPlayedAt };
-    await env.REPORTS.put(newKey, JSON.stringify(updatedEntry), {
-      expirationTtl: 60 * 60 * 24 * 365 * 2,
-    });
-
-    return jsonResponse({ status: 'updated' }, 200, origin);
-  } catch (err) {
-    return jsonResponse({ error: err.message }, 500, origin);
-  }
-}
     // ── GET /history/players ─────────────────────────────────────────────
-if (request.method === 'GET' && url.pathname === '/history/players') {
-  try {
-    const list = await env.REPORTS.list({ prefix: 'history:' });
-    const playerSet = new Set();
-    for (const k of list.keys) {
-      const raw = await env.REPORTS.get(k.name);
-      if (raw) {
-        try {
-          const entry = JSON.parse(raw);
-          [...(entry.squad1||[]), ...(entry.squad2||[])].forEach(n => { if (n) playerSet.add(n); });
-        } catch(e) {}
+    if (request.method === 'GET' && url.pathname === '/history/players') {
+      try {
+        const list = await env.REPORTS.list({ prefix: 'history:' });
+        const playerSet = new Set();
+        for (const k of list.keys) {
+          const raw = await env.REPORTS.get(k.name);
+          if (raw) {
+            try {
+              const entry = JSON.parse(raw);
+              [...(entry.squad1||[]), ...(entry.squad2||[])].forEach(n => { if (n) playerSet.add(n); });
+            } catch(e) {}
+          }
+        }
+        const players = [...playerSet].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        return jsonResponse({ players }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
       }
     }
-    const players = [...playerSet].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-    return jsonResponse({ players }, 200, origin);
-  } catch (err) {
-    return jsonResponse({ error: err.message }, 500, origin);
-  }
-}
 
-// ── GET /history/h2h ─────────────────────────────────────────────────
-if (request.method === 'GET' && url.pathname === '/history/h2h') {
-  try {
-    const p1 = url.searchParams.get('p1');
-    const p2 = url.searchParams.get('p2');
-    if (!p1 || !p2) throw new Error('p1 and p2 required');
-
-    const list = await env.REPORTS.list({ prefix: 'history:' });
-    const asOpponents = { p1Wins: 0, p2Wins: 0, series: [] };
-    const asTeammates = { wins: 0, losses: 0, series: [] };
-
-    for (const k of list.keys) {
-      const raw = await env.REPORTS.get(k.name);
-      if (!raw) continue;
+    // ── GET /history/h2h ─────────────────────────────────────────────────
+    if (request.method === 'GET' && url.pathname === '/history/h2h') {
       try {
-        const entry = JSON.parse(raw);
-        const s1 = (entry.squad1 || []).map(n => n.toLowerCase());
-        const s2 = (entry.squad2 || []).map(n => n.toLowerCase());
-        const p1Low = p1.toLowerCase();
-        const p2Low = p2.toLowerCase();
-
-        const p1InS1 = s1.includes(p1Low);
-        const p1InS2 = s2.includes(p1Low);
-        const p2InS1 = s1.includes(p2Low);
-        const p2InS2 = s2.includes(p2Low);
-
-        const p1Present = p1InS1 || p1InS2;
-        const p2Present = p2InS1 || p2InS2;
-        if (!p1Present || !p2Present) continue;
-
-        const sameTeam = (p1InS1 && p2InS1) || (p1InS2 && p2InS2);
-
-        if (sameTeam) {
-          // Determine if their shared team won
-          const theirSquad = p1InS1 ? 1 : 2;
-          const won = entry.seriesWinner === theirSquad;
-          if (won) asTeammates.wins++; else asTeammates.losses++;
-          asTeammates.series.push({ ...entry, histKey: k.name, teammateWon: won });
-        } else {
-          // Opponents — who won?
-          const p1Squad = p1InS1 ? 1 : 2;
-          const p1Won = entry.seriesWinner === p1Squad;
-          if (p1Won) asOpponents.p1Wins++; else asOpponents.p2Wins++;
-          asOpponents.series.push({ ...entry, histKey: k.name, p1Won });
+        const p1 = url.searchParams.get('p1');
+        const p2 = url.searchParams.get('p2');
+        if (!p1 || !p2) throw new Error('p1 and p2 required');
+        const list = await env.REPORTS.list({ prefix: 'history:' });
+        const asOpponents = { p1Wins: 0, p2Wins: 0, series: [] };
+        const asTeammates = { wins: 0, losses: 0, series: [] };
+        for (const k of list.keys) {
+          const raw = await env.REPORTS.get(k.name);
+          if (!raw) continue;
+          try {
+            const entry = JSON.parse(raw);
+            const s1 = (entry.squad1 || []).map(n => n.toLowerCase());
+            const s2 = (entry.squad2 || []).map(n => n.toLowerCase());
+            const p1Low = p1.toLowerCase(), p2Low = p2.toLowerCase();
+            const p1InS1 = s1.includes(p1Low), p1InS2 = s2.includes(p1Low);
+            const p2InS1 = s1.includes(p2Low), p2InS2 = s2.includes(p2Low);
+            const p1Present = p1InS1 || p1InS2, p2Present = p2InS1 || p2InS2;
+            if (!p1Present || !p2Present) continue;
+            const sameTeam = (p1InS1 && p2InS1) || (p1InS2 && p2InS2);
+            if (sameTeam) {
+              const theirSquad = p1InS1 ? 1 : 2;
+              const won = entry.seriesWinner === theirSquad;
+              if (won) asTeammates.wins++; else asTeammates.losses++;
+              asTeammates.series.push({ ...entry, histKey: k.name, teammateWon: won });
+            } else {
+              const p1Squad = p1InS1 ? 1 : 2;
+              const p1Won = entry.seriesWinner === p1Squad;
+              if (p1Won) asOpponents.p1Wins++; else asOpponents.p2Wins++;
+              asOpponents.series.push({ ...entry, histKey: k.name, p1Won });
+            }
+          } catch(e) {}
         }
-      } catch(e) {}
+        asOpponents.series.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
+        asTeammates.series.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
+        return jsonResponse({ asOpponents, asTeammates, p1, p2 }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
     }
 
-    // Sort each list newest first
-    asOpponents.series.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
-    asTeammates.series.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
-
-    return jsonResponse({ asOpponents, asTeammates, p1, p2 }, 200, origin);
-  } catch (err) {
-    return jsonResponse({ error: err.message }, 500, origin);
-  }
-}
     // ── GET /player ──────────────────────────────────────────────────────
-if (request.method === 'GET' && url.pathname === '/player') {
-  try {
-    const name = url.searchParams.get('name');
-    if (!name) return jsonResponse({ error: 'name required' }, 400, origin);
-
-    const nameLow = name.toLowerCase().trim();
-
-    // Fetch 4v4 and 2v2 leaderboard stats
-    const [lb4Raw, lb2Raw] = await Promise.all([
-      env.REPORTS.get('leaderboard:alltime'),
-      env.REPORTS.get('leaderboard:2v2'),
-    ]);
-
-    const lb4 = lb4Raw ? JSON.parse(lb4Raw) : {};
-    const lb2 = lb2Raw ? JSON.parse(lb2Raw) : {};
-
-    // Find player in each leaderboard by normalized name
-    const find = (lb) => {
-      for (const [key, val] of Object.entries(lb)) {
-        if (key === normalizeName(name) ||
-            (val.displayName || '').toLowerCase() === nameLow) {
-          return { ...val, key };
-        }
-      }
-      return null;
-    };
-
-    const stats4v4 = find(lb4);
-    const stats2v2 = find(lb2);
-
-    if (!stats4v4 && !stats2v2) {
-      return jsonResponse({ error: 'Player not found' }, 404, origin);
-    }
-
-    // Fetch all history entries for this player
-    const list = await env.REPORTS.list({ prefix: 'history:' });
-    const seriesHistory = [];
-
-    for (const k of list.keys) {
-      const raw = await env.REPORTS.get(k.name);
-      if (!raw) continue;
+    if (request.method === 'GET' && url.pathname === '/player') {
       try {
-        const entry = JSON.parse(raw);
-        const allPlayers = [...(entry.squad1||[]), ...(entry.squad2||[])];
-        const inSeries = allPlayers.some(n => n.toLowerCase() === nameLow);
-        if (inSeries) {
-          // Determine if player won this series
-          const inSquad1 = (entry.squad1||[]).some(n => n.toLowerCase() === nameLow);
-          const playerSquad = inSquad1 ? 1 : 2;
-          const won = entry.seriesWinner === playerSquad;
-          const tied = entry.seriesWinner === 0;
-          seriesHistory.push({
-            ...entry,
-            histKey: k.name,
-            playerSquad,
-            playerWon: won,
-            playerTied: tied,
-            teammates: inSquad1 ? (entry.squad1||[]).filter(n => n.toLowerCase() !== nameLow) : (entry.squad2||[]).filter(n => n.toLowerCase() !== nameLow),
-            opponents: inSquad1 ? (entry.squad2||[]) : (entry.squad1||[]),
-          });
+        const name = url.searchParams.get('name');
+        if (!name) return jsonResponse({ error: 'name required' }, 400, origin);
+        const nameLow = name.toLowerCase().trim();
+        const [lb4Raw, lb2Raw, lb1Raw] = await Promise.all([
+          env.REPORTS.get('leaderboard:alltime'),
+          env.REPORTS.get('leaderboard:2v2'),
+          env.REPORTS.get('leaderboard:1v1'),
+        ]);
+        const lb4 = lb4Raw ? JSON.parse(lb4Raw) : {};
+        const lb2 = lb2Raw ? JSON.parse(lb2Raw) : {};
+        const lb1 = lb1Raw ? JSON.parse(lb1Raw) : {};
+        const find = (lb) => {
+          for (const [key, val] of Object.entries(lb)) {
+            if (key === normalizeName(name) || (val.displayName || '').toLowerCase() === nameLow) {
+              return { ...val, key };
+            }
+          }
+          return null;
+        };
+        const stats4v4 = find(lb4);
+        const stats2v2 = find(lb2);
+        const stats1v1 = find(lb1);
+        if (!stats4v4 && !stats2v2 && !stats1v1) {
+          return jsonResponse({ error: 'Player not found' }, 404, origin);
         }
-      } catch(e) {}
+        const list = await env.REPORTS.list({ prefix: 'history:' });
+        const seriesHistory = [];
+        for (const k of list.keys) {
+          const raw = await env.REPORTS.get(k.name);
+          if (!raw) continue;
+          try {
+            const entry = JSON.parse(raw);
+            const allPlayers = [...(entry.squad1||[]), ...(entry.squad2||[])];
+            const inSeries = allPlayers.some(n => n.toLowerCase() === nameLow);
+            if (inSeries) {
+              const inSquad1 = (entry.squad1||[]).some(n => n.toLowerCase() === nameLow);
+              const playerSquad = inSquad1 ? 1 : 2;
+              const won = entry.seriesWinner === playerSquad;
+              const tied = entry.seriesWinner === 0;
+              seriesHistory.push({
+                ...entry, histKey: k.name, playerSquad, playerWon: won, playerTied: tied,
+                teammates: inSquad1 ? (entry.squad1||[]).filter(n => n.toLowerCase() !== nameLow) : (entry.squad2||[]).filter(n => n.toLowerCase() !== nameLow),
+                opponents: inSquad1 ? (entry.squad2||[]) : (entry.squad1||[]),
+              });
+            }
+          } catch(e) {}
+        }
+        seriesHistory.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
+        const opponentRecords = {};
+        seriesHistory.forEach(s => {
+          (s.opponents || []).forEach(opp => {
+            const key = opp.toLowerCase();
+            if (!opponentRecords[key]) opponentRecords[key] = { name: opp, wins: 0, losses: 0, ties: 0 };
+            if (s.playerWon) opponentRecords[key].wins++;
+            else if (s.playerTied) opponentRecords[key].ties++;
+            else opponentRecords[key].losses++;
+          });
+        });
+        const opponents = Object.values(opponentRecords).sort((a, b) =>
+          (b.wins + b.losses + b.ties) - (a.wins + a.losses + a.ties)
+        );
+        const displayName = (stats4v4 || stats2v2 || stats1v1).displayName || name;
+        return jsonResponse({ displayName, stats4v4, stats2v2, stats1v1, seriesHistory, opponents }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
     }
 
-    // Sort newest first
-    seriesHistory.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
-
-    // Build opponent records from history
-    const opponentRecords = {};
-    seriesHistory.forEach(s => {
-      (s.opponents || []).forEach(opp => {
-        const key = opp.toLowerCase();
-        if (!opponentRecords[key]) opponentRecords[key] = { name: opp, wins: 0, losses: 0, ties: 0 };
-        if (s.playerWon) opponentRecords[key].wins++;
-        else if (s.playerTied) opponentRecords[key].ties++;
-        else opponentRecords[key].losses++;
-      });
-    });
-
-    // Sort opponents by most played
-    const opponents = Object.values(opponentRecords).sort((a, b) =>
-      (b.wins + b.losses + b.ties) - (a.wins + a.losses + a.ties)
-    );
-
-    const displayName = (stats4v4 || stats2v2).displayName || name;
-
-    return jsonResponse({
-      displayName,
-      stats4v4,
-      stats2v2,
-      seriesHistory,
-      opponents,
-    }, 200, origin);
-
-  } catch (err) {
-    return jsonResponse({ error: err.message }, 500, origin);
-  }
-}
     return new Response('Not found', { status: 404 });
   },
 };
