@@ -18,14 +18,13 @@
     --green-dim: rgba(74,222,128,0.1); --yellow: #fbbf24; --gold: #f59e0b;
     --s1: #a78bfa; --s1-dim: rgba(167,139,250,0.12); --s1-border: rgba(167,139,250,0.25);
     --s2: #fb923c; --s2-dim: rgba(251,146,60,0.12); --s2-border: rgba(251,146,60,0.25);
+    --s3: #34d399; --s3-dim: rgba(52,211,153,0.12); --s3-border: rgba(52,211,153,0.25);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
   body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 1000; }
   .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem 4rem; }
   header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; }
-  .logo { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
-  .logo em { font-style: normal; color: var(--accent); }
   .nav-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
   .nav-link:hover { color: var(--accent); border-color: var(--accent); }
@@ -49,9 +48,11 @@
   .mode-btn:hover { border-color: var(--accent); color: var(--text); }
   .mode-btn.active-4v4 { border-color: var(--s1-border); background: var(--s1-dim); color: var(--s1); }
   .mode-btn.active-2v2 { border-color: var(--s2-border); background: var(--s2-dim); color: var(--s2); }
+  .mode-btn.active-1v1 { border-color: var(--s3-border); background: var(--s3-dim); color: var(--s3); }
   .mode-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; margin-top: 4px; }
   .mode-badge-4v4 { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
   .mode-badge-2v2 { background: var(--s2-dim); color: var(--s2); border: 1px solid var(--s2-border); }
+  .mode-badge-1v1 { background: var(--s3-dim); color: var(--s3); border: 1px solid var(--s3-border); }
   .upload-zone { border: 1.5px dashed var(--border2); border-radius: 10px; padding: 3rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface); margin-bottom: 1rem; }
   .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
   .upload-zone input { display: none; }
@@ -83,6 +84,7 @@
   .team-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; position: relative; }
   .team-card.winner-s1 { border-color: var(--s1-border); background: var(--s1-dim); }
   .team-card.winner-s2 { border-color: var(--s2-border); background: var(--s2-dim); }
+  .team-card.winner-s3 { border-color: var(--s3-border); background: var(--s3-dim); }
   .winner-pill { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; background: var(--accent); color: #000; padding: 3px 12px; border-radius: 99px; white-space: nowrap; }
   .team-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem; }
   .team-players { font-size: 11px; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.4; }
@@ -101,10 +103,9 @@
   .mvp-stats { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-  /* Mobile-scrollable tables */
   .stat-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; margin-bottom: 2rem; -webkit-overflow-scrolling: touch; }
   .game-card-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  table { width: 100%; border-collapse: collapse; min-width: 420px; }
   thead th { padding: 10px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
   thead th:not(:first-child) { text-align: center; }
   tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; white-space: nowrap; }
@@ -113,8 +114,10 @@
   .team-divider td { padding: 7px 14px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
   .divider-s1 td { color: var(--s1); background: rgba(167,139,250,0.05); }
   .divider-s2 td { color: var(--s2); background: rgba(251,146,60,0.05); }
+  .divider-s3 td { color: var(--s3); background: rgba(52,211,153,0.05); }
   .row-s1 td { background: rgba(167,139,250,0.03); }
   .row-s2 td { background: rgba(251,146,60,0.03); }
+  .row-s3 td { background: rgba(52,211,153,0.03); }
   .player-name-cell { font-weight: 600; font-size: 14px; }
   .kd-pos { color: var(--green); font-weight: 600; }
   .kd-neg { color: var(--red); }
@@ -129,6 +132,7 @@
   .game-win-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 12px; border-radius: 4px; }
   .badge-s1 { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
   .badge-s2 { background: var(--s2-dim); color: var(--s2); border: 1px solid var(--s2-border); }
+  .badge-s3 { background: var(--s3-dim); color: var(--s3); border: 1px solid var(--s3-border); }
   .edit-stats-btn { background: none; border: 1px solid var(--border2); color: var(--muted); border-radius: 4px; padding: 3px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
   .edit-stats-btn:hover { color: var(--accent); border-color: var(--accent); }
   .color-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -152,7 +156,6 @@
   .name-review-input:focus { border-color: var(--accent); }
   .name-review-btn { width: 100%; padding: 14px; background: var(--gold); color: #000; border: none; border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; margin-top: 0.5rem; }
   .name-review-btn:hover { background: #fcd34d; transform: translateY(-1px); }
-  /* Stat editor modal */
   .stat-editor-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto; }
   .stat-editor-modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 820px; margin: auto; }
   .stat-editor-title { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
@@ -160,6 +163,7 @@
   .se-player-row { display: grid; gap: 6px; align-items: center; margin-bottom: 6px; padding: 8px 10px; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border); }
   .se-player-row-4v4 { grid-template-columns: 1fr 1fr 52px 52px 52px auto; }
   .se-player-row-obj { grid-template-columns: 1fr 1fr 52px 52px 52px 52px auto; }
+  .se-player-row-1v1 { grid-template-columns: 1fr 1fr 52px 52px auto; }
   .se-field-group { display: flex; flex-direction: column; gap: 3px; }
   .se-field-label { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
   .se-input { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 4px; padding: 5px 6px; color: var(--text); font-size: 13px; text-align: center; outline: none; transition: border-color 0.15s; }
@@ -210,7 +214,7 @@
     .callouts-grid { grid-template-columns: 1fr; }
     .pw-row { flex-direction: column; }
     .mode-btns { flex-direction: column; }
-    .se-player-row-4v4, .se-player-row-obj { grid-template-columns: 1fr 1fr; }
+    .se-player-row-4v4, .se-player-row-obj, .se-player-row-1v1 { grid-template-columns: 1fr 1fr; }
   }
   @media print {
     body { background: #fff !important; color: #111 !important; font-size: 12px; }
@@ -218,7 +222,7 @@
     header, .upload-zone, .file-list, .analyze-btn, .progress-wrap, .error-box, .export-btn-wrap, .share-btn-wrap, .lb-btn-wrap, .pw-gate, .pw-unlocked-badge, .mode-select-wrap, .edit-stats-btn { display: none !important; }
     .report { display: block !important; margin-top: 0; }
     .container { max-width: 100%; padding: 0 1rem; }
-    :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --blue: #185FA5; --blue-dim: #e6f1fb; --blue-border: rgba(24,95,165,0.3); --green: #1a7a3a; --gold: #b8860b; --s1: #6d28d9; --s1-dim: #f3f0ff; --s1-border: rgba(109,40,217,0.3); --s2: #c2410c; --s2-dim: #fff7ed; --s2-border: rgba(194,65,12,0.3); }
+    :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --blue: #185FA5; --blue-dim: #e6f1fb; --blue-border: rgba(24,95,165,0.3); --green: #1a7a3a; --gold: #b8860b; --s1: #6d28d9; --s1-dim: #f3f0ff; --s1-border: rgba(109,40,217,0.3); --s2: #c2410c; --s2-dim: #fff7ed; --s2-border: rgba(194,65,12,0.3); --s3: #065f46; --s3-dim: #ecfdf5; --s3-border: rgba(6,95,70,0.3); }
     .report-title { font-size: 22px; } .team-wins { font-size: 36px; }
     .stat-table-wrap, .game-card-table-wrap { overflow-x: visible !important; }
     .stat-table-wrap, .game-card { border: 1px solid #ccc !important; break-inside: avoid; }
@@ -272,13 +276,17 @@
         <button class="mode-btn" id="modeBtn2v2" onclick="setMode('2v2')">
           2v2 <div class="mode-badge mode-badge-2v2">Slayer Only</div>
         </button>
+        <button class="mode-btn" id="modeBtn1v1" onclick="setMode('1v1')">
+          1v1 <div class="mode-badge mode-badge-1v1">First to 15</div>
+        </button>
       </div>
     </div>
+
     <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" accept="image/*" multiple>
       <span class="upload-icon">🎮</span>
       <div class="upload-title" id="uploadTitle">Drop 4v4 scoreboard screenshots here</div>
-      <div class="upload-hint-text">Click or drag & drop · JPG, PNG, WEBP · up to best-of-7</div>
+      <div class="upload-hint-text">Click or drag & drop · JPG, PNG, WEBP</div>
     </div>
     <div class="file-list" id="fileList"></div>
     <button class="analyze-btn" id="analyzeBtn" disabled>Analyze Series</button>
@@ -329,14 +337,17 @@ function setMode(mode){
   currentMode=mode;
   document.getElementById('modeBtn4v4').className='mode-btn'+(mode==='4v4'?' active-4v4':'');
   document.getElementById('modeBtn2v2').className='mode-btn'+(mode==='2v2'?' active-2v2':'');
-  document.getElementById('uploadTitle').textContent=mode==='2v2'?'Drop 2v2 scoreboard screenshots here':'Drop 4v4 scoreboard screenshots here';
+  document.getElementById('modeBtn1v1').className='mode-btn'+(mode==='1v1'?' active-1v1':'');
+  const titles={'4v4':'Drop 4v4 scoreboard screenshots here','2v2':'Drop 2v2 scoreboard screenshots here','1v1':'Drop 1v1 scoreboard screenshots here'};
+  document.getElementById('uploadTitle').textContent=titles[mode];
   files=[];renderList();
   document.getElementById('analyzeBtn').disabled=true;
   document.getElementById('report').style.display='none';
   document.getElementById('lbBtnWrap').style.display='none';
   document.getElementById('exportWrap').style.display='none';
   document.getElementById('shareBtnWrap').style.display='none';
-  document.getElementById('lbBtnLabel').textContent=mode==='2v2'?'Add to 2v2 Leaderboard Stats':'Add to Leaderboard Stats';
+  const lbLabels={'4v4':'Add to Leaderboard Stats','2v2':'Add to 2v2 Leaderboard Stats','1v1':'Add to 1v1 Leaderboard Stats'};
+  document.getElementById('lbBtnLabel').textContent=lbLabels[mode];
 }
 
 async function checkPassword(){
@@ -408,18 +419,28 @@ analyzeBtn.addEventListener('click',async()=>{
   setTimeout(()=>{
     progressWrap.style.display='none';analyzeBtn.innerHTML='Analyze Series';analyzeBtn.disabled=false;
     if(!results.length){showError('Could not analyze any screenshots.\n\nErrors:\n'+errors.map(e=>`Game ${e.gameNumber}: ${e.message}`).join('\n'));return;}
+    if(currentMode==='1v1'){renderReport1v1(results,errors);return;}
     prepareNameReview(results,errors,currentMode);
   },400);
 });
 
 async function callClaude(b64,mediaType,gameNum,mode){
-  const teamSize=mode==='2v2'?2:4;
-  const modeNote=mode==='2v2'?'This is a 2v2 SLAYER game. Exactly 2 players per team.':'This is a 4v4 game.';
-  const response=await fetch(WORKER_URL+'/analyze',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'claude-opus-4-5',max_tokens:1500,messages:[{role:'user',content:[
-      {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
-      {type:'text',text:`This is a Halo 3 MCC end-of-game scoreboard screenshot (game ${gameNum}). ${modeNote}
+  let prompt='';
+  if(mode==='1v1'){
+    prompt=`This is a Halo 3 MCC 1v1 end-of-game scoreboard screenshot (game ${gameNum}). This is a Slayer game, first to 15 kills. There is exactly 1 player per team.
+
+Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra text:
+{"gameType":"1v1 Slayer","winner":"Red","redTeam":[{"name":"Player1","kills":15,"deaths":10}],"blueTeam":[{"name":"Player2","kills":10,"deaths":15}]}
+
+STEP 1 — READ TEAM COLORS: BLUE background rows=blueTeam. RED background rows=redTeam. Exactly 1 player per team.
+STEP 2 — READ STATS: For each player read their kills and deaths. In 1v1 Slayer, kills=Score column value (net kills). Deaths=Deaths column.
+STEP 3 — WINNER: team with more kills wins.
+PLAYER NAMES: Bottom line=gamertag. Top line=clan tag (ignore).
+Return: gameType, winner ("Red" or "Blue"), redTeam array with 1 player, blueTeam array with 1 player.`;
+  } else {
+    const teamSize=mode==='2v2'?2:4;
+    const modeNote=mode==='2v2'?'This is a 2v2 SLAYER game. Exactly 2 players per team.':'This is a 4v4 game.';
+    prompt=`This is a Halo 3 MCC end-of-game scoreboard screenshot (game ${gameNum}). ${modeNote}
 
 Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra text:
 {"gameType":"Hardcore TS","winner":"Red","redTeam":[{"name":"PlayerName","col1":15,"col2":16,"col3":9,"col4":13,"ballTime":null,"flagCaps":null,"hillTime":null}],"blueTeam":[{"name":"OtherPlayer","col1":12,"col2":12,"col3":7,"col4":11,"ballTime":null,"flagCaps":null,"hillTime":null}]}
@@ -438,7 +459,14 @@ BLUE background=blueTeam. RED background=redTeam.
 redTeam and blueTeam must NEVER contain the same player names.
 STEP 5 — VERIFY WINNER from col1 totals per team.
 PLAYER NAMES: Bottom line=gamertag (use this). Top line=clan tag (ignore).
-${teamSize}v${teamSize}=exactly ${teamSize} players per team, no duplicates across teams.`}
+${teamSize}v${teamSize}=exactly ${teamSize} players per team, no duplicates across teams.`;
+  }
+
+  const response=await fetch(WORKER_URL+'/analyze',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-opus-4-5',max_tokens:1500,messages:[{role:'user',content:[
+      {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
+      {type:'text',text:prompt}
     ]}]})
   });
   if(!response.ok){const t=await response.text().catch(()=>'');throw new Error(`API error ${response.status}: ${t.slice(0,200)}`);}
@@ -447,21 +475,24 @@ ${teamSize}v${teamSize}=exactly ${teamSize} players per team, no duplicates acro
   const cleaned=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
   let parsed;
   try{parsed=JSON.parse(cleaned);}catch(e){throw new Error(`Could not parse response: ${raw.slice(0,200)}`);}
-  const gt=(parsed.gameType||'').toLowerCase();
-  const isBall=!!gt.match(/oddball|ball/);
-  const isCTF=!!gt.match(/ctf|flag|5flag/)||(gt.includes('30')&&!gt.includes('ball'));
-  const isKOTH=!!gt.match(/king|hill|koth/);
-  const isSlayer=!isBall&&!isCTF&&!isKOTH;
-  const remapPlayer=p=>{
-    const c1=p.col1??0,c2=p.col2??0,c3=p.col3??0,c4=p.col4??0;
-    if(isSlayer)return{...p,kills:c1,assists:c3,deaths:c4,flagCaps:null,hillTime:null,ballTime:null};
-    if(isCTF)return{...p,flagCaps:c1,kills:c2,assists:c3,deaths:c4,hillTime:null,ballTime:null};
-    if(isKOTH)return{...p,hillTime:c1,kills:c2,assists:c3,deaths:c4,flagCaps:null,ballTime:null};
-    if(isBall)return{...p,ballTime:c1,kills:c2,assists:c3,deaths:c4,flagCaps:null,hillTime:null};
-    return p;
-  };
-  if(parsed.redTeam)parsed.redTeam=parsed.redTeam.map(remapPlayer);
-  if(parsed.blueTeam)parsed.blueTeam=parsed.blueTeam.map(remapPlayer);
+
+  if(mode!=='1v1'){
+    const gt=(parsed.gameType||'').toLowerCase();
+    const isBall=!!gt.match(/oddball|ball/);
+    const isCTF=!!gt.match(/ctf|flag|5flag/)||(gt.includes('30')&&!gt.includes('ball'));
+    const isKOTH=!!gt.match(/king|hill|koth/);
+    const isSlayer=!isBall&&!isCTF&&!isKOTH;
+    const remapPlayer=p=>{
+      const c1=p.col1??0,c2=p.col2??0,c3=p.col3??0,c4=p.col4??0;
+      if(isSlayer)return{...p,kills:c1,assists:c3,deaths:c4,flagCaps:null,hillTime:null,ballTime:null};
+      if(isCTF)return{...p,flagCaps:c1,kills:c2,assists:c3,deaths:c4,hillTime:null,ballTime:null};
+      if(isKOTH)return{...p,hillTime:c1,kills:c2,assists:c3,deaths:c4,flagCaps:null,ballTime:null};
+      if(isBall)return{...p,ballTime:c1,kills:c2,assists:c3,deaths:c4,flagCaps:null,hillTime:null};
+      return p;
+    };
+    if(parsed.redTeam)parsed.redTeam=parsed.redTeam.map(remapPlayer);
+    if(parsed.blueTeam)parsed.blueTeam=parsed.blueTeam.map(remapPlayer);
+  }
   return parsed;
 }
 
@@ -482,6 +513,139 @@ function pmClass(k,d){const v=(k||0)-(d||0);return v>0?'pm-pos':v<0?'pm-neg':'pm
 function isOddball(gt){return!!(gt||'').toLowerCase().match(/oddball|ball/);}
 function isCTF(gt){const g=(gt||'').toLowerCase();return!!(g.match(/ctf|flag|5flag/)||(g.includes('30')&&!g.includes('ball')));}
 function isKOTH(gt){return!!(gt||'').toLowerCase().match(/king|hill|koth/);}
+
+// ── 1v1 Report ───────────────────────────────────────────────────────────────
+function renderReport1v1(games,errors){
+  const p1Name=(games[0].redTeam||[{name:'Player 1'}])[0].name;
+  const p2Name=(games[0].blueTeam||[{name:'Player 2'}])[0].name;
+  let p1Wins=0,p2Wins=0;
+  games.forEach(g=>{
+    const redK=(g.redTeam||[])[0]?.kills||0;
+    const blueK=(g.blueTeam||[])[0]?.kills||0;
+    if(g.winner==='Red')p1Wins++;
+    else if(g.winner==='Blue')p2Wins++;
+    else if(redK>blueK)p1Wins++;
+    else if(blueK>redK)p2Wins++;
+  });
+  const winner=p1Wins>p2Wins?1:p2Wins>p1Wins?2:0;
+  const dateStr=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const modeBadge='<span style="font-size:13px;font-weight:600;background:var(--s3-dim);color:var(--s3);border:1px solid var(--s3-border);padding:2px 10px;border-radius:99px;margin-left:10px;vertical-align:middle;">1v1</span>';
+
+  let html=`
+  <div class="print-header"><div class="print-header-logo">Lock in H3 — 1v1 Report</div><div class="print-header-date">Generated ${dateStr}</div></div>
+  <div class="report-header">
+    <div class="report-eyebrow">1v1 Session · ${games.length} Game${games.length!==1?'s':''}</div>
+    <div class="report-title">${winner===0?'Session Tied':(winner===1?p1Name:p2Name)+' Wins'}${modeBadge}</div>
+  </div>
+  <div class="series-score">
+    <div class="team-card ${winner===1?'winner-s3':''}">
+      ${winner===1?'<div class="winner-pill">Winner</div>':''}
+      <div class="team-label" style="color:var(--s3)">${p1Name}</div>
+      <div class="team-wins" style="color:var(--s3)">${p1Wins}</div>
+    </div>
+    <div class="vs-sep">VS</div>
+    <div class="team-card ${winner===2?'winner-s3':''}">
+      ${winner===2?'<div class="winner-pill">Winner</div>':''}
+      <div class="team-label" style="color:var(--s2)">${p2Name}</div>
+      <div class="team-wins" style="color:var(--s2)">${p2Wins}</div>
+    </div>
+  </div>`;
+
+  // Overall totals
+  let p1TotalK=0,p1TotalD=0,p2TotalK=0,p2TotalD=0;
+  games.forEach(g=>{p1TotalK+=(g.redTeam||[])[0]?.kills||0;p1TotalD+=(g.redTeam||[])[0]?.deaths||0;p2TotalK+=(g.blueTeam||[])[0]?.kills||0;p2TotalD+=(g.blueTeam||[])[0]?.deaths||0;});
+
+  html+=`<div class="section-title">Overall Stats</div>
+  <div class="stat-table-wrap"><table><thead><tr>
+    <th>Player</th><th>Wins</th><th>Total Kills</th><th>Total Deaths</th><th>K/D</th>
+  </tr></thead><tbody>
+    <tr class="row-s3"><td class="player-name-cell">${p1Name}</td><td>${p1Wins}</td><td>${p1TotalK}</td><td>${p1TotalD}</td><td class="${kdClass(p1TotalK,p1TotalD)}">${kd(p1TotalK,p1TotalD)}</td></tr>
+    <tr class="row-s2"><td class="player-name-cell">${p2Name}</td><td>${p2Wins}</td><td>${p2TotalK}</td><td>${p2TotalD}</td><td class="${kdClass(p2TotalK,p2TotalD)}">${kd(p2TotalK,p2TotalD)}</td></tr>
+  </tbody></table></div>`;
+
+  html+=`<div class="section-title">Game-by-Game Breakdown</div><div class="games-grid">`;
+  games.forEach((g,gi)=>{
+    const p1=g.redTeam?.[0]||{name:p1Name,kills:0,deaths:0};
+    const p2=g.blueTeam?.[0]||{name:p2Name,kills:0,deaths:0};
+    const gameWinner=g.winner==='Red'?p1.name:g.winner==='Blue'?p2.name:'Tied';
+    const winnerSq=g.winner==='Red'?'s3':'s2';
+    html+=`<div class="game-card">
+      <div class="game-card-header">
+        <div class="game-card-title">Game ${g.gameNumber} — 1v1 Slayer</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="game-win-badge badge-${winnerSq}">${gameWinner} Wins</div>
+          <button class="edit-stats-btn" onclick="openStatEditor1v1(${gi})">✏ Edit Stats</button>
+        </div>
+      </div>
+      <div class="game-card-table-wrap">
+      <table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>K/D</th><th>+/-</th></tr></thead><tbody>
+        <tr class="row-s3"><td class="player-name-cell">${p1.name}</td><td>${p1.kills||0}</td><td>${p1.deaths||0}</td><td class="${kdClass(p1.kills||0,p1.deaths||0)}">${kd(p1.kills||0,p1.deaths||0)}</td><td class="${pmClass(p1.kills||0,p1.deaths||0)}">${pm(p1.kills||0,p1.deaths||0)}</td></tr>
+        <tr class="row-s2"><td class="player-name-cell">${p2.name}</td><td>${p2.kills||0}</td><td>${p2.deaths||0}</td><td class="${kdClass(p2.kills||0,p2.deaths||0)}">${kd(p2.kills||0,p2.deaths||0)}</td><td class="${pmClass(p2.kills||0,p2.deaths||0)}">${pm(p2.kills||0,p2.deaths||0)}</td></tr>
+      </tbody></table></div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  if(errors.length)html+=`<div style="background:rgba(255,85,85,0.1);border:1px solid rgba(255,85,85,0.25);border-radius:8px;padding:12px 16px;font-size:13px;color:#ff5555;margin-top:1rem">Could not read: ${errors.map(e=>`Game ${e.gameNumber}`).join(', ')} — try re-uploading clearer screenshots.</div>`;
+
+  reportEl.innerHTML=html;reportEl.style.display='block';
+  document.getElementById('exportWrap').style.display='block';
+  document.getElementById('shareBtnWrap').style.display='block';
+  document.getElementById('lbBtnWrap').style.display=winner!==0?'block':'none';
+  const lbBtn=document.getElementById('lbBtn');
+  lbBtn.innerHTML=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Add to 1v1 Leaderboard Stats`;
+  window._lastGames=games;window._seriesWinner=winner;window._seriesMode='1v1';
+  window._1v1Games=games;
+  reportEl.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// Simple 1v1 stat editor
+window.openStatEditor1v1=function(gi){
+  const games=window._1v1Games;
+  const g=games[gi];
+  const p1=g.redTeam?.[0]||{name:'',kills:0,deaths:0};
+  const p2=g.blueTeam?.[0]||{name:'',kills:0,deaths:0};
+  const html=`<div class="stat-editor-overlay" id="statEditorOverlay">
+    <div class="stat-editor-modal">
+      <div class="stat-editor-title">✏ Edit Game ${g.gameNumber} — 1v1</div>
+      <div class="stat-editor-sub">Correct any misread stats then save.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 60px 60px;gap:8px;align-items:end;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px;">
+        <div><div class="se-field-label">Player 1 Name</div><input type="text" class="se-input se-name-input" id="se1v1_${gi}_p1_name" value="${p1.name}"></div>
+        <div></div>
+        <div><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se1v1_${gi}_p1_kills" value="${p1.kills||0}" min="0"></div>
+        <div><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se1v1_${gi}_p1_deaths" value="${p1.deaths||0}" min="0"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 60px 60px;gap:8px;align-items:end;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px;">
+        <div><div class="se-field-label">Player 2 Name</div><input type="text" class="se-input se-name-input" id="se1v1_${gi}_p2_name" value="${p2.name}"></div>
+        <div></div>
+        <div><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se1v1_${gi}_p2_kills" value="${p2.kills||0}" min="0"></div>
+        <div><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se1v1_${gi}_p2_deaths" value="${p2.deaths||0}" min="0"></div>
+      </div>
+      <div class="stat-editor-actions">
+        <button class="stat-editor-cancel" onclick="document.getElementById('statEditorOverlay').remove()">Cancel</button>
+        <button class="stat-editor-save" onclick="saveStatEdits1v1(${gi})">Save &amp; Update Report</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+  document.getElementById('statEditorOverlay').addEventListener('click',function(e){if(e.target===this)this.remove();});
+};
+
+window.saveStatEdits1v1=function(gi){
+  const games=window._1v1Games;
+  const p1Name=document.getElementById(`se1v1_${gi}_p1_name`)?.value.trim();
+  const p2Name=document.getElementById(`se1v1_${gi}_p2_name`)?.value.trim();
+  const p1Kills=parseInt(document.getElementById(`se1v1_${gi}_p1_kills`)?.value)||0;
+  const p1Deaths=parseInt(document.getElementById(`se1v1_${gi}_p1_deaths`)?.value)||0;
+  const p2Kills=parseInt(document.getElementById(`se1v1_${gi}_p2_kills`)?.value)||0;
+  const p2Deaths=parseInt(document.getElementById(`se1v1_${gi}_p2_deaths`)?.value)||0;
+  games[gi].redTeam=[{name:p1Name,kills:p1Kills,deaths:p1Deaths}];
+  games[gi].blueTeam=[{name:p2Name,kills:p2Kills,deaths:p2Deaths}];
+  games[gi].winner=p1Kills>p2Kills?'Red':p2Kills>p1Kills?'Blue':games[gi].winner;
+  window._1v1Games=games;
+  document.getElementById('statEditorOverlay').remove();
+  renderReport1v1(games,[]);
+};
 
 // ── Name Review ──────────────────────────────────────────────────────────────
 let pendingReviewGames=null,pendingReviewErrors=null,pendingReviewMode=null;
@@ -535,25 +699,14 @@ function applyNameFixesAndRender(){
   renderReport(updated,pendingReviewErrors,pendingReviewMode);
 }
 
-// ── verifyWinner — ties for all OBJ types ────────────────────────────────────
 function verifyWinner(game,mode){
-  if(mode==='2v2')return game.winner;
+  if(mode==='2v2'||mode==='1v1')return game.winner;
   const gt=game.gameType||'';const red=game.redTeam||[];const blue=game.blueTeam||[];
-  if(isCTF(gt)){
-    const r=red.reduce((s,p)=>s+(p.flagCaps||0),0),b=blue.reduce((s,p)=>s+(p.flagCaps||0),0);
-    if(r!==b)return r>b?'Red':'Blue';return'Tie';
-  }
-  if(isKOTH(gt)){
-    const r=red.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);
-    if(r!==b)return r>b?'Red':'Blue';return'Tie';
-  }
-  if(isOddball(gt)){
-    const r=red.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);
-    if(r!==b)return r>b?'Red':'Blue';return'Tie';
-  }
+  if(isCTF(gt)){const r=red.reduce((s,p)=>s+(p.flagCaps||0),0),b=blue.reduce((s,p)=>s+(p.flagCaps||0),0);if(r!==b)return r>b?'Red':'Blue';return'Tie';}
+  if(isKOTH(gt)){const r=red.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.hillTime),0);if(r!==b)return r>b?'Red':'Blue';return'Tie';}
+  if(isOddball(gt)){const r=red.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0),b=blue.reduce((s,p)=>s+parseTimeSecs(p.ballTime),0);if(r!==b)return r>b?'Red':'Blue';return'Tie';}
   const rk=red.reduce((s,p)=>s+(p.kills||0),0),bk=blue.reduce((s,p)=>s+(p.kills||0),0);
-  if(rk!==bk)return rk>bk?'Red':'Blue';
-  return game.winner;
+  if(rk!==bk)return rk>bk?'Red':'Blue';return game.winner;
 }
 
 function calcObjMVP(players,games){
@@ -581,7 +734,7 @@ async function submitToLeaderboard(force=false){
   if(!appUnlocked)return;
   const btn=document.getElementById('lbBtn'),forceBtn=document.getElementById('lbForceBtn');
   if(!window._lastGames||!window._seriesWinner)return;
-  if(window._seriesWinner===0){btn.className='lb-btn duplicate';btn.innerHTML='— Tied series not added to leaderboard';btn.disabled=true;return;}
+  if(window._seriesWinner===0){btn.className='lb-btn duplicate';btn.innerHTML='— Tied session not added to leaderboard';btn.disabled=true;return;}
   btn.disabled=true;forceBtn.style.display='none';btn.innerHTML='<span class="spinner" style="border-top-color:currentColor"></span> Saving...';
   try{
     const resp=await fetch(WORKER_URL+'/leaderboard/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({games:window._lastGames,seriesWinner:window._seriesWinner,force,mode:window._seriesMode})});
@@ -594,12 +747,12 @@ async function submitToLeaderboard(force=false){
 document.getElementById('lbBtn').addEventListener('click',()=>submitToLeaderboard(false));
 document.getElementById('lbForceBtn').addEventListener('click',async()=>{
   const fb=document.getElementById('lbForceBtn');
-  if(!confirm('This will add the series stats again even though it was already fingerprinted.\n\nOnly use this if stats were missing. Continue?'))return;
+  if(!confirm('This will add the stats again even though it was already fingerprinted.\n\nOnly use this if stats were missing. Continue?'))return;
   fb.disabled=true;fb.textContent='Force adding...';
   await submitToLeaderboard(true);fb.disabled=false;
 });
 
-// ── Stat Editor — with game type selector and OBJ field toggle ───────────────
+// ── Stat Editor (4v4 / 2v2) ──────────────────────────────────────────────────
 let _editorGames=null,_editorMode=null;
 
 function seGetObjType(gameType){
@@ -631,18 +784,13 @@ function sePlayerRowHtml(gi,idx,p,objType,mode){
 function openStatEditor(gi){
   const g=_editorGames[gi];const mode=_editorMode;
   const allPlayers=[...(g.redTeam||[]).map(p=>({...p,_team:'red'})),...(g.blueTeam||[]).map(p=>({...p,_team:'blue'}))];
-  window._sePlayers=allPlayers.map(p=>({...p}));
-  window._seGi=gi;
-  const currentObjType=seGetObjType(g.gameType);
-  window._seObjType=currentObjType;
-
+  window._sePlayers=allPlayers.map(p=>({...p}));window._seGi=gi;
+  const currentObjType=seGetObjType(g.gameType);window._seObjType=currentObjType;
   const gameTypeOptions=['Hardcore TS','Hardcore King','Hardcore CTF','HC PIT 30MIN','MLG CTF 5Flag 8','ONS/HERETIC 30M','30 MIN NAR','Hardcore Ball','Slayer'];
-
   const html=`<div class="stat-editor-overlay" id="statEditorOverlay">
     <div class="stat-editor-modal">
       <div class="stat-editor-title">✏ Edit Game ${g.gameNumber} Stats</div>
       <div class="stat-editor-sub">Fix the game type first if it was misread — this controls which OBJ column appears. Then fix names, squads, and stats.<br><strong style="color:var(--gold)">Squad 1 = Red · Squad 2 = Blue</strong></div>
-
       <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:1rem;margin-bottom:1rem;">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Game Type</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -653,7 +801,6 @@ function openStatEditor(gi){
         </div>
         <div style="font-size:12px;color:var(--muted);margin-top:6px;">Detected as: <strong id="seObjTypeLabel_${gi}" style="color:var(--accent)">${seObjTypeName(currentObjType)}</strong></div>
       </div>
-
       <div id="sePlayerList_${gi}">${allPlayers.map((p,i)=>sePlayerRowHtml(gi,i,p,currentObjType,mode)).join('')}</div>
       <button id="seAddBtn_${gi}" class="se-add-player-btn" onclick="seAddPlayer(${gi})" style="margin-top:0.5rem;width:100%;padding:8px;border-radius:6px;font-size:13px;">+ Add Missing Player</button>
       <div class="stat-editor-actions">
@@ -662,130 +809,53 @@ function openStatEditor(gi){
       </div>
     </div>
   </div>`;
-
   document.body.insertAdjacentHTML('beforeend',html);
   document.getElementById('statEditorOverlay').addEventListener('click',function(e){if(e.target===this)this.remove();});
 }
 
 window.seUpdateGameType=function(gi){
-  const newGameType=document.getElementById(`seGameType_${gi}`).value.trim();
-  if(!newGameType)return;
-  const mode=_editorMode;
-  const newObjType=seGetObjType(newGameType);
-  window._seObjType=newObjType;
-
-  // Capture current values before rebuild
-  const list=document.getElementById(`sePlayerList_${gi}`);
-  const rows=list.querySelectorAll('[id^="serow_"]');
-  const saved=[];
-  rows.forEach(row=>{
-    const idx=row.id.split('_')[2];
-    saved.push({
-      name:document.getElementById(`se_${gi}_${idx}_name`)?.value||'',
-      _team:document.getElementById(`se_${gi}_${idx}_team`)?.value||'red',
-      kills:parseInt(document.getElementById(`se_${gi}_${idx}_kills`)?.value)||0,
-      deaths:parseInt(document.getElementById(`se_${gi}_${idx}_deaths`)?.value)||0,
-      assists:parseInt(document.getElementById(`se_${gi}_${idx}_assists`)?.value)||0,
-      _obj:parseInt(document.getElementById(`se_${gi}_${idx}_obj`)?.value)||0,
-    });
-  });
-
-  list.innerHTML=saved.map((p,idx)=>{
-    const hasObj=newObjType!=='slayer'&&mode==='4v4';
-    const colClass=hasObj?'se-player-row-obj':'se-player-row-4v4';
-    return`<div class="se-player-row ${colClass}" id="serow_${gi}_${idx}">
-      <div class="se-field-group"><div class="se-field-label">Name</div><input type="text" class="se-input se-name-input" id="se_${gi}_${idx}_name" value="${p.name.replace(/"/g,'&quot;')}"></div>
-      <div class="se-field-group"><div class="se-field-label">Squad</div><select class="se-squad-select" id="se_${gi}_${idx}_team"><option value="red" ${p._team==='red'?'selected':''}>Squad 1 (Red)</option><option value="blue" ${p._team==='blue'?'selected':''}>Squad 2 (Blue)</option></select></div>
-      <div class="se-field-group"><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se_${gi}_${idx}_kills" value="${p.kills}" min="0"></div>
-      <div class="se-field-group"><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se_${gi}_${idx}_deaths" value="${p.deaths}" min="0"></div>
-      <div class="se-field-group"><div class="se-field-label">Assists</div><input type="number" class="se-input" id="se_${gi}_${idx}_assists" value="${p.assists}" min="0"></div>
-      ${hasObj?`<div class="se-field-group"><div class="se-field-label">${seObjLabel(newObjType)}</div><input type="number" class="se-input" id="se_${gi}_${idx}_obj" value="${p._obj}" min="0"></div>`:''}
-      <button class="se-remove-btn" onclick="seRemovePlayer(${gi},${idx})" title="Remove">×</button>
-    </div>`;
-  }).join('');
-
-  const labelEl=document.getElementById(`seObjTypeLabel_${gi}`);
-  if(labelEl)labelEl.textContent=seObjTypeName(newObjType);
+  const newGameType=document.getElementById(`seGameType_${gi}`).value.trim();if(!newGameType)return;
+  const mode=_editorMode;const newObjType=seGetObjType(newGameType);window._seObjType=newObjType;
+  const list=document.getElementById(`sePlayerList_${gi}`);const rows=list.querySelectorAll('[id^="serow_"]');const saved=[];
+  rows.forEach(row=>{const idx=row.id.split('_')[2];saved.push({name:document.getElementById(`se_${gi}_${idx}_name`)?.value||'',_team:document.getElementById(`se_${gi}_${idx}_team`)?.value||'red',kills:parseInt(document.getElementById(`se_${gi}_${idx}_kills`)?.value)||0,deaths:parseInt(document.getElementById(`se_${gi}_${idx}_deaths`)?.value)||0,assists:parseInt(document.getElementById(`se_${gi}_${idx}_assists`)?.value)||0,_obj:parseInt(document.getElementById(`se_${gi}_${idx}_obj`)?.value)||0});});
+  list.innerHTML=saved.map((p,idx)=>{const hasObj=newObjType!=='slayer'&&mode==='4v4';const colClass=hasObj?'se-player-row-obj':'se-player-row-4v4';return`<div class="se-player-row ${colClass}" id="serow_${gi}_${idx}"><div class="se-field-group"><div class="se-field-label">Name</div><input type="text" class="se-input se-name-input" id="se_${gi}_${idx}_name" value="${p.name.replace(/"/g,'&quot;')}"></div><div class="se-field-group"><div class="se-field-label">Squad</div><select class="se-squad-select" id="se_${gi}_${idx}_team"><option value="red" ${p._team==='red'?'selected':''}>Squad 1 (Red)</option><option value="blue" ${p._team==='blue'?'selected':''}>Squad 2 (Blue)</option></select></div><div class="se-field-group"><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se_${gi}_${idx}_kills" value="${p.kills}" min="0"></div><div class="se-field-group"><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se_${gi}_${idx}_deaths" value="${p.deaths}" min="0"></div><div class="se-field-group"><div class="se-field-label">Assists</div><input type="number" class="se-input" id="se_${gi}_${idx}_assists" value="${p.assists}" min="0"></div>${hasObj?`<div class="se-field-group"><div class="se-field-label">${seObjLabel(newObjType)}</div><input type="number" class="se-input" id="se_${gi}_${idx}_obj" value="${p._obj}" min="0"></div>`:''}<button class="se-remove-btn" onclick="seRemovePlayer(${gi},${idx})" title="Remove">×</button></div>`;}).join('');
+  const labelEl=document.getElementById(`seObjTypeLabel_${gi}`);if(labelEl)labelEl.textContent=seObjTypeName(newObjType);
 };
 
 window.seRemovePlayer=function(gi,idx){const row=document.getElementById(`serow_${gi}_${idx}`);if(row)row.remove();};
 
 window.seAddPlayer=function(gi){
-  const list=document.getElementById(`sePlayerList_${gi}`);
-  const mode=_editorMode;
-  const objType=window._seObjType||'slayer';
-  const hasObj=objType!=='slayer'&&mode==='4v4';
-  const colClass=hasObj?'se-player-row-obj':'se-player-row-4v4';
-  const existing=list.querySelectorAll('[id^="serow_"]');
-  const indices=[...existing].map(el=>parseInt(el.id.split('_')[2]));
-  const newIdx=indices.length>0?Math.max(...indices)+1:0;
-  list.insertAdjacentHTML('beforeend',`<div class="se-player-row ${colClass}" id="serow_${gi}_${newIdx}">
-    <div class="se-field-group"><div class="se-field-label">Name</div><input type="text" class="se-input se-name-input" id="se_${gi}_${newIdx}_name" placeholder="Player name"></div>
-    <div class="se-field-group"><div class="se-field-label">Squad</div><select class="se-squad-select" id="se_${gi}_${newIdx}_team"><option value="red">Squad 1 (Red)</option><option value="blue">Squad 2 (Blue)</option></select></div>
-    <div class="se-field-group"><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_kills" value="0" min="0"></div>
-    <div class="se-field-group"><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_deaths" value="0" min="0"></div>
-    <div class="se-field-group"><div class="se-field-label">Assists</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_assists" value="0" min="0"></div>
-    ${hasObj?`<div class="se-field-group"><div class="se-field-label">${seObjLabel(objType)}</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_obj" value="0" min="0"></div>`:''}
-    <button class="se-remove-btn" onclick="seRemovePlayer(${gi},${newIdx})" title="Remove">×</button>
-  </div>`);
+  const list=document.getElementById(`sePlayerList_${gi}`);const mode=_editorMode;const objType=window._seObjType||'slayer';const hasObj=objType!=='slayer'&&mode==='4v4';const colClass=hasObj?'se-player-row-obj':'se-player-row-4v4';
+  const existing=list.querySelectorAll('[id^="serow_"]');const indices=[...existing].map(el=>parseInt(el.id.split('_')[2]));const newIdx=indices.length>0?Math.max(...indices)+1:0;
+  list.insertAdjacentHTML('beforeend',`<div class="se-player-row ${colClass}" id="serow_${gi}_${newIdx}"><div class="se-field-group"><div class="se-field-label">Name</div><input type="text" class="se-input se-name-input" id="se_${gi}_${newIdx}_name" placeholder="Player name"></div><div class="se-field-group"><div class="se-field-label">Squad</div><select class="se-squad-select" id="se_${gi}_${newIdx}_team"><option value="red">Squad 1 (Red)</option><option value="blue">Squad 2 (Blue)</option></select></div><div class="se-field-group"><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_kills" value="0" min="0"></div><div class="se-field-group"><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_deaths" value="0" min="0"></div><div class="se-field-group"><div class="se-field-label">Assists</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_assists" value="0" min="0"></div>${hasObj?`<div class="se-field-group"><div class="se-field-label">${seObjLabel(objType)}</div><input type="number" class="se-input" id="se_${gi}_${newIdx}_obj" value="0" min="0"></div>`:''}<button class="se-remove-btn" onclick="seRemovePlayer(${gi},${newIdx})" title="Remove">×</button></div>`);
 };
 
 window.saveStatEdits=function(gi){
   const g=_editorGames[gi],mode=_editorMode;
-  const newGameType=document.getElementById(`seGameType_${gi}`)?.value.trim();
-  if(newGameType)_editorGames[gi].gameType=newGameType;
+  const newGameType=document.getElementById(`seGameType_${gi}`)?.value.trim();if(newGameType)_editorGames[gi].gameType=newGameType;
   const objType=window._seObjType||seGetObjType(_editorGames[gi].gameType);
-  const gCTF=objType==='ctf'&&mode==='4v4';
-  const gKOTH=objType==='koth'&&mode==='4v4';
-  const gOdd=objType==='ball'&&mode==='4v4';
-  const list=document.getElementById(`sePlayerList_${gi}`);
-  const rows=list.querySelectorAll('[id^="serow_"]');
-  const newRed=[],newBlue=[];
-  rows.forEach(row=>{
-    const idx=row.id.split('_')[2];
-    const name=document.getElementById(`se_${gi}_${idx}_name`)?.value.trim();if(!name)return;
-    const team=document.getElementById(`se_${gi}_${idx}_team`)?.value;
-    const kills=parseInt(document.getElementById(`se_${gi}_${idx}_kills`)?.value)||0;
-    const deaths=parseInt(document.getElementById(`se_${gi}_${idx}_deaths`)?.value)||0;
-    const assists=parseInt(document.getElementById(`se_${gi}_${idx}_assists`)?.value)||0;
-    const objVal=parseInt(document.getElementById(`se_${gi}_${idx}_obj`)?.value)||0;
-    const player={name,kills,deaths,assists,flagCaps:null,hillTime:null,ballTime:null};
-    if(gCTF)player.flagCaps=objVal;if(gKOTH)player.hillTime=objVal;if(gOdd)player.ballTime=objVal;
-    if(team==='red')newRed.push(player);else newBlue.push(player);
-  });
+  const gCTF=objType==='ctf'&&mode==='4v4';const gKOTH=objType==='koth'&&mode==='4v4';const gOdd=objType==='ball'&&mode==='4v4';
+  const list=document.getElementById(`sePlayerList_${gi}`);const rows=list.querySelectorAll('[id^="serow_"]');const newRed=[],newBlue=[];
+  rows.forEach(row=>{const idx=row.id.split('_')[2];const name=document.getElementById(`se_${gi}_${idx}_name`)?.value.trim();if(!name)return;const team=document.getElementById(`se_${gi}_${idx}_team`)?.value;const kills=parseInt(document.getElementById(`se_${gi}_${idx}_kills`)?.value)||0;const deaths=parseInt(document.getElementById(`se_${gi}_${idx}_deaths`)?.value)||0;const assists=parseInt(document.getElementById(`se_${gi}_${idx}_assists`)?.value)||0;const objVal=parseInt(document.getElementById(`se_${gi}_${idx}_obj`)?.value)||0;const player={name,kills,deaths,assists,flagCaps:null,hillTime:null,ballTime:null};if(gCTF)player.flagCaps=objVal;if(gKOTH)player.hillTime=objVal;if(gOdd)player.ballTime=objVal;if(team==='red')newRed.push(player);else newBlue.push(player);});
   _editorGames[gi].redTeam=newRed;_editorGames[gi].blueTeam=newBlue;
-  document.getElementById('statEditorOverlay').remove();
-  renderReport(_editorGames,[],mode);
+  document.getElementById('statEditorOverlay').remove();renderReport(_editorGames,[],mode);
 };
 
-// ── Render Report ────────────────────────────────────────────────────────────
+// ── Render Report (4v4 / 2v2) ────────────────────────────────────────────────
 function renderReport(games,errors,mode){
   _editorGames=games.map(g=>({...g}));_editorMode=mode;
   games=games.map(g=>({...g,winner:verifyWinner(g,mode)}));
   const {squad1,squad2}=buildSquads(games);
-
   let s1Wins=0,s2Wins=0;
-  games.forEach(g=>{
-    const wt=g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
-    if(wt.length>0){let s1v=0,s2v=0;wt.forEach(p=>{if(getSquad(p.name,squad1,squad2)===1)s1v++;else s2v++;});if(s1v>s2v)s1Wins++;else s2Wins++;}
-  });
+  games.forEach(g=>{const wt=g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);if(wt.length>0){let s1v=0,s2v=0;wt.forEach(p=>{if(getSquad(p.name,squad1,squad2)===1)s1v++;else s2v++;});if(s1v>s2v)s1Wins++;else s2Wins++;}});
   const winner=s1Wins>s2Wins?1:s2Wins>s1Wins?2:0;
-
   const agg={};
-  games.forEach(g=>{
-    [...(g.redTeam||[]).map(p=>({...p})),...(g.blueTeam||[]).map(p=>({...p}))].forEach(p=>{
-      if(!p.name)return;const sq=getSquad(p.name,squad1,squad2);
-      if(!agg[p.name])agg[p.name]={name:p.name,squad:sq,kills:0,deaths:0,assists:0,ballSecs:0,flagCaps:0,hillSecs:0};
-      const a=agg[p.name];
-      a.kills+=p.kills||0;a.deaths+=p.deaths||0;a.assists+=p.assists||0;
-      a.ballSecs+=parseTimeSecs(p.ballTime);a.flagCaps+=p.flagCaps||0;a.hillSecs+=parseTimeSecs(p.hillTime);
-    });
-  });
-
+  games.forEach(g=>{[...(g.redTeam||[]).map(p=>({...p})),...(g.blueTeam||[]).map(p=>({...p}))].forEach(p=>{if(!p.name)return;const sq=getSquad(p.name,squad1,squad2);if(!agg[p.name])agg[p.name]={name:p.name,squad:sq,kills:0,deaths:0,assists:0,ballSecs:0,flagCaps:0,hillSecs:0};const a=agg[p.name];a.kills+=p.kills||0;a.deaths+=p.deaths||0;a.assists+=p.assists||0;a.ballSecs+=parseTimeSecs(p.ballTime);a.flagCaps+=p.flagCaps||0;a.hillSecs+=parseTimeSecs(p.hillTime);});});
   const players=Object.values(agg);
-  const topKiller=[...players].sort((a,b)=>b.kills-a.kills)[0];
+  const topKiller=[...players].sort((a,b)=>b.kills-a.kills||b.kills-a.kills)[0];
   const bottomFragger=[...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
-const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[0];  const objMVP=mode==='4v4'?calcObjMVP(players,games):null;
+  const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[0];
+  const objMVP=mode==='4v4'?calcObjMVP(players,games):null;
   const hasOddball=mode==='4v4'&&games.some(g=>isOddball(g.gameType));
   const hasCTF=mode==='4v4'&&games.some(g=>isCTF(g.gameType));
   const hasKOTH=mode==='4v4'&&games.some(g=>isKOTH(g.gameType));
@@ -794,9 +864,7 @@ const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[
   const modeBadge=mode==='2v2'
     ?'<span style="font-size:13px;font-weight:600;background:var(--s2-dim);color:var(--s2);border:1px solid var(--s2-border);padding:2px 10px;border-radius:99px;margin-left:10px;vertical-align:middle;">2v2</span>'
     :'<span style="font-size:13px;font-weight:600;background:var(--s1-dim);color:var(--s1);border:1px solid var(--s1-border);padding:2px 10px;border-radius:99px;margin-left:10px;vertical-align:middle;">4v4</span>';
-
   function objMVPStats(p){const pts=[];if(p.flagCaps>0)pts.push(`${p.flagCaps} Flag Caps`);if(p.hillSecs>0)pts.push(`${fmtTime(p.hillSecs)} Hill Time`);if(p.ballSecs>0)pts.push(`${fmtTime(p.ballSecs)} Ball Time`);return pts.join(' &nbsp;·&nbsp; ')||'Objective contributor';}
-
   const calloutHtml=mode==='2v2'?`
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2rem;">
       ${topKiller?`<div class="mvp-strip mvp-strip-gold"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills &nbsp;·&nbsp; ${topKiller.deaths} Deaths &nbsp;·&nbsp; ${kd(topKiller.kills,topKiller.deaths)} K/D</div></div></div>`:''}
@@ -835,7 +903,6 @@ const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[
   </div>
   ${calloutHtml}`;
 
-  // Overall stats table — includes KDA column
   html+=`<div class="section-title">Overall Player Stats</div>
   <div class="stat-table-wrap"><table><thead><tr>
     <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>KDA</th><th>+/-</th>
@@ -844,21 +911,11 @@ const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[
   [1,2].forEach(sq=>{
     html+=`<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq}</td></tr>`;
     players.filter(p=>p.squad===sq).forEach(p=>{
-      html+=`<tr class="row-s${sq}">
-        <td class="player-name-cell">${p.name}</td>
-        <td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td>
-        <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
-        <td class="${kdClass(p.kills+p.assists,p.deaths)}">${kd(p.kills+p.assists,p.deaths)}</td>
-        <td class="${pmClass(p.kills,p.deaths)}">${pm(p.kills,p.deaths)}</td>
-        ${hasOddball?`<td>${fmtHillOrBall(p.ballSecs)}</td>`:''}
-        ${hasCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}
-        ${hasKOTH?`<td>${fmtHillOrBall(p.hillSecs)}</td>`:''}
-      </tr>`;
+      html+=`<tr class="row-s${sq}"><td class="player-name-cell">${p.name}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.assists}</td><td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td><td class="${kdClass(p.kills+p.assists,p.deaths)}">${kd(p.kills+p.assists,p.deaths)}</td><td class="${pmClass(p.kills,p.deaths)}">${pm(p.kills,p.deaths)}</td>${hasOddball?`<td>${fmtHillOrBall(p.ballSecs)}</td>`:''}${hasCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}${hasKOTH?`<td>${fmtHillOrBall(p.hillSecs)}</td>`:''}</tr>`;
     });
   });
   html+=`</tbody></table></div>`;
 
-  // Game-by-game — includes KDA column
   html+=`<div class="section-title">Game-by-Game Breakdown</div><div class="games-grid">`;
   games.forEach((g,gi)=>{
     const gOdd=isOddball(g.gameType)&&mode==='4v4',gCTF=isCTF(g.gameType)&&mode==='4v4',gKOTH=isKOTH(g.gameType)&&mode==='4v4';
@@ -874,26 +931,12 @@ const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[
         </div>
       </div>
       <div class="game-card-table-wrap">
-      <table><thead><tr>
-        <th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>KDA</th><th>+/-</th>
-        ${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}
-      </tr></thead><tbody>`;
+      <table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>KDA</th><th>+/-</th>${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}</tr></thead><tbody>`;
     [1,2].forEach(sq=>{
       const sqP=sq===1?[...squad1]:[...squad2];const sqColor=sqP.some(n=>redNames.has(n))?'Red':'Blue';
       const pts=sqColor==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
       html+=`<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq} <span class="color-tag color-tag-${sqColor.toLowerCase()}">${sqColor}</span></td></tr>`;
-      pts.forEach(p=>{
-        html+=`<tr class="row-s${sq}">
-          <td class="player-name-cell">${p.name||'?'}</td>
-          <td>${p.kills||0}</td><td>${p.deaths||0}</td><td>${p.assists||0}</td>
-          <td class="${kdClass(p.kills||0,p.deaths||0)}">${kd(p.kills||0,p.deaths||0)}</td>
-          <td class="${kdClass((p.kills||0)+(p.assists||0),p.deaths||0)}">${kd((p.kills||0)+(p.assists||0),p.deaths||0)}</td>
-          <td class="${pmClass(p.kills||0,p.deaths||0)}">${pm(p.kills||0,p.deaths||0)}</td>
-          ${gOdd?`<td>${fmtHillOrBall(p.ballTime)}</td>`:''}
-          ${gCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}
-          ${gKOTH?`<td>${fmtHillOrBall(p.hillTime)}</td>`:''}
-        </tr>`;
-      });
+      pts.forEach(p=>{html+=`<tr class="row-s${sq}"><td class="player-name-cell">${p.name||'?'}</td><td>${p.kills||0}</td><td>${p.deaths||0}</td><td>${p.assists||0}</td><td class="${kdClass(p.kills||0,p.deaths||0)}">${kd(p.kills||0,p.deaths||0)}</td><td class="${kdClass((p.kills||0)+(p.assists||0),p.deaths||0)}">${kd((p.kills||0)+(p.assists||0),p.deaths||0)}</td><td class="${pmClass(p.kills||0,p.deaths||0)}">${pm(p.kills||0,p.deaths||0)}</td>${gOdd?`<td>${fmtHillOrBall(p.ballTime)}</td>`:''}${gCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}${gKOTH?`<td>${fmtHillOrBall(p.hillTime)}</td>`:''}</tr>`;});
     });
     html+=`</tbody></table></div></div>`;
   });
@@ -912,7 +955,6 @@ const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[
 }
 
 document.getElementById('exportBtn').addEventListener('click',()=>{const t=document.title;document.title='Lock in H3 — Series Report';window.print();document.title=t;});
-
 async function saveReport(games){const resp=await fetch(WORKER_URL+'/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(games)});if(!resp.ok)throw new Error('Failed to save');const{id}=await resp.json();return id;}
 async function loadReport(id){const resp=await fetch(WORKER_URL+'/report?id='+encodeURIComponent(id));if(resp.status===404)return null;if(!resp.ok)throw new Error('Failed to load');return await resp.json();}
 
@@ -948,8 +990,10 @@ document.getElementById('copyBtn').addEventListener('click',()=>{
   try{
     const games=await loadReport(id);
     if(!games){reportEl.innerHTML='<div class="not-found-msg"><h2>Report not found</h2><p>This link may have expired — reports are stored for 90 days.</p></div>';return;}
-    const detectedMode=games[0]&&(games[0].redTeam||[]).length<=2?'2v2':'4v4';
-    renderReport(games,[],detectedMode);
+    const teamSize=(games[0]?.redTeam||[]).length;
+    const detectedMode=teamSize<=1?'1v1':teamSize<=2?'2v2':'4v4';
+    if(detectedMode==='1v1'){renderReport1v1(games,[]);}
+    else{renderReport(games,[],detectedMode);}
     document.getElementById('exportWrap').style.display='block';
     document.getElementById('shareBtnWrap').style.display='none';
     document.getElementById('lbBtnWrap').style.display='none';
