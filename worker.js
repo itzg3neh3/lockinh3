@@ -180,16 +180,24 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
     if (!leaderboard[pKey]) {
       leaderboard[pKey] = {
         displayName: stats.displayName,
-        seriesPlayed: 0, seriesWon: 0, seriesLost: 0,
+        seriesPlayed: 0, seriesWon: 0, seriesLost: 0, seriesTied: 0,
         kills: 0, deaths: 0, assists: 0,
         flagCaps: 0, hillSecs: 0, ballSecs: 0
       };
     }
     const lb = leaderboard[pKey];
+    // Ensure seriesTied exists on older records
+    if (lb.seriesTied === undefined) lb.seriesTied = 0;
     lb.displayName = stats.displayName;
     lb.seriesPlayed += 1;
-    if (winningSquadNames.has(pKey)) lb.seriesWon += 1;
-    else if (losingSquadNames.has(pKey)) lb.seriesLost += 1;
+    // For 1v1, tied sessions count as ties for both players
+    if (mode === '1v1' && seriesWinner === 0) {
+      lb.seriesTied += 1;
+    } else if (winningSquadNames.has(pKey)) {
+      lb.seriesWon += 1;
+    } else if (losingSquadNames.has(pKey)) {
+      lb.seriesLost += 1;
+    }
     lb.kills += stats.kills;
     lb.deaths += stats.deaths;
     lb.assists += stats.assists;
@@ -215,7 +223,6 @@ export default {
       return new Response('Forbidden', { status: 403 });
     }
 
-    // ── POST /app/auth ───────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/app/auth') {
       try {
         const { password } = await request.json();
@@ -228,7 +235,6 @@ export default {
       }
     }
 
-    // ── POST /admin/auth ─────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/admin/auth') {
       try {
         const { password } = await request.json();
@@ -241,7 +247,6 @@ export default {
       }
     }
 
-    // ── POST /analyze ────────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/analyze') {
       try {
         const body = await request.json();
@@ -261,7 +266,6 @@ export default {
       }
     }
 
-    // ── POST /save ───────────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/save') {
       try {
         const body = await request.text();
@@ -282,7 +286,6 @@ export default {
       }
     }
 
-    // ── GET /report ──────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/report') {
       const id = url.searchParams.get('id');
       if (!id || !/^[a-z2-9]{4,10}$/.test(id)) {
@@ -297,7 +300,6 @@ export default {
       }
     }
 
-    // ── POST /leaderboard/save ───────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/save') {
       try {
         const { games, seriesWinner, force, mode } = await request.json();
@@ -320,8 +322,7 @@ export default {
         await env.REPORTS.put(fpKey, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
 
         const reportBody = JSON.stringify(games);
-        let reportId;
-        let attempts = 0;
+        let reportId, attempts = 0;
         do {
           reportId = randomId(6);
           const existing = await env.REPORTS.get(reportId);
@@ -337,7 +338,6 @@ export default {
       }
     }
 
-    // ── GET /leaderboard ─────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/leaderboard') {
       try {
         const mode = url.searchParams.get('mode') === '2v2' ? '2v2' : url.searchParams.get('mode') === '1v1' ? '1v1' : '4v4';
@@ -349,7 +349,6 @@ export default {
       }
     }
 
-    // ── GET /leaderboard/snapshots ───────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/leaderboard/snapshots') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -365,7 +364,6 @@ export default {
       }
     }
 
-    // ── POST /leaderboard/restore ────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/restore') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -382,7 +380,6 @@ export default {
       }
     }
 
-    // ── POST /leaderboard/edit ───────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/edit') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -396,6 +393,7 @@ export default {
         leaderboard[key].seriesPlayed = stats.seriesPlayed;
         leaderboard[key].seriesWon = stats.seriesWon;
         leaderboard[key].seriesLost = stats.seriesLost;
+        leaderboard[key].seriesTied = stats.seriesTied || 0;
         leaderboard[key].kills = stats.kills;
         leaderboard[key].deaths = stats.deaths;
         leaderboard[key].assists = stats.assists;
@@ -410,7 +408,6 @@ export default {
       }
     }
 
-    // ── POST /leaderboard/merge ──────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/merge') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -428,6 +425,7 @@ export default {
         to.seriesPlayed += from.seriesPlayed;
         to.seriesWon += from.seriesWon;
         to.seriesLost += from.seriesLost;
+        to.seriesTied = (to.seriesTied || 0) + (from.seriesTied || 0);
         to.kills += from.kills;
         to.deaths += from.deaths;
         to.assists += from.assists;
@@ -443,7 +441,6 @@ export default {
       }
     }
 
-    // ── POST /leaderboard/delete ─────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/leaderboard/delete') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -463,16 +460,13 @@ export default {
       }
     }
 
-    // ── GET /history ─────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history') {
       try {
         const list = await env.REPORTS.list({ prefix: 'history:' });
         const entries = [];
         for (const k of list.keys) {
           const raw = await env.REPORTS.get(k.name);
-          if (raw) {
-            try { entries.push(JSON.parse(raw)); } catch(e) {}
-          }
+          if (raw) { try { entries.push(JSON.parse(raw)); } catch(e) {} }
         }
         entries.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
         return jsonResponse({ entries }, 200, origin);
@@ -481,7 +475,6 @@ export default {
       }
     }
 
-    // ── POST /history/import ─────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/history/import') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -508,9 +501,7 @@ export default {
         const seriesWinner = s1Wins > s2Wins ? 1 : s2Wins > s1Wins ? 2 : 0;
         const list = await env.REPORTS.list({ prefix: 'history:' });
         for (const k of list.keys) {
-          if (k.name.includes(reportId)) {
-            return jsonResponse({ error: 'This report is already in history' }, 400, origin);
-          }
+          if (k.name.includes(reportId)) return jsonResponse({ error: 'This report is already in history' }, 400, origin);
         }
         const entry = await saveHistoryEntry(games, seriesWinner, resolvedMode, reportId, playedAt, env);
         return jsonResponse({ status: 'imported', entry }, 200, origin);
@@ -519,7 +510,6 @@ export default {
       }
     }
 
-    // ── POST /history/delete ─────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/history/delete') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -532,7 +522,6 @@ export default {
       }
     }
 
-    // ── POST /history/get ────────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/history/get') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -546,7 +535,6 @@ export default {
       }
     }
 
-    // ── POST /history/update ─────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/history/update') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -555,16 +543,13 @@ export default {
         await env.REPORTS.delete(key);
         const newKey = `history:${newPlayedAt}:${entry.reportId}`;
         const updatedEntry = { ...entry, playedAt: newPlayedAt };
-        await env.REPORTS.put(newKey, JSON.stringify(updatedEntry), {
-          expirationTtl: 60 * 60 * 24 * 365 * 2,
-        });
+        await env.REPORTS.put(newKey, JSON.stringify(updatedEntry), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
         return jsonResponse({ status: 'updated' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
     }
 
-    // ── GET /history/players ─────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history/players') {
       try {
         const list = await env.REPORTS.list({ prefix: 'history:' });
@@ -585,7 +570,6 @@ export default {
       }
     }
 
-    // ── GET /history/h2h ─────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history/h2h') {
       try {
         const p1 = url.searchParams.get('p1');
@@ -628,7 +612,6 @@ export default {
       }
     }
 
-    // ── GET /player ──────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/player') {
       try {
         const name = url.searchParams.get('name');
@@ -653,9 +636,7 @@ export default {
         const stats4v4 = find(lb4);
         const stats2v2 = find(lb2);
         const stats1v1 = find(lb1);
-        if (!stats4v4 && !stats2v2 && !stats1v1) {
-          return jsonResponse({ error: 'Player not found' }, 404, origin);
-        }
+        if (!stats4v4 && !stats2v2 && !stats1v1) return jsonResponse({ error: 'Player not found' }, 404, origin);
         const list = await env.REPORTS.list({ prefix: 'history:' });
         const seriesHistory = [];
         for (const k of list.keys) {
