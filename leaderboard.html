@@ -74,6 +74,7 @@
   .kd-neu { color: var(--muted); }
   .obj-per-val { color: var(--accent); font-size: 13px; }
   .win-pct { font-size: 12px; color: var(--muted); }
+  .tie-count { color: var(--muted); font-size: 13px; }
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .admin-toggle { margin-top: 3rem; text-align: center; }
@@ -213,9 +214,10 @@
     <input type="hidden" id="editKey">
     <div class="modal-grid">
       <div class="modal-section-label">Series Record</div>
-      <div class="modal-field"><label>Series Played</label><input type="number" id="editPlayed" min="0"></div>
-      <div class="modal-field"><label>Series Won</label><input type="number" id="editWon" min="0"></div>
-      <div class="modal-field"><label>Series Lost</label><input type="number" id="editLost" min="0"></div>
+      <div class="modal-field"><label>Sessions Played</label><input type="number" id="editPlayed" min="0"></div>
+      <div class="modal-field"><label>Won</label><input type="number" id="editWon" min="0"></div>
+      <div class="modal-field"><label>Lost</label><input type="number" id="editLost" min="0"></div>
+      <div class="modal-field" id="tiedField"><label>Tied</label><input type="number" id="editTied" min="0"></div>
       <hr class="modal-divider">
       <div class="modal-section-label">Combat Stats</div>
       <div class="modal-field"><label>Kills</label><input type="number" id="editKills" min="0"></div>
@@ -261,8 +263,9 @@ async function switchMode(mode){
   document.getElementById('tab1v1').className='mode-tab'+(mode==='1v1'?' active-1v1':'');
   document.getElementById('adminModeNote').innerHTML=`Currently managing: <strong>${mode} Leaderboard</strong>`;
   document.getElementById('content').innerHTML='<div class="loading">Loading leaderboard...</div>';
-  // Hide/show OBJ fields in modal
   const is1v1=mode==='1v1';
+  // Show/hide Tied field in modal
+  document.getElementById('tiedField').style.display=is1v1?'':'none';
   document.getElementById('assistsField').style.display=is1v1?'none':'';
   document.getElementById('objDivider').style.display=is1v1?'none':'';
   document.getElementById('objSectionLabel').style.display=is1v1?'none':'';
@@ -292,12 +295,14 @@ function render(){
   const hasObj=!is1v1&&(totals.ball>0||totals.caps>0||totals.hill>0);
   const hasCaps=!is1v1&&totals.caps>0;const hasHill=!is1v1&&totals.hill>0;const hasBall=!is1v1&&totals.ball>0;
 
-  const MIN_SERIES = 5;
-const qualified = players.filter(p => p.seriesPlayed >= MIN_SERIES);
-const topFragger = qualified.length ? [...qualified].sort((a,b)=>b.kills-a.kills)[0] : [...players].sort((a,b)=>b.kills-a.kills)[0];
-const topShitter = qualified.length ? [...qualified].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0] : [...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
-const assistKing = !is1v1 ? (qualified.length ? [...qualified].sort((a,b)=>b.assists-a.assists)[0] : [...players].sort((a,b)=>b.assists-a.assists)[0]) : null;
-const objMVP = hasObj ? (qualified.length ? [...qualified].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0] : [...players].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0]) : null;
+  const MIN_SERIES=5;
+  const qualified=players.filter(p=>p.seriesPlayed>=MIN_SERIES);
+  const pool=qualified.length?qualified:players;
+
+  const topFragger=[...pool].sort((a,b)=>b.kills-a.kills)[0];
+  const topShitter=[...pool].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
+  const assistKing=!is1v1?[...pool].sort((a,b)=>b.assists-a.assists)[0]:null;
+  const objMVP=hasObj?[...pool].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0]:null;
 
   const sorted=[...players].sort((a,b)=>{
     switch(currentSort){
@@ -306,7 +311,16 @@ const objMVP = hasObj ? (qualified.length ? [...qualified].sort((a,b)=>calcObjSc
       case'kda':return((b.kills+b.assists)/(b.deaths||1))-((a.kills+a.assists)/(a.deaths||1));
       case'assists':return b.assists-a.assists;
       case'deaths':return b.deaths-a.deaths;
-      case'wins':{const diff=b.seriesWon-a.seriesWon;if(diff!==0)return diff;const aPct=a.seriesPlayed>0?a.seriesWon/a.seriesPlayed:0;const bPct=b.seriesPlayed>0?b.seriesWon/b.seriesPlayed:0;if(bPct!==aPct)return bPct-aPct;const aKD=a.deaths>0?a.kills/a.deaths:a.kills;const bKD=b.deaths>0?b.kills/b.deaths:b.kills;return bKD-aKD;}
+      case'wins':{
+        const diff=b.seriesWon-a.seriesWon;if(diff!==0)return diff;
+        const aPct=a.seriesPlayed>0?a.seriesWon/a.seriesPlayed:0;
+        const bPct=b.seriesPlayed>0?b.seriesWon/b.seriesPlayed:0;
+        if(bPct!==aPct)return bPct-aPct;
+        // For 1v1, factor in ties as half-wins for secondary sort
+        if(is1v1){const aTie=(a.seriesTied||0)*0.5,bTie=(b.seriesTied||0)*0.5;if(bTie!==aTie)return bTie-aTie;}
+        const aKD=a.deaths>0?a.kills/a.deaths:a.kills;const bKD=b.deaths>0?b.kills/b.deaths:b.kills;return bKD-aKD;
+      }
+      case'ties':return(b.seriesTied||0)-(a.seriesTied||0);
       case'caps':return(b.flagCaps||0)-(a.flagCaps||0);
       case'caps_s':return perSeries(b.flagCaps||0,b.seriesPlayed)-perSeries(a.flagCaps||0,a.seriesPlayed);
       case'hill':return(b.hillSecs||0)-(a.hillSecs||0);
@@ -317,7 +331,6 @@ const objMVP = hasObj ? (qualified.length ? [...qualified].sort((a,b)=>calcObjSc
     }
   });
 
-  // Callouts
   let calloutsHtml='';
   if(is1v1){
     calloutsHtml=`<div class="alltime-grid">
@@ -348,6 +361,8 @@ const objMVP = hasObj ? (qualified.length ? [...qualified].sort((a,b)=>calcObjSc
   }
 
   const seriesLabel=is1v1?'Sessions':'Series';
+  const hasTies=is1v1&&players.some(p=>(p.seriesTied||0)>0);
+
   let html=calloutsHtml+`
   <div class="section-title">Player Stats</div>
   <div class="sort-wrap">
@@ -357,6 +372,7 @@ const objMVP = hasObj ? (qualified.length ? [...qualified].sort((a,b)=>calcObjSc
     ${!is1v1?`<button class="sort-btn ${currentSort==='assists'?'active':''}" onclick="setSort('assists')">Assists</button>`:''}
     <button class="sort-btn ${currentSort==='deaths'?'active':''}" onclick="setSort('deaths')">Deaths</button>
     <button class="sort-btn ${currentSort==='wins'?'active':''}" onclick="setSort('wins')">${seriesLabel} Wins</button>
+    ${is1v1?`<button class="sort-btn ${currentSort==='ties'?'active':''}" onclick="setSort('ties')">Ties</button>`:''}
     ${hasCaps?`<button class="sort-btn ${currentSort==='caps'?'active':''}" onclick="setSort('caps')">Flag Caps</button><button class="sort-btn ${currentSort==='caps_s'?'active':''}" onclick="setSort('caps_s')">Caps/S</button>`:''}
     ${hasHill?`<button class="sort-btn ${currentSort==='hill'?'active':''}" onclick="setSort('hill')">Hill Time</button><button class="sort-btn ${currentSort==='hill_s'?'active':''}" onclick="setSort('hill_s')">Hill/S</button>`:''}
     ${hasBall?`<button class="sort-btn ${currentSort==='ball'?'active':''}" onclick="setSort('ball')">Ball Time</button><button class="sort-btn ${currentSort==='ball_s'?'active':''}" onclick="setSort('ball_s')">Ball/S</button>`:''}
@@ -364,7 +380,7 @@ const objMVP = hasObj ? (qualified.length ? [...qualified].sort((a,b)=>calcObjSc
   <div class="lb-table-wrap"><table>
     <thead><tr>
       <th>#</th><th>Player</th>
-      <th class="${currentSort==='wins'?'sorted':''}" onclick="setSort('wins')">W / L</th>
+      <th class="${currentSort==='wins'?'sorted':''}" onclick="setSort('wins')">W / ${is1v1?'T / ':''}L</th>
       <th>${seriesLabel}</th>
       <th class="${currentSort==='kills'?'sorted':''}" onclick="setSort('kills')">Kills</th>
       <th class="${currentSort==='deaths'?'sorted':''}" onclick="setSort('deaths')">Deaths</th>
@@ -379,11 +395,16 @@ const objMVP = hasObj ? (qualified.length ? [...qualified].sort((a,b)=>calcObjSc
   sorted.forEach((p,i)=>{
     const rank=i+1;const rankClass=rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
     const winPct=p.seriesPlayed>0?Math.round((p.seriesWon/p.seriesPlayed)*100):0;
+    const tied=p.seriesTied||0;
     const capsPS=perSeries(p.flagCaps||0,p.seriesPlayed);const hillPS=perSeries(p.hillSecs||0,p.seriesPlayed);const ballPS=perSeries(p.ballSecs||0,p.seriesPlayed);
+    // W/T/L display for 1v1, W/L for others
+    const recordCell=is1v1
+      ?`${p.seriesWon}W &nbsp;<span class="tie-count">${tied}T</span>&nbsp; <span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`
+      :`${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`;
     html+=`<tr>
       <td class="rank-cell ${rankClass}">${rank}</td>
       <td class="player-cell"><a href="player.html?p=${encodeURIComponent(p.displayName)}" class="player-link">${p.displayName}</a></td>
-      <td>${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span></td>
+      <td>${recordCell}</td>
       <td>${p.seriesPlayed}</td>
       <td>${p.kills}</td><td>${p.deaths}</td>
       ${!is1v1?`<td>${p.assists}</td>`:''}
@@ -440,7 +461,8 @@ function populateAdminPanel(raw){
   const fromSel=document.getElementById('mergeFrom'),toSel=document.getElementById('mergeTo');
   [fromSel,toSel].forEach(sel=>{sel.innerHTML=entries.map(([key,p])=>`<option value="${key}">${p.displayName} (${key})</option>`).join('');});
   const listEl=document.getElementById('adminPlayerList');
-  listEl.innerHTML=entries.map(([key,p])=>`<div class="admin-player-row" id="row-${key}"><div class="admin-player-info"><div class="admin-player-name">${p.displayName}</div><div class="admin-player-key">key: ${key}</div><div class="admin-player-stats">${p.seriesPlayed} sessions · ${p.seriesWon}W ${p.seriesLost}L · ${p.kills}K / ${p.deaths}D</div></div><div class="admin-action-btns"><button class="admin-edit-btn" onclick="openEditModal('${key}')">Edit</button><button class="admin-delete-btn" onclick="doDelete('${key}','${p.displayName.replace(/'/g,"\\'")}')">Delete</button></div></div>`).join('');
+  const is1v1=currentMode==='1v1';
+  listEl.innerHTML=entries.map(([key,p])=>`<div class="admin-player-row" id="row-${key}"><div class="admin-player-info"><div class="admin-player-name">${p.displayName}</div><div class="admin-player-key">key: ${key}</div><div class="admin-player-stats">${p.seriesPlayed} sessions · ${p.seriesWon}W ${is1v1?((p.seriesTied||0)+'T '):''}${p.seriesLost}L · ${p.kills}K / ${p.deaths}D</div></div><div class="admin-action-btns"><button class="admin-edit-btn" onclick="openEditModal('${key}')">Edit</button><button class="admin-delete-btn" onclick="doDelete('${key}','${p.displayName.replace(/'/g,"\\'")}')">Delete</button></div></div>`).join('');
 }
 
 function openEditModal(key){
@@ -451,6 +473,7 @@ function openEditModal(key){
   document.getElementById('editPlayed').value=p.seriesPlayed||0;
   document.getElementById('editWon').value=p.seriesWon||0;
   document.getElementById('editLost').value=p.seriesLost||0;
+  document.getElementById('editTied').value=p.seriesTied||0;
   document.getElementById('editKills').value=p.kills||0;
   document.getElementById('editDeaths').value=p.deaths||0;
   document.getElementById('editAssists').value=p.assists||0;
@@ -467,7 +490,18 @@ document.getElementById('editModal').addEventListener('click',function(e){if(e.t
 async function saveEdit(){
   const key=document.getElementById('editKey').value;const msgEl=document.getElementById('modalMsg');msgEl.className='admin-msg';msgEl.style.display='none';
   const is1v1=currentMode==='1v1';
-  const stats={seriesPlayed:parseInt(document.getElementById('editPlayed').value)||0,seriesWon:parseInt(document.getElementById('editWon').value)||0,seriesLost:parseInt(document.getElementById('editLost').value)||0,kills:parseInt(document.getElementById('editKills').value)||0,deaths:parseInt(document.getElementById('editDeaths').value)||0,assists:is1v1?0:(parseInt(document.getElementById('editAssists').value)||0),flagCaps:is1v1?0:(parseInt(document.getElementById('editFlagCaps').value)||0),hillSecs:is1v1?0:(parseInt(document.getElementById('editHillSecs').value)||0),ballSecs:is1v1?0:(parseInt(document.getElementById('editBallSecs').value)||0)};
+  const stats={
+    seriesPlayed:parseInt(document.getElementById('editPlayed').value)||0,
+    seriesWon:parseInt(document.getElementById('editWon').value)||0,
+    seriesLost:parseInt(document.getElementById('editLost').value)||0,
+    seriesTied:is1v1?(parseInt(document.getElementById('editTied').value)||0):0,
+    kills:parseInt(document.getElementById('editKills').value)||0,
+    deaths:parseInt(document.getElementById('editDeaths').value)||0,
+    assists:is1v1?0:(parseInt(document.getElementById('editAssists').value)||0),
+    flagCaps:is1v1?0:(parseInt(document.getElementById('editFlagCaps').value)||0),
+    hillSecs:is1v1?0:(parseInt(document.getElementById('editHillSecs').value)||0),
+    ballSecs:is1v1?0:(parseInt(document.getElementById('editBallSecs').value)||0)
+  };
   try{
     const resp=await fetch(WORKER_URL+'/leaderboard/edit',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({key,stats,mode:currentMode})});
     const result=await resp.json();if(result.error)throw new Error(result.error);
@@ -497,6 +531,9 @@ async function doDelete(key,displayName){
     msgEl.textContent=`✓ "${displayName}" deleted. Refreshing...`;msgEl.className='admin-msg success';setTimeout(()=>load(),1500);
   }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
 }
+
+// Initialize modal field visibility for default mode (4v4)
+document.getElementById('tiedField').style.display='none';
 
 load();
 </script>
