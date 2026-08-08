@@ -85,7 +85,9 @@
   .team-card.winner-s1 { border-color: var(--s1-border); background: var(--s1-dim); }
   .team-card.winner-s2 { border-color: var(--s2-border); background: var(--s2-dim); }
   .team-card.winner-s3 { border-color: var(--s3-border); background: var(--s3-dim); }
+  .team-card.tied-card { border-color: rgba(107,114,128,0.4); background: rgba(107,114,128,0.08); }
   .winner-pill { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; background: var(--accent); color: #000; padding: 3px 12px; border-radius: 99px; white-space: nowrap; }
+  .tie-pill { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; background: var(--muted); color: #fff; padding: 3px 12px; border-radius: 99px; white-space: nowrap; }
   .team-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem; }
   .team-players { font-size: 11px; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.4; }
   .team-wins { font-family: 'Barlow Condensed', sans-serif; font-size: 52px; font-weight: 800; line-height: 1; }
@@ -133,6 +135,7 @@
   .badge-s1 { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
   .badge-s2 { background: var(--s2-dim); color: var(--s2); border: 1px solid var(--s2-border); }
   .badge-s3 { background: var(--s3-dim); color: var(--s3); border: 1px solid var(--s3-border); }
+  .badge-tie { background: rgba(107,114,128,0.15); color: var(--muted); border: 1px solid rgba(107,114,128,0.3); }
   .edit-stats-btn { background: none; border: 1px solid var(--border2); color: var(--muted); border-radius: 4px; padding: 3px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
   .edit-stats-btn:hover { color: var(--accent); border-color: var(--accent); }
   .color-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -163,7 +166,6 @@
   .se-player-row { display: grid; gap: 6px; align-items: center; margin-bottom: 6px; padding: 8px 10px; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border); }
   .se-player-row-4v4 { grid-template-columns: 1fr 1fr 52px 52px 52px auto; }
   .se-player-row-obj { grid-template-columns: 1fr 1fr 52px 52px 52px 52px auto; }
-  .se-player-row-1v1 { grid-template-columns: 1fr 1fr 52px 52px auto; }
   .se-field-group { display: flex; flex-direction: column; gap: 3px; }
   .se-field-label { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
   .se-input { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 4px; padding: 5px 6px; color: var(--text); font-size: 13px; text-align: center; outline: none; transition: border-color 0.15s; }
@@ -214,7 +216,7 @@
     .callouts-grid { grid-template-columns: 1fr; }
     .pw-row { flex-direction: column; }
     .mode-btns { flex-direction: column; }
-    .se-player-row-4v4, .se-player-row-obj, .se-player-row-1v1 { grid-template-columns: 1fr 1fr; }
+    .se-player-row-4v4, .se-player-row-obj { grid-template-columns: 1fr 1fr; }
   }
   @media print {
     body { background: #fff !important; color: #111 !important; font-size: 12px; }
@@ -222,7 +224,7 @@
     header, .upload-zone, .file-list, .analyze-btn, .progress-wrap, .error-box, .export-btn-wrap, .share-btn-wrap, .lb-btn-wrap, .pw-gate, .pw-unlocked-badge, .mode-select-wrap, .edit-stats-btn { display: none !important; }
     .report { display: block !important; margin-top: 0; }
     .container { max-width: 100%; padding: 0 1rem; }
-    :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --blue: #185FA5; --blue-dim: #e6f1fb; --blue-border: rgba(24,95,165,0.3); --green: #1a7a3a; --gold: #b8860b; --s1: #6d28d9; --s1-dim: #f3f0ff; --s1-border: rgba(109,40,217,0.3); --s2: #c2410c; --s2-dim: #fff7ed; --s2-border: rgba(194,65,12,0.3); --s3: #065f46; --s3-dim: #ecfdf5; --s3-border: rgba(6,95,70,0.3); }
+    :root { --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb; --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.18); --text: #111; --muted: #555; --accent: #185FA5; --accent-dim: #e6f1fb; --red: #c0392b; --red-dim: #fdf0ee; --red-border: rgba(192,57,43,0.3); --green: #1a7a3a; --gold: #b8860b; --s1: #6d28d9; --s1-dim: #f3f0ff; --s1-border: rgba(109,40,217,0.3); --s2: #c2410c; --s2-dim: #fff7ed; --s2-border: rgba(194,65,12,0.3); --s3: #065f46; --s3-dim: #ecfdf5; --s3-border: rgba(6,95,70,0.3); }
     .report-title { font-size: 22px; } .team-wins { font-size: 36px; }
     .stat-table-wrap, .game-card-table-wrap { overflow-x: visible !important; }
     .stat-table-wrap, .game-card { border: 1px solid #ccc !important; break-inside: avoid; }
@@ -320,7 +322,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
         <span id="lbBtnLabel">Add to Leaderboard Stats</span>
       </button>
-      <button class="lb-force-btn" id="lbForceBtn">⚠ Stats missing? Force add this series</button>
+      <button class="lb-force-btn" id="lbForceBtn">⚠ Stats missing? Force add this session</button>
     </div>
   </div>
 </div>
@@ -433,10 +435,9 @@ Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra te
 {"gameType":"1v1 Slayer","winner":"Red","redTeam":[{"name":"Player1","kills":15,"deaths":10}],"blueTeam":[{"name":"Player2","kills":10,"deaths":15}]}
 
 STEP 1 — READ TEAM COLORS: BLUE background rows=blueTeam. RED background rows=redTeam. Exactly 1 player per team.
-STEP 2 — READ STATS: For each player read their kills and deaths. In 1v1 Slayer, kills=Score column value (net kills). Deaths=Deaths column.
-STEP 3 — WINNER: team with more kills wins.
-PLAYER NAMES: Bottom line=gamertag. Top line=clan tag (ignore).
-Return: gameType, winner ("Red" or "Blue"), redTeam array with 1 player, blueTeam array with 1 player.`;
+STEP 2 — READ STATS: kills=Score column value. deaths=Deaths column.
+STEP 3 — WINNER: team with more kills wins. If kills are exactly equal, set winner to "Tie".
+PLAYER NAMES: Bottom line=gamertag. Top line=clan tag (ignore).`;
   } else {
     const teamSize=mode==='2v2'?2:4;
     const modeNote=mode==='2v2'?'This is a 2v2 SLAYER game. Exactly 2 players per team.':'This is a 4v4 game.';
@@ -447,19 +448,12 @@ Return ONLY a raw JSON object — zero markdown, zero code fences, zero extra te
 
 STEP 1 — READ GAME TYPE from the title at the top exactly as written.
 STEP 2 — READ FOUR STAT COLUMNS LEFT TO RIGHT BY POSITION ONLY:
-col1=1st stat column, col2=2nd, col3=3rd, col4=4th (rightmost, always Deaths).
-Read all four independently. Do NOT skip or repeat any column.
-STEP 3 — OBJ EXTRA FIELDS:
-BALL/ODDBALL: copy col1 into ballTime.
-KING/HILL/KOTH: copy col1 into hillTime.
-CTF/FLAG/30/5FLAG: copy col1 into flagCaps.
-All other fields not relevant: set null.
-STEP 4 — TEAM COLORS — read each row background color individually:
-BLUE background=blueTeam. RED background=redTeam.
-redTeam and blueTeam must NEVER contain the same player names.
+col1=1st, col2=2nd, col3=3rd, col4=4th (rightmost, always Deaths). Read all four independently.
+STEP 3 — OBJ EXTRA FIELDS: BALL/ODDBALL: col1→ballTime. KING/HILL/KOTH: col1→hillTime. CTF/FLAG/30/5FLAG: col1→flagCaps. Others: null.
+STEP 4 — TEAM COLORS: BLUE rows=blueTeam. RED rows=redTeam. Never duplicate players across teams.
 STEP 5 — VERIFY WINNER from col1 totals per team.
-PLAYER NAMES: Bottom line=gamertag (use this). Top line=clan tag (ignore).
-${teamSize}v${teamSize}=exactly ${teamSize} players per team, no duplicates across teams.`;
+PLAYER NAMES: Bottom line=gamertag. Top line=clan tag (ignore).
+${teamSize}v${teamSize}=exactly ${teamSize} players per team, no duplicates.`;
   }
 
   const response=await fetch(WORKER_URL+'/analyze',{
@@ -518,62 +512,96 @@ function isKOTH(gt){return!!(gt||'').toLowerCase().match(/king|hill|koth/);}
 function renderReport1v1(games,errors){
   const p1Name=(games[0].redTeam||[{name:'Player 1'}])[0].name;
   const p2Name=(games[0].blueTeam||[{name:'Player 2'}])[0].name;
-  let p1Wins=0,p2Wins=0;
-  games.forEach(g=>{
-    const redK=(g.redTeam||[])[0]?.kills||0;
-    const blueK=(g.blueTeam||[])[0]?.kills||0;
-    if(g.winner==='Red')p1Wins++;
-    else if(g.winner==='Blue')p2Wins++;
-    else if(redK>blueK)p1Wins++;
-    else if(blueK>redK)p2Wins++;
+
+  // Determine per-game winner with tie support
+  const processedGames = games.map(g => {
+    const p1k = (g.redTeam||[])[0]?.kills || 0;
+    const p2k = (g.blueTeam||[])[0]?.kills || 0;
+    let gameWinner;
+    if (g.winner === 'Tie' || p1k === p2k) gameWinner = 'Tie';
+    else if (g.winner === 'Red' || p1k > p2k) gameWinner = 'Red';
+    else gameWinner = 'Blue';
+    return { ...g, winner: gameWinner };
   });
-  const winner=p1Wins>p2Wins?1:p2Wins>p1Wins?2:0;
+
+  let p1Wins=0, p2Wins=0, gameTies=0;
+  processedGames.forEach(g => {
+    if(g.winner==='Tie') gameTies++;
+    else if(g.winner==='Red') p1Wins++;
+    else p2Wins++;
+  });
+
+  // Session result
+  const sessionWinner = p1Wins > p2Wins ? 1 : p2Wins > p1Wins ? 2 : 0;
+  const sessionTied = sessionWinner === 0;
+
   const dateStr=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const modeBadge='<span style="font-size:13px;font-weight:600;background:var(--s3-dim);color:var(--s3);border:1px solid var(--s3-border);padding:2px 10px;border-radius:99px;margin-left:10px;vertical-align:middle;">1v1</span>';
+
+  let titleText;
+  if(sessionTied) titleText='Session Tied';
+  else if(sessionWinner===1) titleText=`${p1Name} Wins`;
+  else titleText=`${p2Name} Wins`;
+
+  // Series score cards
+  const p1CardClass = sessionTied ? 'team-card tied-card' : sessionWinner===1 ? 'team-card winner-s3' : 'team-card';
+  const p2CardClass = sessionTied ? 'team-card tied-card' : sessionWinner===2 ? 'team-card winner-s3' : 'team-card';
+  const p1Pill = sessionTied ? '<div class="tie-pill">Tied</div>' : sessionWinner===1 ? '<div class="winner-pill">Winner</div>' : '';
+  const p2Pill = sessionTied ? '<div class="tie-pill">Tied</div>' : sessionWinner===2 ? '<div class="winner-pill">Winner</div>' : '';
 
   let html=`
   <div class="print-header"><div class="print-header-logo">Lock in H3 — 1v1 Report</div><div class="print-header-date">Generated ${dateStr}</div></div>
   <div class="report-header">
     <div class="report-eyebrow">1v1 Session · ${games.length} Game${games.length!==1?'s':''}</div>
-    <div class="report-title">${winner===0?'Session Tied':(winner===1?p1Name:p2Name)+' Wins'}${modeBadge}</div>
+    <div class="report-title">${titleText}${modeBadge}</div>
   </div>
   <div class="series-score">
-    <div class="team-card ${winner===1?'winner-s3':''}">
-      ${winner===1?'<div class="winner-pill">Winner</div>':''}
+    <div class="${p1CardClass}">
+      ${p1Pill}
       <div class="team-label" style="color:var(--s3)">${p1Name}</div>
-      <div class="team-wins" style="color:var(--s3)">${p1Wins}</div>
+      <div class="team-wins" style="color:${sessionTied?'var(--muted)':'var(--s3)'}">${p1Wins}</div>
     </div>
     <div class="vs-sep">VS</div>
-    <div class="team-card ${winner===2?'winner-s3':''}">
-      ${winner===2?'<div class="winner-pill">Winner</div>':''}
+    <div class="${p2CardClass}">
+      ${p2Pill}
       <div class="team-label" style="color:var(--s2)">${p2Name}</div>
-      <div class="team-wins" style="color:var(--s2)">${p2Wins}</div>
+      <div class="team-wins" style="color:${sessionTied?'var(--muted)':'var(--s2)'}">${p2Wins}</div>
     </div>
-  </div>`;
+  </div>
+  ${gameTies > 0 ? `<div style="text-align:center;font-size:13px;color:var(--muted);margin:-1rem 0 1.5rem;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;">${gameTies} game${gameTies!==1?'s':''} ended in a tie</div>` : ''}`;
 
   // Overall totals
   let p1TotalK=0,p1TotalD=0,p2TotalK=0,p2TotalD=0;
-  games.forEach(g=>{p1TotalK+=(g.redTeam||[])[0]?.kills||0;p1TotalD+=(g.redTeam||[])[0]?.deaths||0;p2TotalK+=(g.blueTeam||[])[0]?.kills||0;p2TotalD+=(g.blueTeam||[])[0]?.deaths||0;});
+  processedGames.forEach(g=>{
+    p1TotalK+=(g.redTeam||[])[0]?.kills||0;
+    p1TotalD+=(g.redTeam||[])[0]?.deaths||0;
+    p2TotalK+=(g.blueTeam||[])[0]?.kills||0;
+    p2TotalD+=(g.blueTeam||[])[0]?.deaths||0;
+  });
 
   html+=`<div class="section-title">Overall Stats</div>
   <div class="stat-table-wrap"><table><thead><tr>
-    <th>Player</th><th>Wins</th><th>Total Kills</th><th>Total Deaths</th><th>K/D</th>
+    <th>Player</th><th>Wins</th><th>Ties</th><th>Losses</th><th>Total Kills</th><th>Total Deaths</th><th>K/D</th>
   </tr></thead><tbody>
-    <tr class="row-s3"><td class="player-name-cell">${p1Name}</td><td>${p1Wins}</td><td>${p1TotalK}</td><td>${p1TotalD}</td><td class="${kdClass(p1TotalK,p1TotalD)}">${kd(p1TotalK,p1TotalD)}</td></tr>
-    <tr class="row-s2"><td class="player-name-cell">${p2Name}</td><td>${p2Wins}</td><td>${p2TotalK}</td><td>${p2TotalD}</td><td class="${kdClass(p2TotalK,p2TotalD)}">${kd(p2TotalK,p2TotalD)}</td></tr>
+    <tr class="row-s3"><td class="player-name-cell">${p1Name}</td><td>${p1Wins}</td><td>${gameTies}</td><td>${p2Wins}</td><td>${p1TotalK}</td><td>${p1TotalD}</td><td class="${kdClass(p1TotalK,p1TotalD)}">${kd(p1TotalK,p1TotalD)}</td></tr>
+    <tr class="row-s2"><td class="player-name-cell">${p2Name}</td><td>${p2Wins}</td><td>${gameTies}</td><td>${p1Wins}</td><td>${p2TotalK}</td><td>${p2TotalD}</td><td class="${kdClass(p2TotalK,p2TotalD)}">${kd(p2TotalK,p2TotalD)}</td></tr>
   </tbody></table></div>`;
 
   html+=`<div class="section-title">Game-by-Game Breakdown</div><div class="games-grid">`;
-  games.forEach((g,gi)=>{
-    const p1=g.redTeam?.[0]||{name:p1Name,kills:0,deaths:0};
-    const p2=g.blueTeam?.[0]||{name:p2Name,kills:0,deaths:0};
-    const gameWinner=g.winner==='Red'?p1.name:g.winner==='Blue'?p2.name:'Tied';
-    const winnerSq=g.winner==='Red'?'s3':'s2';
+  processedGames.forEach((g,gi)=>{
+    const p1=(g.redTeam||[])[0]||{name:p1Name,kills:0,deaths:0};
+    const p2=(g.blueTeam||[])[0]||{name:p2Name,kills:0,deaths:0};
+    const isTied = g.winner === 'Tie';
+    const winnerSq = g.winner==='Red' ? 's3' : g.winner==='Blue' ? 's2' : null;
+    const badgeHtml = isTied
+      ? `<div class="game-win-badge badge-tie">Tied</div>`
+      : `<div class="game-win-badge badge-${winnerSq}">${g.winner==='Red'?p1.name:p2.name} Wins</div>`;
+
     html+=`<div class="game-card">
       <div class="game-card-header">
         <div class="game-card-title">Game ${g.gameNumber} — 1v1 Slayer</div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div class="game-win-badge badge-${winnerSq}">${gameWinner} Wins</div>
+          ${badgeHtml}
           <button class="edit-stats-btn" onclick="openStatEditor1v1(${gi})">✏ Edit Stats</button>
         </div>
       </div>
@@ -591,15 +619,19 @@ function renderReport1v1(games,errors){
   reportEl.innerHTML=html;reportEl.style.display='block';
   document.getElementById('exportWrap').style.display='block';
   document.getElementById('shareBtnWrap').style.display='block';
-  document.getElementById('lbBtnWrap').style.display=winner!==0?'block':'none';
+  // For 1v1, always show leaderboard button (ties are valid and tracked)
+  document.getElementById('lbBtnWrap').style.display='block';
   const lbBtn=document.getElementById('lbBtn');
+  lbBtn.className='lb-btn';lbBtn.disabled=false;
   lbBtn.innerHTML=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Add to 1v1 Leaderboard Stats`;
-  window._lastGames=games;window._seriesWinner=winner;window._seriesMode='1v1';
-  window._1v1Games=games;
+  window._lastGames=processedGames;
+  window._seriesWinner=sessionWinner;
+  window._seriesMode='1v1';
+  window._1v1Games=processedGames;
   reportEl.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-// Simple 1v1 stat editor
+// 1v1 stat editor
 window.openStatEditor1v1=function(gi){
   const games=window._1v1Games;
   const g=games[gi];
@@ -608,16 +640,14 @@ window.openStatEditor1v1=function(gi){
   const html=`<div class="stat-editor-overlay" id="statEditorOverlay">
     <div class="stat-editor-modal">
       <div class="stat-editor-title">✏ Edit Game ${g.gameNumber} — 1v1</div>
-      <div class="stat-editor-sub">Correct any misread stats then save.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 60px 60px;gap:8px;align-items:end;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px;">
+      <div class="stat-editor-sub">Correct any misread stats then save. If kills are equal the game will be recorded as a tie.</div>
+      <div style="display:grid;grid-template-columns:1fr 52px 52px;gap:8px;align-items:end;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px;">
         <div><div class="se-field-label">Player 1 Name</div><input type="text" class="se-input se-name-input" id="se1v1_${gi}_p1_name" value="${p1.name}"></div>
-        <div></div>
         <div><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se1v1_${gi}_p1_kills" value="${p1.kills||0}" min="0"></div>
         <div><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se1v1_${gi}_p1_deaths" value="${p1.deaths||0}" min="0"></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 60px 60px;gap:8px;align-items:end;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px;">
+      <div style="display:grid;grid-template-columns:1fr 52px 52px;gap:8px;align-items:end;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px;">
         <div><div class="se-field-label">Player 2 Name</div><input type="text" class="se-input se-name-input" id="se1v1_${gi}_p2_name" value="${p2.name}"></div>
-        <div></div>
         <div><div class="se-field-label">Kills</div><input type="number" class="se-input" id="se1v1_${gi}_p2_kills" value="${p2.kills||0}" min="0"></div>
         <div><div class="se-field-label">Deaths</div><input type="number" class="se-input" id="se1v1_${gi}_p2_deaths" value="${p2.deaths||0}" min="0"></div>
       </div>
@@ -639,9 +669,14 @@ window.saveStatEdits1v1=function(gi){
   const p1Deaths=parseInt(document.getElementById(`se1v1_${gi}_p1_deaths`)?.value)||0;
   const p2Kills=parseInt(document.getElementById(`se1v1_${gi}_p2_kills`)?.value)||0;
   const p2Deaths=parseInt(document.getElementById(`se1v1_${gi}_p2_deaths`)?.value)||0;
+  // Determine winner based on kills, including tie detection
+  let winner;
+  if(p1Kills === p2Kills) winner='Tie';
+  else if(p1Kills > p2Kills) winner='Red';
+  else winner='Blue';
   games[gi].redTeam=[{name:p1Name,kills:p1Kills,deaths:p1Deaths}];
   games[gi].blueTeam=[{name:p2Name,kills:p2Kills,deaths:p2Deaths}];
-  games[gi].winner=p1Kills>p2Kills?'Red':p2Kills>p1Kills?'Blue':games[gi].winner;
+  games[gi].winner=winner;
   window._1v1Games=games;
   document.getElementById('statEditorOverlay').remove();
   renderReport1v1(games,[]);
@@ -692,8 +727,7 @@ function applyNameFixesAndRender(){
   const mapping={};
   document.querySelectorAll('.name-review-input').forEach(input=>{
     const originals=JSON.parse(input.getAttribute('data-original-names').replace(/&quot;/g,'"'));
-    const fixed=input.value.trim();if(!fixed)return;
-    originals.forEach(orig=>{mapping[orig]=fixed;});
+    const fixed=input.value.trim();if(!fixed)return;originals.forEach(orig=>{mapping[orig]=fixed;});
   });
   const updated=pendingReviewGames.map(g=>({...g,redTeam:(g.redTeam||[]).map(p=>({...p,name:mapping[p.name]||p.name})),blueTeam:(g.blueTeam||[]).map(p=>({...p,name:mapping[p.name]||p.name}))}));
   renderReport(updated,pendingReviewErrors,pendingReviewMode);
@@ -733,8 +767,12 @@ function getSquad(name,squad1,squad2){
 async function submitToLeaderboard(force=false){
   if(!appUnlocked)return;
   const btn=document.getElementById('lbBtn'),forceBtn=document.getElementById('lbForceBtn');
-  if(!window._lastGames||!window._seriesWinner)return;
-  if(window._seriesWinner===0){btn.className='lb-btn duplicate';btn.innerHTML='— Tied session not added to leaderboard';btn.disabled=true;return;}
+  if(!window._lastGames||window._seriesWinner===undefined)return;
+  // For 4v4 and 2v2, block tied series from leaderboard
+  // For 1v1, allow ties — they are tracked as seriesTied
+  if(window._seriesWinner===0 && window._seriesMode!=='1v1'){
+    btn.className='lb-btn duplicate';btn.innerHTML='— Tied series not added to leaderboard';btn.disabled=true;return;
+  }
   btn.disabled=true;forceBtn.style.display='none';btn.innerHTML='<span class="spinner" style="border-top-color:currentColor"></span> Saving...';
   try{
     const resp=await fetch(WORKER_URL+'/leaderboard/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({games:window._lastGames,seriesWinner:window._seriesWinner,force,mode:window._seriesMode})});
@@ -752,7 +790,7 @@ document.getElementById('lbForceBtn').addEventListener('click',async()=>{
   await submitToLeaderboard(true);fb.disabled=false;
 });
 
-// ── Stat Editor (4v4 / 2v2) ──────────────────────────────────────────────────
+// ── Stat Editor (4v4/2v2) ────────────────────────────────────────────────────
 let _editorGames=null,_editorMode=null;
 
 function seGetObjType(gameType){
@@ -790,7 +828,7 @@ function openStatEditor(gi){
   const html=`<div class="stat-editor-overlay" id="statEditorOverlay">
     <div class="stat-editor-modal">
       <div class="stat-editor-title">✏ Edit Game ${g.gameNumber} Stats</div>
-      <div class="stat-editor-sub">Fix the game type first if it was misread — this controls which OBJ column appears. Then fix names, squads, and stats.<br><strong style="color:var(--gold)">Squad 1 = Red · Squad 2 = Blue</strong></div>
+      <div class="stat-editor-sub">Fix the game type first if misread — controls OBJ column. Then fix names, squads, and stats.<br><strong style="color:var(--gold)">Squad 1 = Red · Squad 2 = Blue</strong></div>
       <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:1rem;margin-bottom:1rem;">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Game Type</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -841,7 +879,7 @@ window.saveStatEdits=function(gi){
   document.getElementById('statEditorOverlay').remove();renderReport(_editorGames,[],mode);
 };
 
-// ── Render Report (4v4 / 2v2) ────────────────────────────────────────────────
+// ── Render Report (4v4/2v2) ──────────────────────────────────────────────────
 function renderReport(games,errors,mode){
   _editorGames=games.map(g=>({...g}));_editorMode=mode;
   games=games.map(g=>({...g,winner:verifyWinner(g,mode)}));
@@ -852,10 +890,12 @@ function renderReport(games,errors,mode){
   const agg={};
   games.forEach(g=>{[...(g.redTeam||[]).map(p=>({...p})),...(g.blueTeam||[]).map(p=>({...p}))].forEach(p=>{if(!p.name)return;const sq=getSquad(p.name,squad1,squad2);if(!agg[p.name])agg[p.name]={name:p.name,squad:sq,kills:0,deaths:0,assists:0,ballSecs:0,flagCaps:0,hillSecs:0};const a=agg[p.name];a.kills+=p.kills||0;a.deaths+=p.deaths||0;a.assists+=p.assists||0;a.ballSecs+=parseTimeSecs(p.ballTime);a.flagCaps+=p.flagCaps||0;a.hillSecs+=parseTimeSecs(p.hillTime);});});
   const players=Object.values(agg);
-  const topKiller=[...players].sort((a,b)=>b.kills-a.kills||b.kills-a.kills)[0];
-  const bottomFragger=[...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
-  const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[0];
-  const objMVP=mode==='4v4'?calcObjMVP(players,games):null;
+  const MIN_SERIES=5;const qualified=players.filter(p=>p.seriesPlayed>=MIN_SERIES);
+  const pool=qualified.length?qualified:players;
+  const topKiller=[...pool].sort((a,b)=>b.kills-a.kills||b.kills-a.kills)[0];
+  const bottomFragger=[...pool].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
+  const assistKing=[...pool].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[0];
+  const objMVP=mode==='4v4'?calcObjMVP(pool,games):null;
   const hasOddball=mode==='4v4'&&games.some(g=>isOddball(g.gameType));
   const hasCTF=mode==='4v4'&&games.some(g=>isCTF(g.gameType));
   const hasKOTH=mode==='4v4'&&games.some(g=>isKOTH(g.gameType));
