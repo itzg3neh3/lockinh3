@@ -726,20 +726,9 @@ function verifyWinner(game,mode){
 function calcObjMVP(players,games){
   const hasObj=games.some(g=>isOddball(g.gameType)||isCTF(g.gameType)||isKOTH(g.gameType));if(!hasObj)return null;
   const tb=players.reduce((s,p)=>s+p.ballSecs,0),tc=players.reduce((s,p)=>s+p.flagCaps,0),th=players.reduce((s,p)=>s+p.hillSecs,0);
-  // Flag caps weighted 2x since each cap directly wins a CTF game
-  // Ball time and hill time weighted 1x
   let best=null,bestScore=-1;
-  players.forEach(p=>{
-    let weightedSum=0,totalWeight=0;
-    if(tb>0){weightedSum+=p.ballSecs/tb*1;totalWeight+=1;}
-    if(tc>0){weightedSum+=p.flagCaps/tc*2;totalWeight+=2;}
-    if(th>0){weightedSum+=p.hillSecs/th*1;totalWeight+=1;}
-    if(!totalWeight)return;
-    const score=weightedSum/totalWeight;
-    if(score>bestScore){bestScore=score;best=p;}
-  });
+  players.forEach(p=>{const shares=[];if(tb>0)shares.push(p.ballSecs/tb);if(tc>0)shares.push(p.flagCaps/tc);if(th>0)shares.push(p.hillSecs/th);if(!shares.length)return;const score=shares.reduce((a,b)=>a+b,0)/shares.length;if(score>bestScore){bestScore=score;best=p;}});
   return best;
-}
 }
 
 function buildSquads(games){
