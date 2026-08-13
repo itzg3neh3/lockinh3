@@ -37,6 +37,13 @@
   .loading { text-align: center; padding: 4rem; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
   .empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
   .empty h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 0.5rem; }
+  .mvp-strip-wrap { margin-bottom: 0.75rem; }
+  .mvp-strip { border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; }
+  .mvp-strip-trophy { background: linear-gradient(135deg, rgba(167,139,250,0.12), rgba(167,139,250,0.04)); border: 1px solid rgba(167,139,250,0.35); }
+  .mvp-star { font-size: 24px; flex-shrink: 0; }
+  .mvp-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; color: var(--s1); }
+  .mvp-name { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  .mvp-stats { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
   .alltime-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 2.5rem; }
   .callout-card { border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; }
   .callout-gold { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03)); border: 1px solid rgba(245,158,11,0.2); }
@@ -256,6 +263,41 @@ function kdaClass(k,a,d){const r=d===0?(k+a):(k+a)/d;return r>1.5?'kd-pos':r<1.0
 function perSeries(val,played){return played>0?(val/played):0;}
 function calcObjScore(p,totals){const shares=[];if(totals.ball>0)shares.push(p.ballSecs/totals.ball);if(totals.caps>0)shares.push(p.flagCaps/totals.caps);if(totals.hill>0)shares.push(p.hillSecs/totals.hill);if(!shares.length)return 0;return shares.reduce((a,b)=>a+b,0)/shares.length;}
 
+// Weighted OBJ score (flag caps weighted 2x) — used for both OBJ MVP and All-Time MVP
+function calcWeightedObjScore(p,totals){
+  let ws=0,tw=0;
+  if(totals.ball>0){ws+=p.ballSecs/totals.ball*1;tw+=1;}
+  if(totals.caps>0){ws+=p.flagCaps/totals.caps*2;tw+=2;}
+  if(totals.hill>0){ws+=p.hillSecs/totals.hill*1;tw+=1;}
+  return tw>0?ws/tw:0;
+}
+
+// All-Time MVP calculation — same weighting as Series MVP (40% KDA / 30% +/- / 20% K/D / 10% OBJ)
+function calcAllTimeMVP(pool,totals,hasObj){
+  if(!pool.length)return null;
+  const kdas=pool.map(p=>p.deaths>0?(p.kills+p.assists)/p.deaths:(p.kills+p.assists));
+  const pms=pool.map(p=>p.kills-p.deaths);
+  const kds=pool.map(p=>p.deaths>0?p.kills/p.deaths:p.kills);
+  const minVal=arr=>Math.min(...arr);
+  const maxVal=arr=>Math.max(...arr);
+  const normalize=(val,mn,mx)=>mx===mn?0.5:(val-mn)/(mx-mn);
+  const kdaMin=minVal(kdas),kdaMax=maxVal(kdas);
+  const pmMin=minVal(pms),pmMax=maxVal(pms);
+  const kdMin=minVal(kds),kdMax=maxVal(kds);
+  const objScores=pool.map(p=>hasObj?calcWeightedObjScore(p,totals):0);
+  const objMin=minVal(objScores),objMax=maxVal(objScores);
+  let best=null,bestScore=-1;
+  pool.forEach((p,i)=>{
+    const nKDA=normalize(kdas[i],kdaMin,kdaMax);
+    const nPM=normalize(pms[i],pmMin,pmMax);
+    const nKD=normalize(kds[i],kdMin,kdMax);
+    const nObj=hasObj?normalize(objScores[i],objMin,objMax):0;
+    const score=hasObj?nKDA*0.4+nPM*0.3+nKD*0.2+nObj*0.1:nKDA*0.45+nPM*0.35+nKD*0.2;
+    if(score>bestScore){bestScore=score;best=p;}
+  });
+  return best;
+}
+
 async function switchMode(mode){
   currentMode=mode;currentSort='kills';
   document.getElementById('tab4v4').className='mode-tab'+(mode==='4v4'?' active-4v4':'');
@@ -264,7 +306,6 @@ async function switchMode(mode){
   document.getElementById('adminModeNote').innerHTML=`Currently managing: <strong>${mode} Leaderboard</strong>`;
   document.getElementById('content').innerHTML='<div class="loading">Loading leaderboard...</div>';
   const is1v1=mode==='1v1';
-  // Show/hide Tied field in modal
   document.getElementById('tiedField').style.display=is1v1?'':'none';
   document.getElementById('assistsField').style.display=is1v1?'none':'';
   document.getElementById('objDivider').style.display=is1v1?'none':'';
@@ -302,7 +343,9 @@ function render(){
   const topFragger=[...pool].sort((a,b)=>b.kills-a.kills)[0];
   const topShitter=[...pool].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   const assistKing=!is1v1?[...pool].sort((a,b)=>b.assists-a.assists)[0]:null;
-  const objMVP=hasObj?[...pool].sort((a,b)=>calcObjScore(b,totals)-calcObjScore(a,totals))[0]:null;
+  const objMVP=hasObj?[...pool].sort((a,b)=>calcWeightedObjScore(b,totals)-calcWeightedObjScore(a,totals))[0]:null;
+  // All-Time MVP — 4v4 and 2v2 only, not 1v1
+  const allTimeMVP=!is1v1?calcAllTimeMVP(pool,totals,hasObj):null;
 
   const sorted=[...players].sort((a,b)=>{
     switch(currentSort){
@@ -316,7 +359,6 @@ function render(){
         const aPct=a.seriesPlayed>0?a.seriesWon/a.seriesPlayed:0;
         const bPct=b.seriesPlayed>0?b.seriesWon/b.seriesPlayed:0;
         if(bPct!==aPct)return bPct-aPct;
-        // For 1v1, factor in ties as half-wins for secondary sort
         if(is1v1){const aTie=(a.seriesTied||0)*0.5,bTie=(b.seriesTied||0)*0.5;if(bTie!==aTie)return bTie-aTie;}
         const aKD=a.deaths>0?a.kills/a.deaths:a.kills;const bKD=b.deaths>0?b.kills/b.deaths:b.kills;return bKD-aKD;
       }
@@ -331,6 +373,9 @@ function render(){
     }
   });
 
+  // All-Time MVP strip (4v4/2v2 only)
+  const mvpStripHtml=allTimeMVP?`<div class="mvp-strip-wrap"><div class="mvp-strip mvp-strip-trophy"><div class="mvp-star">🏆</div><div><div class="mvp-eyebrow">All-Time MVP</div><div class="mvp-name">${allTimeMVP.displayName}</div><div class="mvp-stats">${allTimeMVP.kills} K · ${allTimeMVP.deaths} D · ${allTimeMVP.assists} A · ${kd(allTimeMVP.kills,allTimeMVP.deaths)} K/D · ${kda(allTimeMVP.kills,allTimeMVP.assists,allTimeMVP.deaths)} KDA · ${allTimeMVP.seriesPlayed} Series</div></div></div></div>`:'';
+
   let calloutsHtml='';
   if(is1v1){
     calloutsHtml=`<div class="alltime-grid">
@@ -342,13 +387,13 @@ function render(){
       </div>
     </div>`;
   } else if(currentMode==='2v2'){
-    calloutsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2.5rem;">
+    calloutsHtml=mvpStripHtml+`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2.5rem;">
       <div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D</div></div></div>
       <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D</div></div></div>
       ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div></div></div>`:''}
     </div>`;
   } else {
-    calloutsHtml=`<div class="alltime-grid">
+    calloutsHtml=mvpStripHtml+`<div class="alltime-grid">
       <div>
         <div class="callout-card callout-gold" style="margin-bottom:0.75rem"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div></div></div>
         <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div></div></div>
@@ -397,7 +442,6 @@ function render(){
     const winPct=p.seriesPlayed>0?Math.round((p.seriesWon/p.seriesPlayed)*100):0;
     const tied=p.seriesTied||0;
     const capsPS=perSeries(p.flagCaps||0,p.seriesPlayed);const hillPS=perSeries(p.hillSecs||0,p.seriesPlayed);const ballPS=perSeries(p.ballSecs||0,p.seriesPlayed);
-    // W/T/L display for 1v1, W/L for others
     const recordCell=is1v1
       ?`${p.seriesWon}W &nbsp;<span class="tie-count">${tied}T</span>&nbsp; <span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`
       :`${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`;
@@ -532,7 +576,6 @@ async function doDelete(key,displayName){
   }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
 }
 
-// Initialize modal field visibility for default mode (4v4)
 document.getElementById('tiedField').style.display='none';
 
 load();
