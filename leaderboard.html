@@ -272,9 +272,10 @@ function calcWeightedObjScore(p,totals){
   return tw>0?ws/tw:0;
 }
 
-// All-Time MVP calculation — same weighting as Series MVP (40% KDA / 30% +/- / 20% K/D / 10% OBJ)
-function calcAllTimeMVP(pool,totals,hasObj){
-  if(!pool.length)return null;
+// Calculates both All-Time MVP (best) and All-Time Top Shitter (worst) using the same
+// weighting: 40% KDA / 30% +/- / 20% K/D / 10% OBJ (flag caps weighted 2x)
+function calcAllTimeExtremes(pool,totals,hasObj){
+  if(!pool.length)return{best:null,worst:null};
   const kdas=pool.map(p=>p.deaths>0?(p.kills+p.assists)/p.deaths:(p.kills+p.assists));
   const pms=pool.map(p=>p.kills-p.deaths);
   const kds=pool.map(p=>p.deaths>0?p.kills/p.deaths:p.kills);
@@ -286,7 +287,7 @@ function calcAllTimeMVP(pool,totals,hasObj){
   const kdMin=minVal(kds),kdMax=maxVal(kds);
   const objScores=pool.map(p=>hasObj?calcWeightedObjScore(p,totals):0);
   const objMin=minVal(objScores),objMax=maxVal(objScores);
-  let best=null,bestScore=-1;
+  let best=null,bestScore=-Infinity,worst=null,worstScore=Infinity;
   pool.forEach((p,i)=>{
     const nKDA=normalize(kdas[i],kdaMin,kdaMax);
     const nPM=normalize(pms[i],pmMin,pmMax);
@@ -294,8 +295,9 @@ function calcAllTimeMVP(pool,totals,hasObj){
     const nObj=hasObj?normalize(objScores[i],objMin,objMax):0;
     const score=hasObj?nKDA*0.4+nPM*0.3+nKD*0.2+nObj*0.1:nKDA*0.45+nPM*0.35+nKD*0.2;
     if(score>bestScore){bestScore=score;best=p;}
+    if(score<worstScore){worstScore=score;worst=p;}
   });
-  return best;
+  return{best,worst};
 }
 
 async function switchMode(mode){
@@ -341,11 +343,18 @@ function render(){
   const pool=qualified.length?qualified:players;
 
   const topFragger=[...pool].sort((a,b)=>b.kills-a.kills)[0];
-  const topShitter=[...pool].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   const assistKing=!is1v1?[...pool].sort((a,b)=>b.assists-a.assists)[0]:null;
   const objMVP=hasObj?[...pool].sort((a,b)=>calcWeightedObjScore(b,totals)-calcWeightedObjScore(a,totals))[0]:null;
-  // All-Time MVP — 4v4 and 2v2 only, not 1v1
-  const allTimeMVP=!is1v1?calcAllTimeMVP(pool,totals,hasObj):null;
+  // All-Time MVP and Top Shitter — 4v4/2v2 use the same weighted formula (best/worst).
+  // 1v1 has no assists/OBJ data, so Top Shitter there stays as lowest K/D.
+  let allTimeMVP=null,topShitter=null;
+  if(!is1v1){
+    const extremes=calcAllTimeExtremes(pool,totals,hasObj);
+    allTimeMVP=extremes.best;
+    topShitter=extremes.worst;
+  }else{
+    topShitter=[...pool].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
+  }
 
   const sorted=[...players].sort((a,b)=>{
     switch(currentSort){
@@ -389,14 +398,14 @@ function render(){
   } else if(currentMode==='2v2'){
     calloutsHtml=mvpStripHtml+`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2.5rem;">
       <div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D</div></div></div>
-      <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D</div></div></div>
+      <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.assists} Assists</div></div></div>
       ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div></div></div>`:''}
     </div>`;
   } else {
     calloutsHtml=mvpStripHtml+`<div class="alltime-grid">
       <div>
         <div class="callout-card callout-gold" style="margin-bottom:0.75rem"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div></div></div>
-        <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div></div></div>
+        <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.assists} Assists &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div></div></div>
       </div>
       <div>
         ${assistKing?`<div class="callout-card callout-blue" style="margin-bottom:0.75rem"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div></div></div>`:''}

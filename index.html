@@ -633,8 +633,10 @@ function calcObjMVP(players,games){
   });
   return best;
 }
-function calcSeriesMVP(players,games){
-  if(!players.length)return null;
+// Calculates both MVP (best) and Top Shitter (worst) using the same weighted formula:
+// 40% KDA + 30% +/- + 20% K/D + 10% OBJ (flag caps weighted 2x vs ball/hill time)
+function calcSeriesExtremes(players,games){
+  if(!players.length)return{best:null,worst:null};
   const kdas=players.map(p=>p.deaths>0?(p.kills+p.assists)/p.deaths:(p.kills+p.assists));
   const pms=players.map(p=>p.kills-p.deaths);
   const kds=players.map(p=>p.deaths>0?p.kills/p.deaths:p.kills);
@@ -657,7 +659,7 @@ function calcSeriesMVP(players,games){
     return tw>0?ws/tw:0;
   });
   const objMin=minVal(objScores),objMax=maxVal(objScores);
-  let best=null,bestScore=-1;
+  let best=null,bestScore=-Infinity,worst=null,worstScore=Infinity;
   players.forEach((p,i)=>{
     const nKDA=normalize(kdas[i],kdaMin,kdaMax);
     const nPM=normalize(pms[i],pmMin,pmMax);
@@ -665,8 +667,9 @@ function calcSeriesMVP(players,games){
     const nObj=hasObj?normalize(objScores[i],objMin,objMax):0;
     const score=hasObj?nKDA*0.4+nPM*0.3+nKD*0.2+nObj*0.1:nKDA*0.45+nPM*0.35+nKD*0.2;
     if(score>bestScore){bestScore=score;best=p;}
+    if(score<worstScore){worstScore=score;worst=p;}
   });
-  return best;
+  return{best,worst};
 }
 function buildSquads(games){
   if(!games.length)return{squad1:new Set(),squad2:new Set()};
@@ -765,10 +768,12 @@ function renderReport(games,errors,mode){
   games.forEach(g=>{[...(g.redTeam||[]).map(p=>({...p})),...(g.blueTeam||[]).map(p=>({...p}))].forEach(p=>{if(!p.name)return;const sq=getSquad(p.name,squad1,squad2);if(!agg[p.name])agg[p.name]={name:p.name,squad:sq,kills:0,deaths:0,assists:0,ballSecs:0,flagCaps:0,hillSecs:0};const a=agg[p.name];a.kills+=p.kills||0;a.deaths+=p.deaths||0;a.assists+=p.assists||0;a.ballSecs+=parseTimeSecs(p.ballTime);a.flagCaps+=p.flagCaps||0;a.hillSecs+=parseTimeSecs(p.hillTime);});});
   const players=Object.values(agg);
   const topKiller=[...players].sort((a,b)=>b.kills-a.kills)[0];
-  const bottomFragger=[...players].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
+  // Top Shitter is now the worst player by the same weighted formula as MVP (not pure K/D)
+  const extremes=calcSeriesExtremes(players,games);
+  const bottomFragger=extremes.worst;
   const assistKing=[...players].sort((a,b)=>b.assists-a.assists||b.kills-a.kills)[0];
   const objMVP=mode==='4v4'?calcObjMVP(players,games):null;
-  const seriesMVP=mode==='4v4'?calcSeriesMVP(players,games):null;
+  const seriesMVP=mode==='4v4'?extremes.best:null;
   const hasOddball=mode==='4v4'&&games.some(g=>isOddball(g.gameType));
   const hasCTF=mode==='4v4'&&games.some(g=>isCTF(g.gameType));
   const hasKOTH=mode==='4v4'&&games.some(g=>isKOTH(g.gameType));
@@ -781,9 +786,9 @@ function renderReport(games,errors,mode){
   const mvpHtml=seriesMVP?`<div class="mvp-strip mvp-strip-trophy" style="margin-bottom:0.75rem"><div class="mvp-star">🏆</div><div><div class="mvp-eyebrow eyebrow-trophy">Series MVP</div><div class="mvp-name">${seriesMVP.name}</div><div class="mvp-stats">${seriesMVP.kills} K · ${seriesMVP.deaths} D · ${seriesMVP.assists} A · ${kd(seriesMVP.kills,seriesMVP.deaths)} K/D · ${kd(seriesMVP.kills+seriesMVP.assists,seriesMVP.deaths)} KDA · ${pm(seriesMVP.kills,seriesMVP.deaths)} +/-</div></div></div>`:'';
   let calloutHtml='';
   if(mode==='2v2'){
-    calloutHtml=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2rem;">${topKiller?`<div class="mvp-strip mvp-strip-gold"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills · ${topKiller.deaths} Deaths · ${kd(topKiller.kills,topKiller.deaths)} K/D</div></div></div>`:''}${bottomFragger?`<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills · ${bottomFragger.deaths} Deaths · ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D</div></div></div>`:''}${assistKing?`<div class="mvp-strip mvp-strip-blue"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists · ${assistKing.kills} Kills · ${assistKing.deaths} Deaths</div></div></div>`:''}</div>`;
+    calloutHtml=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2rem;">${topKiller?`<div class="mvp-strip mvp-strip-gold"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills · ${topKiller.deaths} Deaths · ${kd(topKiller.kills,topKiller.deaths)} K/D</div></div></div>`:''}${bottomFragger?`<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills · ${bottomFragger.deaths} Deaths · ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D · ${bottomFragger.assists} Assists</div></div></div>`:''}${assistKing?`<div class="mvp-strip mvp-strip-blue"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists · ${assistKing.kills} Kills · ${assistKing.deaths} Deaths</div></div></div>`:''}</div>`;
   }else{
-    calloutHtml=mvpHtml+`<div class="callouts-grid"><div>${topKiller?`<div class="mvp-strip mvp-strip-gold" style="margin-bottom:0.75rem"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Series Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills · ${topKiller.deaths} Deaths · ${kd(topKiller.kills,topKiller.deaths)} K/D · ${pm(topKiller.kills,topKiller.deaths)} +/-</div></div></div>`:''}${bottomFragger?`<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Series Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills · ${bottomFragger.deaths} Deaths · ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D · ${pm(bottomFragger.kills,bottomFragger.deaths)} +/-</div></div></div>`:''}</div><div>${assistKing?`<div class="mvp-strip mvp-strip-blue" style="margin-bottom:0.75rem"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Series Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists · ${assistKing.kills} Kills · ${assistKing.deaths} Deaths · ${kd(assistKing.kills,assistKing.deaths)} K/D</div></div></div>`:''}${objMVP?`<div class="mvp-strip mvp-strip-green"><div class="mvp-star">🎯</div><div><div class="mvp-eyebrow eyebrow-green">Series OBJ MVP</div><div class="mvp-name">${objMVP.name}</div><div class="mvp-stats">${objMVPStats(objMVP)}</div></div></div>`:''}</div></div>`;
+    calloutHtml=mvpHtml+`<div class="callouts-grid"><div>${topKiller?`<div class="mvp-strip mvp-strip-gold" style="margin-bottom:0.75rem"><div class="mvp-star">⭐</div><div><div class="mvp-eyebrow eyebrow-gold">Series Top Fragger</div><div class="mvp-name">${topKiller.name}</div><div class="mvp-stats">${topKiller.kills} Kills · ${topKiller.deaths} Deaths · ${kd(topKiller.kills,topKiller.deaths)} K/D · ${pm(topKiller.kills,topKiller.deaths)} +/-</div></div></div>`:''}${bottomFragger?`<div class="mvp-strip mvp-strip-red"><div class="mvp-star">🍆</div><div><div class="mvp-eyebrow eyebrow-red">Series Top Shitter</div><div class="mvp-name">${bottomFragger.name}</div><div class="mvp-stats">${bottomFragger.kills} Kills · ${bottomFragger.deaths} Deaths · ${kd(bottomFragger.kills,bottomFragger.deaths)} K/D · ${bottomFragger.assists} Assists · ${pm(bottomFragger.kills,bottomFragger.deaths)} +/-</div></div></div>`:''}</div><div>${assistKing?`<div class="mvp-strip mvp-strip-blue" style="margin-bottom:0.75rem"><div class="mvp-star">🤝</div><div><div class="mvp-eyebrow eyebrow-blue">Series Assist King</div><div class="mvp-name">${assistKing.name}</div><div class="mvp-stats">${assistKing.assists} Assists · ${assistKing.kills} Kills · ${assistKing.deaths} Deaths · ${kd(assistKing.kills,assistKing.deaths)} K/D</div></div></div>`:''}${objMVP?`<div class="mvp-strip mvp-strip-green"><div class="mvp-star">🎯</div><div><div class="mvp-eyebrow eyebrow-green">Series OBJ MVP</div><div class="mvp-name">${objMVP.name}</div><div class="mvp-stats">${objMVPStats(objMVP)}</div></div></div>`:''}</div></div>`;
   }
   let html=`<div class="print-header"><div class="print-header-logo">Lock in H3 — ${mode} Series Report</div><div class="print-header-date">Generated ${dateStr}</div></div>`;
   html+=`<div class="report-header"><div class="report-eyebrow">Series Complete · ${games.length} Game${games.length!==1?'s':''} · ${mode}</div><div class="report-title">${winner===0?'Series Tied':'Squad '+winner+' Wins the Series'}${modeBadge}</div></div>`;
