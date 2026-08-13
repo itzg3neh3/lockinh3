@@ -277,7 +277,9 @@ function calcWeightedObjScore(p,totals){
 function calcAllTimeExtremes(pool,totals,hasObj){
   if(!pool.length)return{best:null,worst:null};
   const kdas=pool.map(p=>p.deaths>0?(p.kills+p.assists)/p.deaths:(p.kills+p.assists));
-  const pms=pool.map(p=>p.kills-p.deaths);
+  // +/- normalized PER SERIES — raw cumulative +/- unfairly punishes players with many
+  // more series played, since even a small per-series deficit compounds over a larger sample.
+  const pms=pool.map(p=>p.seriesPlayed>0?(p.kills-p.deaths)/p.seriesPlayed:(p.kills-p.deaths));
   const kds=pool.map(p=>p.deaths>0?p.kills/p.deaths:p.kills);
   const minVal=arr=>Math.min(...arr);
   const maxVal=arr=>Math.max(...arr);
