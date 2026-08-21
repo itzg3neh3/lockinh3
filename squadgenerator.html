@@ -69,7 +69,15 @@
   .squad-title.squad1 { color: var(--s1); }
   .squad-title.squad2 { color: var(--s2); }
   .squad-players { padding: 0.75rem; display: flex; flex-direction: column; gap: 6px; }
-  .player-row { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .player-row { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; transition: all 0.15s; }
+  .player-row.swap-pending { border-color: var(--accent); background: rgba(74,158,255,0.1); box-shadow: 0 0 0 1px var(--accent); }
+  .swap-btn { background: none; border: 1px solid var(--border2); color: var(--muted); border-radius: 6px; padding: 3px 9px; font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; margin-top: 6px; }
+  .swap-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .swap-btn.is-pending { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+  .swap-hint { background: rgba(74,158,255,0.08); border: 1px solid rgba(74,158,255,0.25); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--accent); margin-bottom: 1rem; display: none; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .swap-hint.visible { display: flex; }
+  .swap-hint-cancel { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 6px; padding: 4px 12px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
+  .manual-adjust-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--gold); background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); padding: 2px 9px; border-radius: 99px; margin-left: 8px; }
   .player-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
   .player-name { font-weight: 700; font-size: 14px; }
   .captain-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: var(--gold); color: #000; padding: 2px 8px; border-radius: 99px; flex-shrink: 0; }
@@ -129,6 +137,10 @@
   </div>
 
   <div class="results" id="results">
+    <div class="swap-hint" id="swapHint">
+      <span id="swapHintText"></span>
+      <button class="swap-hint-cancel" onclick="cancelSwap()">Cancel</button>
+    </div>
     <div class="balance-banner" id="balanceBanner"></div>
     <div class="squads-grid" id="squadsGrid"></div>
     <div class="regen-btn-wrap">
@@ -374,15 +386,133 @@ function statLine(p) {
   return objParts.length ? base + ' · ' + objParts.join(' · ') : base;
 }
 
+function isCaptainOf(p, result) {
+  // Captain status follows the person, not the squad slot, so it stays correct even
+  // after a manual swap moves a captain onto the other team.
+  return result.captain1.name === p.name || result.captain2.name === p.name;
+}
+
 function renderPlayerRow(p, isCaptain) {
   const nameHtml = `<span class="player-name">${p.name}</span>${p.isNeutral ? '<span class="neutral-tag">New / Neutral</span>' : ''}`;
   const roleBadge = (!p.isNeutral && p.roleTag) ? `<span class="role-badge ${p.roleTag.cssClass}">${p.roleTag.emoji} ${p.roleTag.label}</span>` : '';
   const stats = statLine(p);
-  return `<div class="player-row">
+  const isPending = window._pendingSwap === p.name;
+  const safeName = p.name.replace(/"/g, '&quot;');
+  return `<div class="player-row${isPending ? ' swap-pending' : ''}">
     <div class="player-row-top">${nameHtml}<span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${roleBadge}${isCaptain ? '<span class="captain-badge">Captain</span>' : ''}</span></div>
     ${stats ? `<div class="player-stats-line">${stats}</div>` : ''}
+    <button class="swap-btn${isPending ? ' is-pending' : ''}" data-swap-name="${safeName}">${isPending ? '✓ Selected — pick opponent' : '⇄ Swap'}</button>
   </div>`;
 }
+
+function renderResultsUI() {
+  const result = window._lastSquadResult;
+  if (!result) return;
+
+  const scoreSum = result.squad1Score + result.squad2Score;
+  const gapPct = scoreSum > 0 ? (Math.abs(result.squad1Score - result.squad2Score) / (scoreSum / 2)) * 100 : 0;
+
+  const banner = document.getElementById('balanceBanner');
+  let balanceClass, icon, title, sub;
+  if (gapPct < 8) {
+    balanceClass = 'balance-even'; icon = '⚖️'; title = 'Nearly Even Matchup';
+    sub = 'These squads are well balanced based on available stats.';
+  } else if (gapPct < 20) {
+    balanceClass = 'balance-slight'; icon = '📊';
+    title = 'Slight Edge to ' + (result.squad1Score > result.squad2Score ? 'Squad 1' : 'Squad 2');
+    sub = window._manuallyAdjusted ? 'Reflects your manual swap.' : 'This is the closest possible split for this lobby given the captain constraint.';
+  } else {
+    balanceClass = 'balance-uneven'; icon = '⚠️';
+    title = 'Uneven Matchup';
+    sub = window._manuallyAdjusted ? 'Reflects your manual swap.' : 'The stat gap in this lobby makes a closer split impossible while keeping the top 2 players on opposite teams.';
+  }
+  const manualTag = window._manuallyAdjusted ? '<span class="manual-adjust-tag">✏️ Manually Adjusted</span>' : '';
+  banner.className = 'balance-banner ' + balanceClass;
+  banner.innerHTML = `<div class="balance-icon">${icon}</div><div><div class="balance-text-title">${title}${manualTag}</div><div class="balance-text-sub">${sub}</div></div>`;
+
+  const grid = document.getElementById('squadsGrid');
+  grid.innerHTML = `
+    <div class="squad-card squad1">
+      <div class="squad-header squad1"><div class="squad-title squad1">Squad 1</div></div>
+      <div class="squad-players">${result.squad1.map(p => renderPlayerRow(p, isCaptainOf(p, result))).join('')}</div>
+    </div>
+    <div class="squad-card squad2">
+      <div class="squad-header squad2"><div class="squad-title squad2">Squad 2</div></div>
+      <div class="squad-players">${result.squad2.map(p => renderPlayerRow(p, isCaptainOf(p, result))).join('')}</div>
+    </div>
+  `;
+
+  const hint = document.getElementById('swapHint');
+  if (window._pendingSwap) {
+    document.getElementById('swapHintText').textContent = `Tap a player on the other squad to swap with ${window._pendingSwap}.`;
+    hint.classList.add('visible');
+  } else {
+    hint.classList.remove('visible');
+  }
+}
+
+function findPlayerSquad(name) {
+  const result = window._lastSquadResult;
+  if (!result) return null;
+  if (result.squad1.some(p => p.name === name)) return 1;
+  if (result.squad2.some(p => p.name === name)) return 2;
+  return null;
+}
+
+function handleSwapClick(name) {
+  if (!window._pendingSwap) {
+    window._pendingSwap = name;
+    renderResultsUI();
+    return;
+  }
+  if (window._pendingSwap === name) {
+    window._pendingSwap = null;
+    renderResultsUI();
+    return;
+  }
+  const squadA = findPlayerSquad(window._pendingSwap);
+  const squadB = findPlayerSquad(name);
+  if (squadA === squadB) {
+    // Same squad — just move the pending selection to whichever player was just clicked
+    window._pendingSwap = name;
+    renderResultsUI();
+    return;
+  }
+  performSwap(window._pendingSwap, name, squadA, squadB);
+  window._pendingSwap = null;
+  window._manuallyAdjusted = true;
+  recalcSquadScores();
+  renderResultsUI();
+}
+
+function performSwap(nameA, nameB, squadA, squadB) {
+  const result = window._lastSquadResult;
+  const arrA = squadA === 1 ? result.squad1 : result.squad2;
+  const arrB = squadB === 1 ? result.squad1 : result.squad2;
+  const idxA = arrA.findIndex(p => p.name === nameA);
+  const idxB = arrB.findIndex(p => p.name === nameB);
+  if (idxA === -1 || idxB === -1) return;
+  const tmp = arrA[idxA];
+  arrA[idxA] = arrB[idxB];
+  arrB[idxB] = tmp;
+}
+
+function recalcSquadScores() {
+  const result = window._lastSquadResult;
+  result.squad1Score = result.squad1.reduce((s, p) => s + p.score, 0);
+  result.squad2Score = result.squad2.reduce((s, p) => s + p.score, 0);
+}
+
+function cancelSwap() {
+  window._pendingSwap = null;
+  renderResultsUI();
+}
+
+document.getElementById('squadsGrid').addEventListener('click', (e) => {
+  const btn = e.target.closest('.swap-btn');
+  if (!btn) return;
+  handleSwapClick(btn.getAttribute('data-swap-name'));
+});
 
 async function generateSquads() {
   const count = currentMode === '4v4' ? 8 : 4;
@@ -409,43 +539,16 @@ async function generateSquads() {
   const squadSize = count / 2;
   const result = buildBalancedSquads(players, squadSize);
 
-  const scoreSum = result.squad1Score + result.squad2Score;
-  const gapPct = scoreSum > 0 ? (Math.abs(result.squad1Score - result.squad2Score) / (scoreSum / 2)) * 100 : 0;
+  window._lastSquadResult = result;
+  window._lastSquadMode = currentMode;
+  window._pendingSwap = null;
+  window._manuallyAdjusted = false;
 
-  const banner = document.getElementById('balanceBanner');
-  let balanceClass, icon, title, sub;
-  if (gapPct < 8) {
-    balanceClass = 'balance-even'; icon = '⚖️'; title = 'Nearly Even Matchup';
-    sub = 'These squads are well balanced based on available stats.';
-  } else if (gapPct < 20) {
-    balanceClass = 'balance-slight'; icon = '📊';
-    title = 'Slight Edge to ' + (result.squad1Score > result.squad2Score ? 'Squad 1' : 'Squad 2');
-    sub = 'This is the closest possible split for this lobby given the captain constraint.';
-  } else {
-    balanceClass = 'balance-uneven'; icon = '⚠️';
-    title = 'Uneven Matchup — Best Available Split';
-    sub = 'The stat gap in this lobby makes a closer split impossible while keeping the top 2 players on opposite teams.';
-  }
-  banner.className = 'balance-banner ' + balanceClass;
-  banner.innerHTML = `<div class="balance-icon">${icon}</div><div><div class="balance-text-title">${title}</div><div class="balance-text-sub">${sub}</div></div>`;
-
-  const grid = document.getElementById('squadsGrid');
-  grid.innerHTML = `
-    <div class="squad-card squad1">
-      <div class="squad-header squad1"><div class="squad-title squad1">Squad 1</div></div>
-      <div class="squad-players">${result.squad1.map(p => renderPlayerRow(p, p.name === result.captain1.name)).join('')}</div>
-    </div>
-    <div class="squad-card squad2">
-      <div class="squad-header squad2"><div class="squad-title squad2">Squad 2</div></div>
-      <div class="squad-players">${result.squad2.map(p => renderPlayerRow(p, p.name === result.captain2.name)).join('')}</div>
-    </div>
-  `;
+  renderResultsUI();
 
   document.getElementById('results').classList.add('visible');
   document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  window._lastSquadResult = result;
-  window._lastSquadMode = currentMode;
   document.getElementById('copySquadsBtn').textContent = 'Copy for Discord';
   document.getElementById('copySquadsBtn').classList.remove('copied');
 }
@@ -453,8 +556,8 @@ async function generateSquads() {
 function copySquads() {
   if (!window._lastSquadResult) return;
   const result = window._lastSquadResult;
-  const squad1Lines = result.squad1.map(p => (p.name === result.captain1.name ? '👑 ' : '') + p.name);
-  const squad2Lines = result.squad2.map(p => (p.name === result.captain2.name ? '👑 ' : '') + p.name);
+  const squad1Lines = result.squad1.map(p => (isCaptainOf(p, result) ? '👑 ' : '') + p.name);
+  const squad2Lines = result.squad2.map(p => (isCaptainOf(p, result) ? '👑 ' : '') + p.name);
   const text = `**Lock in H3 — ${window._lastSquadMode} Squads**\n\`\`\`\nSQUAD 1\n` + squad1Lines.join('\n') + '\n\nSQUAD 2\n' + squad2Lines.join('\n') + '\n```';
   navigator.clipboard.writeText(text).catch(() => {});
   const btn = document.getElementById('copySquadsBtn');
