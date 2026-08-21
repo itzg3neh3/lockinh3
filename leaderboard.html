@@ -159,6 +159,7 @@
       <a href="leaderboard.html" class="nav-link active">Leaderboard</a>
       <a href="history.html" class="nav-link">History</a>
       <a href="headtohead.html" class="nav-link">H2H</a>
+      <a href="mapgenerator.html" class="nav-link">Maps</a>
     </div>
   </header>
   <div class="page-title">All-Time Leaderboard</div>
@@ -263,17 +264,17 @@ function kdaClass(k,a,d){const r=d===0?(k+a):(k+a)/d;return r>1.5?'kd-pos':r<1.0
 function perSeries(val,played){return played>0?(val/played):0;}
 function calcObjScore(p,totals){const shares=[];if(totals.ball>0)shares.push(p.ballSecs/totals.ball);if(totals.caps>0)shares.push(p.flagCaps/totals.caps);if(totals.hill>0)shares.push(p.hillSecs/totals.hill);if(!shares.length)return 0;return shares.reduce((a,b)=>a+b,0)/shares.length;}
 
-// Weighted OBJ score (flag caps weighted 2x) — used for both OBJ MVP and All-Time MVP
+// OBJ score (flag caps, ball time, hill time weighted equally) — used for both OBJ MVP and All-Time MVP
 function calcWeightedObjScore(p,totals){
   let ws=0,tw=0;
   if(totals.ball>0){ws+=p.ballSecs/totals.ball*1;tw+=1;}
-  if(totals.caps>0){ws+=p.flagCaps/totals.caps*2;tw+=2;}
+  if(totals.caps>0){ws+=p.flagCaps/totals.caps*1;tw+=1;}
   if(totals.hill>0){ws+=p.hillSecs/totals.hill*1;tw+=1;}
   return tw>0?ws/tw:0;
 }
 
 // Calculates both All-Time MVP (best) and All-Time Top Shitter (worst) using the same
-// weighting: 40% KDA / 30% +/- / 20% K/D / 10% OBJ (flag caps weighted 2x)
+// weighting: 40% KDA / 30% +/- / 20% K/D / 10% OBJ (flag caps, ball time, hill time weighted equally)
 function calcAllTimeExtremes(pool,totals,hasObj){
   if(!pool.length)return{best:null,worst:null};
   const kdas=pool.map(p=>p.deaths>0?(p.kills+p.assists)/p.deaths:(p.kills+p.assists));

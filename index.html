@@ -250,6 +250,7 @@
       <a href="leaderboard.html" class="nav-link">Leaderboard</a>
       <a href="history.html" class="nav-link">History</a>
       <a href="headtohead.html" class="nav-link">H2H</a>
+      <a href="mapgenerator.html" class="nav-link">Maps</a>
     </div>
   </header>
 
@@ -625,7 +626,7 @@ function calcObjMVP(players,games){
   players.forEach(p=>{
     let weightedSum=0,totalWeight=0;
     if(tb>0){weightedSum+=p.ballSecs/tb*1;totalWeight+=1;}
-    if(tc>0){weightedSum+=p.flagCaps/tc*2;totalWeight+=2;}
+    if(tc>0){weightedSum+=p.flagCaps/tc*1;totalWeight+=1;}
     if(th>0){weightedSum+=p.hillSecs/th*1;totalWeight+=1;}
     if(!totalWeight)return;
     const score=weightedSum/totalWeight;
@@ -634,7 +635,7 @@ function calcObjMVP(players,games){
   return best;
 }
 // Calculates both MVP (best) and Top Shitter (worst) using the same weighted formula:
-// 40% KDA + 30% +/- + 20% K/D + 10% OBJ (flag caps weighted 2x vs ball/hill time)
+// 40% KDA + 30% +/- + 20% K/D + 10% OBJ (flag caps, ball time, hill time weighted equally)
 function calcSeriesExtremes(players,games){
   if(!players.length)return{best:null,worst:null};
   const kdas=players.map(p=>p.deaths>0?(p.kills+p.assists)/p.deaths:(p.kills+p.assists));
@@ -654,7 +655,7 @@ function calcSeriesExtremes(players,games){
     if(!hasObj)return 0;
     let ws=0,tw=0;
     if(tb>0){ws+=p.ballSecs/tb*1;tw+=1;}
-    if(tc>0){ws+=p.flagCaps/tc*2;tw+=2;}
+    if(tc>0){ws+=p.flagCaps/tc*1;tw+=1;}
     if(th>0){ws+=p.hillSecs/th*1;tw+=1;}
     return tw>0?ws/tw:0;
   });

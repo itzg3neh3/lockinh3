@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lock in H3 — Map Generator</title>
+<meta name="description" content="Randomly generate the map and gametype order for a Halo 3 MCC 4v4 or 2v2 series.">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10; --surface: #111318; --surface2: #181c24;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0; --muted: #6b7280; --accent: #4a9eff;
+    --accent-dim: rgba(74,158,255,0.12); --red: #ff5555;
+    --red-dim: rgba(255,85,85,0.12); --red-border: rgba(255,85,85,0.25);
+    --green: #4ade80; --gold: #f59e0b;
+    --s1: #a78bfa; --s1-dim: rgba(167,139,250,0.12); --s1-border: rgba(167,139,250,0.25);
+    --s2: #fb923c; --s2-dim: rgba(251,146,60,0.12); --s2-border: rgba(251,146,60,0.25);
+    --s3: #34d399; --s3-dim: rgba(52,211,153,0.12); --s3-border: rgba(52,211,153,0.25);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 1000; }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+  header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; }
+  .nav-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
+  .nav-link:hover { color: var(--accent); border-color: var(--accent); }
+  .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+  .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 2rem; }
+  .config-panel { background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .config-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: block; }
+  .mode-btns { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+  .mode-btn { flex: 1; padding: 14px; background: var(--surface2); border: 1.5px solid var(--border2); border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); cursor: pointer; transition: all 0.15s; text-align: center; }
+  .mode-btn:hover { border-color: var(--accent); color: var(--text); }
+  .mode-btn.active-4v4 { border-color: var(--s1-border); background: var(--s1-dim); color: var(--s1); }
+  .mode-btn.active-2v2 { border-color: var(--s2-border); background: var(--s2-dim); color: var(--s2); }
+  .bo-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .bo-btn { flex: 1; min-width: 90px; padding: 12px; background: var(--surface2); border: 1.5px solid var(--border2); border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); cursor: pointer; transition: all 0.15s; text-align: center; }
+  .bo-btn:hover { border-color: var(--accent); color: var(--text); }
+  .bo-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+  .generate-btn { width: 100%; padding: 15px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+  .generate-btn:hover { background: #74b4ff; transform: translateY(-1px); }
+  .maps-pool-note { font-size: 12px; color: var(--muted); margin-top: 1rem; line-height: 1.5; }
+  .tie-note { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--gold); margin-bottom: 1.5rem; display: none; align-items: center; gap: 10px; }
+  .tie-note.visible { display: flex; }
+  .results { display: none; }
+  .results.visible { display: block; }
+  .results-header { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .results-title { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+  .results-actions { display: flex; gap: 8px; }
+  .regen-btn, .copy-list-btn { background: none; border: 1px solid var(--border2); color: var(--muted); border-radius: 6px; padding: 7px 16px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+  .regen-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .copy-list-btn:hover { color: var(--green); border-color: var(--green); }
+  .copy-list-btn.copied { color: var(--green); border-color: var(--green); }
+  .games-grid { display: flex; flex-direction: column; gap: 10px; }
+  .game-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; }
+  .game-num { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; color: var(--muted); width: 44px; flex-shrink: 0; text-align: center; }
+  .game-num.repeat { color: var(--gold); }
+  .game-info { flex: 1; }
+  .game-map { font-family: 'Barlow Condensed', sans-serif; font-size: 19px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+  .game-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .gametype-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 5px 14px; border-radius: 99px; flex-shrink: 0; white-space: nowrap; }
+  .badge-slayer { background: rgba(74,158,255,0.12); color: var(--accent); border: 1px solid rgba(74,158,255,0.25); }
+  .badge-ctf { background: rgba(167,139,250,0.12); color: var(--s1); border: 1px solid rgba(167,139,250,0.25); }
+  .badge-oddball { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.25); }
+  .badge-koth { background: rgba(245,158,11,0.12); color: var(--gold); border: 1px solid rgba(245,158,11,0.25); }
+  .repeat-pill { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); padding: 2px 8px; border-radius: 99px; margin-left: 8px; }
+  @media (max-width: 600px) {
+    .mode-btns { flex-direction: column; }
+    .bo-btn { min-width: calc(50% - 4px); }
+    .game-row { flex-wrap: wrap; }
+    .gametype-badge { order: 3; width: 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <a href="index.html" style="display:flex;align-items:center;text-decoration:none;">
+      <img src="https://itzg3neh3.github.io/lockinh3/stat_tracker_logo.png" alt="Lock in H3" style="height:52px;width:auto;display:block;">
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Report</a>
+      <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+      <a href="history.html" class="nav-link">History</a>
+      <a href="headtohead.html" class="nav-link">H2H</a>
+      <a href="mapgenerator.html" class="nav-link active">Maps</a>
+    </div>
+  </header>
+
+  <div class="page-title">Map Generator</div>
+  <div class="page-sub">Randomly generate the map &amp; gametype order for your next series</div>
+
+  <div class="config-panel">
+    <span class="config-label">Series Type</span>
+    <div class="mode-btns">
+      <button class="mode-btn active-4v4" id="modeBtn4v4" onclick="setMode('4v4')">4v4</button>
+      <button class="mode-btn" id="modeBtn2v2" onclick="setMode('2v2')">2v2</button>
+    </div>
+
+    <span class="config-label">Series Length</span>
+    <div class="bo-btns" id="boBtns"></div>
+
+    <button class="generate-btn" id="generateBtn" onclick="generate()">Generate Maps</button>
+
+    <div class="maps-pool-note" id="poolNote"></div>
+  </div>
+
+  <div class="tie-note" id="tieNote">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    If a game ends in a tie, replay that same map &amp; gametype before moving to the next game in the list.
+  </div>
+
+  <div class="results" id="results">
+    <div class="results-header">
+      <div class="results-title" id="resultsTitle">Series Order</div>
+      <div class="results-actions">
+        <button class="copy-list-btn" id="copyListBtn" onclick="copyList()">Copy for Discord</button>
+        <button class="regen-btn" onclick="generate()">🎲 Reroll</button>
+      </div>
+    </div>
+    <div class="games-grid" id="gamesGrid"></div>
+  </div>
+</div>
+
+<script>
+const FOUR_V_FOUR_MAPS = [
+  { name: 'Onslaught', types: ['CTF'] },
+  { name: 'Narrows',   types: ['Slayer', 'CTF'] },
+  { name: 'Pit',       types: ['Slayer', 'CTF'] },
+  { name: 'Guardian',  types: ['Oddball'] },
+  { name: 'Amp',       types: ['Slayer'] },
+  { name: 'Heretic',   types: ['Slayer', 'CTF'] },
+  { name: 'Construct', types: ['KOTH'] }
+];
+
+const TWO_V_TWO_MAPS = ['Guardian', 'Heretic', 'Pit', 'Narrows', 'Amp', 'Construct'].map(name => ({ name, types: ['Slayer'] }));
+
+const BO_OPTIONS = { '4v4': [3, 5, 7, 9], '2v2': [3, 5, 7] };
+
+let currentMode = '4v4';
+let currentBo = 5;
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeBtn4v4').className = 'mode-btn' + (mode === '4v4' ? ' active-4v4' : '');
+  document.getElementById('modeBtn2v2').className = 'mode-btn' + (mode === '2v2' ? ' active-2v2' : '');
+  const options = BO_OPTIONS[mode];
+  if (!options.includes(currentBo)) currentBo = options[Math.min(1, options.length - 1)];
+  renderBoButtons();
+  renderPoolNote();
+  document.getElementById('results').classList.remove('visible');
+}
+
+function renderBoButtons() {
+  const wrap = document.getElementById('boBtns');
+  wrap.innerHTML = '';
+  BO_OPTIONS[currentMode].forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'bo-btn' + (n === currentBo ? ' active' : '');
+    btn.textContent = 'Best of ' + n;
+    btn.onclick = () => { currentBo = n; renderBoButtons(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderPoolNote() {
+  const pool = currentMode === '4v4' ? FOUR_V_FOUR_MAPS : TWO_V_TWO_MAPS;
+  const poolSize = pool.length;
+  const note = document.getElementById('poolNote');
+  if (currentBo > poolSize) {
+    note.textContent = `${poolSize} maps available for ${currentMode} — since this series needs ${currentBo} games, ${currentBo - poolSize} map${currentBo - poolSize !== 1 ? 's' : ''} will repeat.`;
+  } else {
+    note.textContent = `${poolSize} maps available for ${currentMode} — all ${currentBo} games in this series will use a unique map, no repeats.`;
+  }
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function pickGametype(map) {
+  return map.types[Math.floor(Math.random() * map.types.length)];
+}
+
+function buildSeries(pool, count) {
+  let selectedMaps;
+  if (count <= pool.length) {
+    selectedMaps = shuffle(pool).slice(0, count);
+  } else {
+    // Use every map at least once, then fill remaining slots with random repeats
+    selectedMaps = shuffle(pool).slice();
+    const remaining = count - pool.length;
+    let refillPool = shuffle(pool);
+    const extras = [];
+    while (extras.length < remaining) {
+      if (refillPool.length === 0) refillPool = shuffle(pool);
+      extras.push(refillPool.pop());
+    }
+    selectedMaps = selectedMaps.concat(extras);
+    selectedMaps = shuffle(selectedMaps);
+    // Avoid the same map landing on back-to-back games where possible
+    for (let i = 1; i < selectedMaps.length; i++) {
+      if (selectedMaps[i].name === selectedMaps[i - 1].name) {
+        for (let j = i + 1; j < selectedMaps.length; j++) {
+          if (selectedMaps[j].name !== selectedMaps[i - 1].name) {
+            const tmp = selectedMaps[i];
+            selectedMaps[i] = selectedMaps[j];
+            selectedMaps[j] = tmp;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Track how many times each map has appeared so far to flag repeats in the UI
+  const seenCounts = {};
+  return selectedMaps.map((map, i) => {
+    seenCounts[map.name] = (seenCounts[map.name] || 0) + 1;
+    return {
+      gameNumber: i + 1,
+      mapName: map.name,
+      gametype: pickGametype(map),
+      isRepeat: seenCounts[map.name] > 1
+    };
+  });
+}
+
+function gametypeBadgeClass(gt) {
+  const g = gt.toLowerCase();
+  if (g === 'ctf') return 'badge-ctf';
+  if (g === 'oddball') return 'badge-oddball';
+  if (g === 'koth') return 'badge-koth';
+  return 'badge-slayer';
+}
+
+function generate() {
+  const pool = currentMode === '4v4' ? FOUR_V_FOUR_MAPS : TWO_V_TWO_MAPS;
+  const series = buildSeries(pool, currentBo);
+  window._lastSeries = series;
+  window._lastMode = currentMode;
+  window._lastBo = currentBo;
+
+  document.getElementById('resultsTitle').textContent = `${currentMode} · Best of ${currentBo}`;
+  const grid = document.getElementById('gamesGrid');
+  grid.innerHTML = series.map(g => `
+    <div class="game-row">
+      <div class="game-num${g.isRepeat ? ' repeat' : ''}">${g.gameNumber}</div>
+      <div class="game-info">
+        <div class="game-map">${g.mapName}${g.isRepeat ? '<span class="repeat-pill">Repeat</span>' : ''}</div>
+        <div class="game-meta">Game ${g.gameNumber} of ${series.length}</div>
+      </div>
+      <div class="gametype-badge ${gametypeBadgeClass(g.gametype)}">${g.gametype}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('tieNote').classList.add('visible');
+  document.getElementById('copyListBtn').textContent = 'Copy for Discord';
+  document.getElementById('copyListBtn').classList.remove('copied');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyList() {
+  if (!window._lastSeries) return;
+  const lines = window._lastSeries.map(g => `Game ${g.gameNumber}: ${g.mapName} — ${g.gametype}`);
+  const text = `**Lock in H3 — ${window._lastMode} Best of ${window._lastBo}**\n\`\`\`\n` + lines.join('\n') + '\n```';
+  navigator.clipboard.writeText(text).catch(() => {});
+  const btn = document.getElementById('copyListBtn');
+  btn.textContent = 'Copied!';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy for Discord'; btn.classList.remove('copied'); }, 2000);
+}
+
+renderBoButtons();
+renderPoolNote();
+</script>
+</body>
+</html>
