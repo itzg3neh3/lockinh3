@@ -75,9 +75,11 @@
   .captain-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: var(--gold); color: #000; padding: 2px 8px; border-radius: 99px; flex-shrink: 0; }
   .player-stats-line { font-size: 11px; color: var(--muted); margin-top: 4px; }
   .neutral-tag { font-size: 10px; font-weight: 600; color: var(--muted); background: rgba(255,255,255,0.05); border: 1px solid var(--border2); padding: 1px 7px; border-radius: 99px; margin-left: 6px; }
-  .regen-btn-wrap { display: flex; justify-content: center; }
-  .regen-btn { background: none; border: 1px solid var(--border2); color: var(--muted); border-radius: 6px; padding: 9px 24px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+  .regen-btn-wrap { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .regen-btn, .copy-squads-btn { background: none; border: 1px solid var(--border2); color: var(--muted); border-radius: 6px; padding: 9px 24px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
   .regen-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .copy-squads-btn:hover { color: var(--green); border-color: var(--green); }
+  .copy-squads-btn.copied { color: var(--green); border-color: var(--green); }
   @media (max-width: 600px) {
     .mode-btns { flex-direction: column; }
     .players-grid { grid-template-columns: 1fr; }
@@ -124,6 +126,7 @@
     <div class="balance-banner" id="balanceBanner"></div>
     <div class="squads-grid" id="squadsGrid"></div>
     <div class="regen-btn-wrap">
+      <button class="copy-squads-btn" id="copySquadsBtn" onclick="copySquads()">Copy for Discord</button>
       <button class="regen-btn" onclick="generateSquads()">🎲 Reroll Split</button>
     </div>
   </div>
@@ -358,6 +361,24 @@ async function generateSquads() {
 
   document.getElementById('results').classList.add('visible');
   document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  window._lastSquadResult = result;
+  window._lastSquadMode = currentMode;
+  document.getElementById('copySquadsBtn').textContent = 'Copy for Discord';
+  document.getElementById('copySquadsBtn').classList.remove('copied');
+}
+
+function copySquads() {
+  if (!window._lastSquadResult) return;
+  const result = window._lastSquadResult;
+  const squad1Lines = result.squad1.map(p => (p.name === result.captain1.name ? '👑 ' : '') + p.name);
+  const squad2Lines = result.squad2.map(p => (p.name === result.captain2.name ? '👑 ' : '') + p.name);
+  const text = `**Lock in H3 — ${window._lastSquadMode} Squads**\n\`\`\`\nSQUAD 1\n` + squad1Lines.join('\n') + '\n\nSQUAD 2\n' + squad2Lines.join('\n') + '\n```';
+  navigator.clipboard.writeText(text).catch(() => {});
+  const btn = document.getElementById('copySquadsBtn');
+  btn.textContent = 'Copied!';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy for Discord'; btn.classList.remove('copied'); }, 2000);
 }
 
 renderPlayerFields(8);
