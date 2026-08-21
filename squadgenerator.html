@@ -332,32 +332,31 @@ function combinations(arr, k) {
 }
 
 function buildBalancedSquads(players, squadSize) {
-  // Add a tiny random jitter (invisible in practice) to naturally break ties differently on reroll
-  const shuffled = players.map(p => ({ ...p, _jitter: Math.random() * 1e-6 }));
-  const sorted = shuffled.slice().sort((a, b) => (b.score + b._jitter) - (a.score + a._jitter));
+  const sorted = players.slice().sort((a, b) => b.score - a.score);
   const captain1 = sorted[0];
   const captain2 = sorted[1];
   const remaining = sorted.slice(2);
   const extraNeeded = squadSize - 1;
 
   const combos = combinations(remaining.map((_, i) => i), extraNeeded);
-  let bestGap = Infinity;
-  let bestSplits = [];
-  combos.forEach(comboIdx => {
+  const allSplits = combos.map(comboIdx => {
     const team1Extra = comboIdx.map(i => remaining[i]);
     const team2Extra = remaining.filter((_, i) => !comboIdx.includes(i));
     const team1 = [captain1].concat(team1Extra);
     const team2 = [captain2].concat(team2Extra);
     const t1Score = team1.reduce((s, p) => s + p.score, 0);
     const t2Score = team2.reduce((s, p) => s + p.score, 0);
-    const gap = Math.abs(t1Score - t2Score);
-    if (gap < bestGap - 1e-9) {
-      bestGap = gap;
-      bestSplits = [{ team1, team2, t1Score, t2Score }];
-    } else if (Math.abs(gap - bestGap) <= 1e-9) {
-      bestSplits.push({ team1, team2, t1Score, t2Score });
-    }
+    return { team1, team2, t1Score, t2Score, gap: Math.abs(t1Score - t2Score) };
   });
+  allSplits.sort((a, b) => a.gap - b.gap);
+
+  // Pick randomly among the handful of closest-to-balanced splits (not just exact ties).
+  // With real stat data, one split is almost always the unique best, which made Reroll
+  // look like it did nothing — this keeps every option genuinely close to fair while
+  // still giving Reroll something meaningful to shuffle between.
+  const poolSize = Math.min(4, allSplits.length);
+  const pool = allSplits.slice(0, poolSize);
+  const bestSplits = pool;
 
   const chosen = bestSplits[Math.floor(Math.random() * bestSplits.length)];
   return { squad1: chosen.team1, squad2: chosen.team2, squad1Score: chosen.t1Score, squad2Score: chosen.t2Score, captain1, captain2 };
