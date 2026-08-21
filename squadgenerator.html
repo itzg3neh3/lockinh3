@@ -70,9 +70,15 @@
   .squad-title.squad2 { color: var(--s2); }
   .squad-players { padding: 0.75rem; display: flex; flex-direction: column; gap: 6px; }
   .player-row { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
-  .player-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .player-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
   .player-name { font-weight: 700; font-size: 14px; }
   .captain-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: var(--gold); color: #000; padding: 2px 8px; border-radius: 99px; flex-shrink: 0; }
+  .role-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; flex-shrink: 0; white-space: nowrap; }
+  .role-badge-obj { background: rgba(52,211,153,0.12); color: var(--s3); border: 1px solid rgba(52,211,153,0.3); }
+  .role-badge-assist { background: rgba(74,158,255,0.12); color: var(--accent); border: 1px solid rgba(74,158,255,0.3); }
+  .role-badge-slayer { background: rgba(245,158,11,0.12); color: var(--gold); border: 1px solid rgba(245,158,11,0.3); }
+  .role-badge-closer { background: rgba(167,139,250,0.12); color: var(--s1); border: 1px solid rgba(167,139,250,0.3); }
+  .role-badge-balanced { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border2); }
   .player-stats-line { font-size: 11px; color: var(--muted); margin-top: 4px; }
   .neutral-tag { font-size: 10px; font-weight: 600; color: var(--muted); background: rgba(255,255,255,0.05); border: 1px solid var(--border2); padding: 1px 7px; border-radius: 99px; margin-left: 6px; }
   .regen-btn-wrap { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
@@ -115,7 +121,7 @@
 
     <span class="config-label" id="playersLabel">Lobby Players (8)</span>
     <div class="players-grid" id="playersGrid"></div>
-    <div class="players-hint">Type a name or pick from the dropdown of known players. Players not found on the leaderboard (or with fewer than 5 series played) are given a neutral skill score.</div>
+    <div class="players-hint" id="playersHint">Type a name or pick from the dropdown of known players. Players not found on the leaderboard (or with fewer than 5 series played) are given a neutral skill score.</div>
 
     <button class="generate-btn" id="generateBtn" onclick="generateSquads()">Generate Squads</button>
     <div class="error-box" id="errorBox"></div>
@@ -148,6 +154,9 @@ function setMode(mode) {
   document.getElementById('modeBtn2v2').className = 'mode-btn' + (mode === '2v2' ? ' active-2v2' : '');
   const count = mode === '4v4' ? 8 : 4;
   document.getElementById('playersLabel').textContent = `Lobby Players (${count})`;
+  document.getElementById('playersHint').textContent = mode === '4v4'
+    ? 'Type a name or pick from the dropdown of known players. Score factors in combat stats plus flag caps, hill time, and ball time. Players not found on the leaderboard (or with fewer than 5 series played) are given a neutral skill score.'
+    : 'Type a name or pick from the dropdown of known players. Players not found on the leaderboard (or with fewer than 5 series played) are given a neutral skill score.';
   renderPlayerFields(count);
   document.getElementById('results').classList.remove('visible');
   document.getElementById('errorBox').classList.remove('visible');
@@ -197,6 +206,10 @@ function lookupPlayer(name, count) {
   const played = found.seriesPlayed || 0;
   const winPct = played > 0 ? (found.seriesWon || 0) / played : 0;
   const pmPerSeries = played > 0 ? ((found.kills || 0) - (found.deaths || 0)) / played : 0;
+  const capsPerSeries = played > 0 ? (found.flagCaps || 0) / played : 0;
+  const hillPerSeries = played > 0 ? (found.hillSecs || 0) / played : 0;
+  const ballPerSeries = played > 0 ? (found.ballSecs || 0) / played : 0;
+  const assistsPerSeries = played > 0 ? (found.assists || 0) / played : 0;
   return {
     name: found.displayName,
     isNeutral: false,
@@ -204,10 +217,17 @@ function lookupPlayer(name, count) {
     kills: found.kills || 0,
     deaths: found.deaths || 0,
     assists: found.assists || 0,
+    flagCaps: found.flagCaps || 0,
+    hillSecs: found.hillSecs || 0,
+    ballSecs: found.ballSecs || 0,
     kdVal: kd(found.kills || 0, found.deaths || 0),
     kdaVal: kda(found.kills || 0, found.assists || 0, found.deaths || 0),
     winPct: winPct,
-    pmPerSeries: pmPerSeries
+    pmPerSeries: pmPerSeries,
+    capsPerSeries: capsPerSeries,
+    hillPerSeries: hillPerSeries,
+    ballPerSeries: ballPerSeries,
+    assistsPerSeries: assistsPerSeries
   };
 }
 
@@ -220,18 +240,54 @@ function computeScores(players) {
     const pms = known.map(p => p.pmPerSeries);
     const kds = known.map(p => p.kdVal);
     const wps = known.map(p => p.winPct);
+    const assistsPS = known.map(p => p.assistsPerSeries);
     const kdaMin = Math.min(...kdas), kdaMax = Math.max(...kdas);
     const pmMin = Math.min(...pms), pmMax = Math.max(...pms);
     const kdMin = Math.min(...kds), kdMax = Math.max(...kds);
     const wpMin = Math.min(...wps), wpMax = Math.max(...wps);
+    const assistsMin = Math.min(...assistsPS), assistsMax = Math.max(...assistsPS);
+
+    // OBJ contribution — flag caps, hill time, and ball time weighted equally, each
+    // normalized per series played so players with very different series counts are
+    // compared fairly. Only categories that actually appear in this lobby are used.
+    const caps = known.map(p => p.capsPerSeries);
+    const hills = known.map(p => p.hillPerSeries);
+    const balls = known.map(p => p.ballPerSeries);
+    const hasCaps = Math.max(...caps) > 0;
+    const hasHills = Math.max(...hills) > 0;
+    const hasBalls = Math.max(...balls) > 0;
+    const hasObj = hasCaps || hasHills || hasBalls;
+    const capsMin = Math.min(...caps), capsMax = Math.max(...caps);
+    const hillsMin = Math.min(...hills), hillsMax = Math.max(...hills);
+    const ballsMin = Math.min(...balls), ballsMax = Math.max(...balls);
 
     known.forEach(p => {
       const nKDA = normalize(p.kdaVal, kdaMin, kdaMax);
       const nPM = normalize(p.pmPerSeries, pmMin, pmMax);
       const nKD = normalize(p.kdVal, kdMin, kdMax);
       const nWP = normalize(p.winPct, wpMin, wpMax);
-      p.score = nKDA * 0.35 + nPM * 0.25 + nKD * 0.20 + nWP * 0.20;
+      const nAssists = normalize(p.assistsPerSeries, assistsMin, assistsMax);
+
+      let nObj = 0;
+      if (hasObj) {
+        const parts = [];
+        if (hasCaps) parts.push(normalize(p.capsPerSeries, capsMin, capsMax));
+        if (hasHills) parts.push(normalize(p.hillPerSeries, hillsMin, hillsMax));
+        if (hasBalls) parts.push(normalize(p.ballPerSeries, ballsMin, ballsMax));
+        nObj = parts.reduce((s, v) => s + v, 0) / parts.length;
+      }
+
+      p.nObj = nObj;
+      p.nAssists = nAssists;
+      p.nKD = nKD;
+      p.nWP = nWP;
+
+      p.score = hasObj
+        ? (nKDA * 0.30 + nPM * 0.20 + nKD * 0.15 + nWP * 0.20 + nObj * 0.15)
+        : (nKDA * 0.35 + nPM * 0.25 + nKD * 0.20 + nWP * 0.20);
     });
+
+    assignRoleTags(known, hasObj);
 
     const avgKnownScore = known.reduce((s, p) => s + p.score, 0) / known.length;
     players.filter(p => p.isNeutral).forEach(p => { p.score = avgKnownScore; });
@@ -240,6 +296,25 @@ function computeScores(players) {
     players.forEach(p => { p.score = 0.5; });
   }
   return players;
+}
+
+// Tags each known player with the role they most stand out in relative to the rest of
+// the lobby, based on the same normalized metrics that drive the balance score. Falls
+// back to "All-Around" when no single trait clearly dominates for that player.
+const ROLE_TAG_THRESHOLD = 0.55;
+function assignRoleTags(known, hasObj) {
+  known.forEach(p => {
+    const candidates = [
+      { key: 'obj', label: 'OBJ Focused', emoji: '🎯', cssClass: 'role-badge-obj', val: hasObj ? p.nObj : -1 },
+      { key: 'assist', label: 'Assist Machine', emoji: '🤝', cssClass: 'role-badge-assist', val: p.nAssists },
+      { key: 'slayer', label: 'Top Slayer', emoji: '⭐', cssClass: 'role-badge-slayer', val: p.nKD },
+      { key: 'closer', label: 'Closer', emoji: '🏆', cssClass: 'role-badge-closer', val: p.nWP }
+    ];
+    const best = candidates.reduce((a, b) => (b.val > a.val ? b : a));
+    p.roleTag = best.val >= ROLE_TAG_THRESHOLD
+      ? { label: best.label, emoji: best.emoji, cssClass: best.cssClass }
+      : { label: 'All-Around', emoji: '⚙️', cssClass: 'role-badge-balanced' };
+  });
 }
 
 function combinations(arr, k) {
@@ -288,16 +363,24 @@ function buildBalancedSquads(players, squadSize) {
   return { squad1: chosen.team1, squad2: chosen.team2, squad1Score: chosen.t1Score, squad2Score: chosen.t2Score, captain1, captain2 };
 }
 
+function fmtSecs(sec) { if (!sec) return null; const m = Math.floor(sec / 60), s = Math.round(sec % 60); return `${m}:${String(s).padStart(2, '0')}`; }
+
 function statLine(p) {
   if (p.isNeutral) return null;
-  return `${p.kills}K · ${p.deaths}D · ${p.kdVal.toFixed(2)} K/D · ${p.kdaVal.toFixed(2)} KDA · ${Math.round(p.winPct * 100)}% Win · ${p.seriesPlayed} Series`;
+  const base = `${p.kills}K · ${p.deaths}D · ${p.kdVal.toFixed(2)} K/D · ${p.kdaVal.toFixed(2)} KDA · ${Math.round(p.winPct * 100)}% Win · ${p.seriesPlayed} Series`;
+  const objParts = [];
+  if (p.flagCaps > 0) objParts.push(`${p.flagCaps} Caps`);
+  if (p.hillSecs > 0) objParts.push(`${fmtSecs(p.hillSecs)} Hill`);
+  if (p.ballSecs > 0) objParts.push(`${fmtSecs(p.ballSecs)} Ball`);
+  return objParts.length ? base + ' · ' + objParts.join(' · ') : base;
 }
 
 function renderPlayerRow(p, isCaptain) {
   const nameHtml = `<span class="player-name">${p.name}</span>${p.isNeutral ? '<span class="neutral-tag">New / Neutral</span>' : ''}`;
+  const roleBadge = (!p.isNeutral && p.roleTag) ? `<span class="role-badge ${p.roleTag.cssClass}">${p.roleTag.emoji} ${p.roleTag.label}</span>` : '';
   const stats = statLine(p);
   return `<div class="player-row">
-    <div class="player-row-top">${nameHtml}${isCaptain ? '<span class="captain-badge">Captain</span>' : ''}</div>
+    <div class="player-row-top">${nameHtml}<span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${roleBadge}${isCaptain ? '<span class="captain-badge">Captain</span>' : ''}</span></div>
     ${stats ? `<div class="player-stats-line">${stats}</div>` : ''}
   </div>`;
 }
