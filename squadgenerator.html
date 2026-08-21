@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lock in H3 — Squad Generator</title>
+<meta name="description" content="Generate balanced squads for a Halo 3 MCC 4v4 or 2v2 lobby using leaderboard stats.">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10; --surface: #111318; --surface2: #181c24;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0; --muted: #6b7280; --accent: #4a9eff;
+    --accent-dim: rgba(74,158,255,0.12); --red: #ff5555;
+    --red-dim: rgba(255,85,85,0.12); --red-border: rgba(255,85,85,0.25);
+    --green: #4ade80; --gold: #f59e0b;
+    --s1: #a78bfa; --s1-dim: rgba(167,139,250,0.12); --s1-border: rgba(167,139,250,0.25);
+    --s2: #fb923c; --s2-dim: rgba(251,146,60,0.12); --s2-border: rgba(251,146,60,0.25);
+    --s3: #34d399; --s3-dim: rgba(52,211,153,0.12); --s3-border: rgba(52,211,153,0.25);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 1000; }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+  header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; }
+  .nav-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .nav-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; border: 1px solid var(--border2); padding: 5px 12px; border-radius: 4px; transition: all 0.15s; }
+  .nav-link:hover { color: var(--accent); border-color: var(--accent); }
+  .nav-link.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+  .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 2rem; }
+  .config-panel { background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .config-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: block; }
+  .mode-btns { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+  .mode-btn { flex: 1; padding: 14px; background: var(--surface2); border: 1.5px solid var(--border2); border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); cursor: pointer; transition: all 0.15s; text-align: center; }
+  .mode-btn:hover { border-color: var(--accent); color: var(--text); }
+  .mode-btn.active-4v4 { border-color: var(--s1-border); background: var(--s1-dim); color: var(--s1); }
+  .mode-btn.active-2v2 { border-color: var(--s2-border); background: var(--s2-dim); color: var(--s2); }
+  .players-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  .player-field { display: flex; flex-direction: column; gap: 4px; }
+  .player-field label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .player-field input { background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; transition: border-color 0.15s; width: 100%; }
+  .player-field input:focus { border-color: var(--accent); }
+  .players-hint { font-size: 12px; color: var(--muted); margin-bottom: 1rem; line-height: 1.5; }
+  .generate-btn { width: 100%; padding: 15px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+  .generate-btn:hover { background: #74b4ff; transform: translateY(-1px); }
+  .generate-btn:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; transform: none; }
+  .error-box { background: var(--red-dim); border: 1px solid var(--red-border); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--red); margin-top: 1rem; display: none; }
+  .error-box.visible { display: block; }
+  .loading-note { font-size: 12px; color: var(--muted); margin-top: 0.75rem; display: none; }
+  .loading-note.visible { display: block; }
+  .results { display: none; }
+  .results.visible { display: block; }
+  .balance-banner { border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 12px; }
+  .balance-even { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); }
+  .balance-slight { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); }
+  .balance-uneven { background: rgba(255,85,85,0.08); border: 1px solid rgba(255,85,85,0.25); }
+  .balance-icon { font-size: 22px; flex-shrink: 0; }
+  .balance-text-title { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+  .balance-text-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .squads-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .squad-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .squad-card.squad1 { border-color: var(--s1-border); }
+  .squad-card.squad2 { border-color: var(--s2-border); }
+  .squad-header { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .squad-header.squad1 { background: var(--s1-dim); }
+  .squad-header.squad2 { background: var(--s2-dim); }
+  .squad-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+  .squad-title.squad1 { color: var(--s1); }
+  .squad-title.squad2 { color: var(--s2); }
+  .squad-players { padding: 0.75rem; display: flex; flex-direction: column; gap: 6px; }
+  .player-row { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .player-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .player-name { font-weight: 700; font-size: 14px; }
+  .captain-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: var(--gold); color: #000; padding: 2px 8px; border-radius: 99px; flex-shrink: 0; }
+  .player-stats-line { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .neutral-tag { font-size: 10px; font-weight: 600; color: var(--muted); background: rgba(255,255,255,0.05); border: 1px solid var(--border2); padding: 1px 7px; border-radius: 99px; margin-left: 6px; }
+  .regen-btn-wrap { display: flex; justify-content: center; }
+  .regen-btn { background: none; border: 1px solid var(--border2); color: var(--muted); border-radius: 6px; padding: 9px 24px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+  .regen-btn:hover { color: var(--accent); border-color: var(--accent); }
+  @media (max-width: 600px) {
+    .mode-btns { flex-direction: column; }
+    .players-grid { grid-template-columns: 1fr; }
+    .squads-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <a href="index.html" style="display:flex;align-items:center;text-decoration:none;">
+      <img src="https://itzg3neh3.github.io/lockinh3/stat_tracker_logo.png" alt="Lock in H3" style="height:52px;width:auto;display:block;">
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Report</a>
+      <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+      <a href="history.html" class="nav-link">History</a>
+      <a href="headtohead.html" class="nav-link">H2H</a>
+      <a href="mapgenerator.html" class="nav-link">Maps</a>
+      <a href="squadgenerator.html" class="nav-link active">Squads</a>
+    </div>
+  </header>
+
+  <div class="page-title">Squad Generator</div>
+  <div class="page-sub">Balance your lobby into fair teams using leaderboard stats</div>
+
+  <div class="config-panel">
+    <span class="config-label">Series Type</span>
+    <div class="mode-btns">
+      <button class="mode-btn active-4v4" id="modeBtn4v4" onclick="setMode('4v4')">4v4</button>
+      <button class="mode-btn" id="modeBtn2v2" onclick="setMode('2v2')">2v2</button>
+    </div>
+
+    <span class="config-label" id="playersLabel">Lobby Players (8)</span>
+    <div class="players-grid" id="playersGrid"></div>
+    <div class="players-hint">Type a name or pick from the dropdown of known players. Players not found on the leaderboard (or with fewer than 5 series played) are given a neutral skill score.</div>
+
+    <button class="generate-btn" id="generateBtn" onclick="generateSquads()">Generate Squads</button>
+    <div class="error-box" id="errorBox"></div>
+    <div class="loading-note" id="loadingNote">Loading player stats...</div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="balance-banner" id="balanceBanner"></div>
+    <div class="squads-grid" id="squadsGrid"></div>
+    <div class="regen-btn-wrap">
+      <button class="regen-btn" onclick="generateSquads()">🎲 Reroll Split</button>
+    </div>
+  </div>
+
+  <datalist id="playerNamesList"></datalist>
+</div>
+
+<script>
+const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
+const MIN_SERIES = 5;
+
+let currentMode = '4v4';
+let leaderboardData = {};
+let leaderboardLoaded = { '4v4': false, '2v2': false };
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeBtn4v4').className = 'mode-btn' + (mode === '4v4' ? ' active-4v4' : '');
+  document.getElementById('modeBtn2v2').className = 'mode-btn' + (mode === '2v2' ? ' active-2v2' : '');
+  const count = mode === '4v4' ? 8 : 4;
+  document.getElementById('playersLabel').textContent = `Lobby Players (${count})`;
+  renderPlayerFields(count);
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('errorBox').classList.remove('visible');
+  loadLeaderboard(mode);
+}
+
+function renderPlayerFields(count) {
+  const grid = document.getElementById('playersGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const field = document.createElement('div');
+    field.className = 'player-field';
+    field.innerHTML = `<label>Player ${i + 1}</label><input type="text" id="playerInput_${i}" list="playerNamesList" placeholder="Enter name...">`;
+    grid.appendChild(field);
+  }
+}
+
+async function loadLeaderboard(mode) {
+  const loadingNote = document.getElementById('loadingNote');
+  loadingNote.classList.add('visible');
+  try {
+    const resp = await fetch(WORKER_URL + '/leaderboard?mode=' + mode);
+    const raw = await resp.json();
+    leaderboardData[mode] = raw;
+    leaderboardLoaded[mode] = true;
+    const list = document.getElementById('playerNamesList');
+    list.innerHTML = Object.values(raw).map(p => `<option value="${p.displayName}">`).join('');
+  } catch (e) {
+    // fail silently — manual entry still works, just without autocomplete/known stats
+  }
+  loadingNote.classList.remove('visible');
+}
+
+function kd(k, d) { return d === 0 ? (k > 0 ? k : 0) : k / d; }
+function kda(k, a, d) { return d === 0 ? (k + a) : (k + a) / d; }
+
+function lookupPlayer(name, count) {
+  const raw = leaderboardData[currentMode] || {};
+  const nameLow = name.trim().toLowerCase();
+  let found = null;
+  for (const p of Object.values(raw)) {
+    if ((p.displayName || '').toLowerCase() === nameLow) { found = p; break; }
+  }
+  if (!found || (found.seriesPlayed || 0) < MIN_SERIES) {
+    return { name: name.trim(), isNeutral: true, seriesPlayed: found ? found.seriesPlayed : 0 };
+  }
+  const played = found.seriesPlayed || 0;
+  const winPct = played > 0 ? (found.seriesWon || 0) / played : 0;
+  const pmPerSeries = played > 0 ? ((found.kills || 0) - (found.deaths || 0)) / played : 0;
+  return {
+    name: found.displayName,
+    isNeutral: false,
+    seriesPlayed: played,
+    kills: found.kills || 0,
+    deaths: found.deaths || 0,
+    assists: found.assists || 0,
+    kdVal: kd(found.kills || 0, found.deaths || 0),
+    kdaVal: kda(found.kills || 0, found.assists || 0, found.deaths || 0),
+    winPct: winPct,
+    pmPerSeries: pmPerSeries
+  };
+}
+
+function normalize(val, mn, mx) { return mx === mn ? 0.5 : (val - mn) / (mx - mn); }
+
+function computeScores(players) {
+  const known = players.filter(p => !p.isNeutral);
+  if (known.length > 0) {
+    const kdas = known.map(p => p.kdaVal);
+    const pms = known.map(p => p.pmPerSeries);
+    const kds = known.map(p => p.kdVal);
+    const wps = known.map(p => p.winPct);
+    const kdaMin = Math.min(...kdas), kdaMax = Math.max(...kdas);
+    const pmMin = Math.min(...pms), pmMax = Math.max(...pms);
+    const kdMin = Math.min(...kds), kdMax = Math.max(...kds);
+    const wpMin = Math.min(...wps), wpMax = Math.max(...wps);
+
+    known.forEach(p => {
+      const nKDA = normalize(p.kdaVal, kdaMin, kdaMax);
+      const nPM = normalize(p.pmPerSeries, pmMin, pmMax);
+      const nKD = normalize(p.kdVal, kdMin, kdMax);
+      const nWP = normalize(p.winPct, wpMin, wpMax);
+      p.score = nKDA * 0.35 + nPM * 0.25 + nKD * 0.20 + nWP * 0.20;
+    });
+
+    const avgKnownScore = known.reduce((s, p) => s + p.score, 0) / known.length;
+    players.filter(p => p.isNeutral).forEach(p => { p.score = avgKnownScore; });
+  } else {
+    // No known players at all in this lobby — everyone gets an equal neutral score
+    players.forEach(p => { p.score = 0.5; });
+  }
+  return players;
+}
+
+function combinations(arr, k) {
+  const result = [];
+  function helper(start, combo) {
+    if (combo.length === k) { result.push(combo.slice()); return; }
+    for (let i = start; i < arr.length; i++) {
+      combo.push(arr[i]);
+      helper(i + 1, combo);
+      combo.pop();
+    }
+  }
+  helper(0, []);
+  return result;
+}
+
+function buildBalancedSquads(players, squadSize) {
+  // Add a tiny random jitter (invisible in practice) to naturally break ties differently on reroll
+  const shuffled = players.map(p => ({ ...p, _jitter: Math.random() * 1e-6 }));
+  const sorted = shuffled.slice().sort((a, b) => (b.score + b._jitter) - (a.score + a._jitter));
+  const captain1 = sorted[0];
+  const captain2 = sorted[1];
+  const remaining = sorted.slice(2);
+  const extraNeeded = squadSize - 1;
+
+  const combos = combinations(remaining.map((_, i) => i), extraNeeded);
+  let bestGap = Infinity;
+  let bestSplits = [];
+  combos.forEach(comboIdx => {
+    const team1Extra = comboIdx.map(i => remaining[i]);
+    const team2Extra = remaining.filter((_, i) => !comboIdx.includes(i));
+    const team1 = [captain1].concat(team1Extra);
+    const team2 = [captain2].concat(team2Extra);
+    const t1Score = team1.reduce((s, p) => s + p.score, 0);
+    const t2Score = team2.reduce((s, p) => s + p.score, 0);
+    const gap = Math.abs(t1Score - t2Score);
+    if (gap < bestGap - 1e-9) {
+      bestGap = gap;
+      bestSplits = [{ team1, team2, t1Score, t2Score }];
+    } else if (Math.abs(gap - bestGap) <= 1e-9) {
+      bestSplits.push({ team1, team2, t1Score, t2Score });
+    }
+  });
+
+  const chosen = bestSplits[Math.floor(Math.random() * bestSplits.length)];
+  return { squad1: chosen.team1, squad2: chosen.team2, squad1Score: chosen.t1Score, squad2Score: chosen.t2Score, captain1, captain2 };
+}
+
+function statLine(p) {
+  if (p.isNeutral) return null;
+  return `${p.kills}K · ${p.deaths}D · ${p.kdVal.toFixed(2)} K/D · ${p.kdaVal.toFixed(2)} KDA · ${Math.round(p.winPct * 100)}% Win · ${p.seriesPlayed} Series`;
+}
+
+function renderPlayerRow(p, isCaptain) {
+  const nameHtml = `<span class="player-name">${p.name}</span>${p.isNeutral ? '<span class="neutral-tag">New / Neutral</span>' : ''}`;
+  const stats = statLine(p);
+  return `<div class="player-row">
+    <div class="player-row-top">${nameHtml}${isCaptain ? '<span class="captain-badge">Captain</span>' : ''}</div>
+    ${stats ? `<div class="player-stats-line">${stats}</div>` : ''}
+  </div>`;
+}
+
+async function generateSquads() {
+  const count = currentMode === '4v4' ? 8 : 4;
+  const errorBox = document.getElementById('errorBox');
+  errorBox.classList.remove('visible');
+
+  const names = [];
+  for (let i = 0; i < count; i++) {
+    const val = document.getElementById('playerInput_' + i).value.trim();
+    if (!val) { errorBox.textContent = 'Please enter all ' + count + ' player names.'; errorBox.classList.add('visible'); return; }
+    names.push(val);
+  }
+  const lowerNames = names.map(n => n.toLowerCase());
+  const dupes = lowerNames.filter((n, i) => lowerNames.indexOf(n) !== i);
+  if (dupes.length) { errorBox.textContent = 'Duplicate player name entered — each of the ' + count + ' players must be unique.'; errorBox.classList.add('visible'); return; }
+
+  if (!leaderboardLoaded[currentMode]) {
+    await loadLeaderboard(currentMode);
+  }
+
+  let players = names.map(n => lookupPlayer(n));
+  players = computeScores(players);
+
+  const squadSize = count / 2;
+  const result = buildBalancedSquads(players, squadSize);
+
+  const scoreSum = result.squad1Score + result.squad2Score;
+  const gapPct = scoreSum > 0 ? (Math.abs(result.squad1Score - result.squad2Score) / (scoreSum / 2)) * 100 : 0;
+
+  const banner = document.getElementById('balanceBanner');
+  let balanceClass, icon, title, sub;
+  if (gapPct < 8) {
+    balanceClass = 'balance-even'; icon = '⚖️'; title = 'Nearly Even Matchup';
+    sub = 'These squads are well balanced based on available stats.';
+  } else if (gapPct < 20) {
+    balanceClass = 'balance-slight'; icon = '📊';
+    title = 'Slight Edge to ' + (result.squad1Score > result.squad2Score ? 'Squad 1' : 'Squad 2');
+    sub = 'This is the closest possible split for this lobby given the captain constraint.';
+  } else {
+    balanceClass = 'balance-uneven'; icon = '⚠️';
+    title = 'Uneven Matchup — Best Available Split';
+    sub = 'The stat gap in this lobby makes a closer split impossible while keeping the top 2 players on opposite teams.';
+  }
+  banner.className = 'balance-banner ' + balanceClass;
+  banner.innerHTML = `<div class="balance-icon">${icon}</div><div><div class="balance-text-title">${title}</div><div class="balance-text-sub">${sub}</div></div>`;
+
+  const grid = document.getElementById('squadsGrid');
+  grid.innerHTML = `
+    <div class="squad-card squad1">
+      <div class="squad-header squad1"><div class="squad-title squad1">Squad 1</div></div>
+      <div class="squad-players">${result.squad1.map(p => renderPlayerRow(p, p.name === result.captain1.name)).join('')}</div>
+    </div>
+    <div class="squad-card squad2">
+      <div class="squad-header squad2"><div class="squad-title squad2">Squad 2</div></div>
+      <div class="squad-players">${result.squad2.map(p => renderPlayerRow(p, p.name === result.captain2.name)).join('')}</div>
+    </div>
+  `;
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+renderPlayerFields(8);
+loadLeaderboard('4v4');
+</script>
+</body>
+</html>
