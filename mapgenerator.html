@@ -167,13 +167,23 @@ function renderBoButtons() {
 }
 
 function renderPoolNote() {
-  const pool = currentMode === '4v4' ? FOUR_V_FOUR_MAPS : TWO_V_TWO_MAPS;
-  const poolSize = pool.length;
   const note = document.getElementById('poolNote');
-  if (currentBo > poolSize) {
-    note.textContent = `${poolSize} maps available for ${currentMode} — since this series needs ${currentBo} games, ${currentBo - poolSize} map${currentBo - poolSize !== 1 ? 's' : ''} will repeat.`;
+  if (currentMode === '4v4') {
+    const extra = currentBo - 3;
+    let extraText = '';
+    if (extra > 0) {
+      extraText = extra > 4
+        ? ` The remaining ${extra} game${extra !== 1 ? 's' : ''} will draw from the leftover maps, with ${extra - 4} repeat${extra - 4 !== 1 ? 's' : ''} needed since only 7 maps exist.`
+        : ` The remaining ${extra} game${extra !== 1 ? 's' : ''} will use different leftover maps, no repeats needed.`;
+    }
+    note.textContent = `Games 1–3 are always one CTF, one Slayer, and one Oddball-or-KOTH game on three different maps, in random order.${extraText}`;
   } else {
-    note.textContent = `${poolSize} maps available for ${currentMode} — all ${currentBo} games in this series will use a unique map, no repeats.`;
+    const poolSize = TWO_V_TWO_MAPS.length;
+    if (currentBo > poolSize) {
+      note.textContent = `${poolSize} maps available for 2v2 — since this series needs ${currentBo} games, ${currentBo - poolSize} map${currentBo - poolSize !== 1 ? 's' : ''} will repeat.`;
+    } else {
+      note.textContent = `${poolSize} maps available for 2v2 — all ${currentBo} games in this series will use a unique map, no repeats.`;
+    }
   }
 }
 
@@ -190,12 +200,98 @@ function pickGametype(map) {
   return map.types[Math.floor(Math.random() * map.types.length)];
 }
 
-function buildSeries(pool, count) {
+// Reshuffles a list until no two adjacent entries share the same map. Since the max
+// times any single map repeats in our series lengths is small (2), this succeeds almost
+// immediately. optionalAvoidFirst lets the caller also try to avoid a specific map
+// landing in slot 0 (used to avoid a collision right at a series' game-3/game-4 boundary).
+function arrangeNoAdjacentDuplicates(list, optionalAvoidFirst) {
+  if (list.length < 2) return list;
+  const isValid = (candidate) => {
+    for (let i = 1; i < candidate.length; i++) {
+      if (candidate[i].map.name === candidate[i - 1].map.name) return false;
+    }
+    return true;
+  };
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const candidate = shuffle(list);
+    if (isValid(candidate) && (!optionalAvoidFirst || candidate[0].map.name !== optionalAvoidFirst)) return candidate;
+  }
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const candidate = shuffle(list);
+    if (isValid(candidate)) return candidate;
+  }
+  return list;
+}
+
+function entriesToResult(entries) {
+  const seenCounts = {};
+  return entries.map((entry, i) => {
+    seenCounts[entry.map.name] = (seenCounts[entry.map.name] || 0) + 1;
+    return {
+      gameNumber: i + 1,
+      mapName: entry.map.name,
+      gametype: entry.gametype,
+      isRepeat: seenCounts[entry.map.name] > 1
+    };
+  });
+}
+
+// 4v4 series: the first 3 games are always one CTF, one Slayer, and one Oddball-or-KOTH
+// game (on three different maps, in random order) so a series never opens with 3 of the
+// same gametype by chance. Games 4+ are pulled from whatever maps remain.
+function build4v4Series(count) {
+  const guardian = FOUR_V_FOUR_MAPS.find(m => m.name === 'Guardian');
+  const construct = FOUR_V_FOUR_MAPS.find(m => m.name === 'Construct');
+  const thirdPick = Math.random() < 0.5
+    ? { map: guardian, gametype: 'Oddball' }
+    : { map: construct, gametype: 'KOTH' };
+
+  const ctfCandidates = FOUR_V_FOUR_MAPS.filter(m => m.types.includes('CTF'));
+  const ctfPick = shuffle(ctfCandidates)[0];
+  const slayerCandidates = FOUR_V_FOUR_MAPS.filter(m => m.types.includes('Slayer') && m.name !== ctfPick.name);
+  const slayerPick = shuffle(slayerCandidates)[0];
+
+  let entries = shuffle([
+    { map: ctfPick, gametype: 'CTF' },
+    { map: slayerPick, gametype: 'Slayer' },
+    thirdPick
+  ]);
+
+  if (count > 3) {
+    const usedNames = new Set(entries.map(e => e.map.name));
+    const leftoverPool = FOUR_V_FOUR_MAPS.filter(m => !usedNames.has(m.name));
+    const extraCount = count - 3;
+
+    let extraMaps;
+    if (extraCount <= leftoverPool.length) {
+      extraMaps = shuffle(leftoverPool).slice(0, extraCount);
+    } else {
+      extraMaps = shuffle(leftoverPool).slice();
+      const stillNeeded = extraCount - leftoverPool.length;
+      let refillPool = shuffle(FOUR_V_FOUR_MAPS);
+      const extras = [];
+      while (extras.length < stillNeeded) {
+        if (refillPool.length === 0) refillPool = shuffle(FOUR_V_FOUR_MAPS);
+        extras.push(refillPool.pop());
+      }
+      extraMaps = shuffle(extraMaps.concat(extras));
+    }
+
+    const extraEntries = arrangeNoAdjacentDuplicates(
+      extraMaps.map(m => ({ map: m, gametype: pickGametype(m) })),
+      entries[2].map.name
+    );
+    entries = entries.concat(extraEntries);
+  }
+
+  return entriesToResult(entries);
+}
+
+function build2v2Series(pool, count) {
   let selectedMaps;
   if (count <= pool.length) {
     selectedMaps = shuffle(pool).slice(0, count);
   } else {
-    // Use every map at least once, then fill remaining slots with random repeats
     selectedMaps = shuffle(pool).slice();
     const remaining = count - pool.length;
     let refillPool = shuffle(pool);
@@ -204,34 +300,10 @@ function buildSeries(pool, count) {
       if (refillPool.length === 0) refillPool = shuffle(pool);
       extras.push(refillPool.pop());
     }
-    selectedMaps = selectedMaps.concat(extras);
-    selectedMaps = shuffle(selectedMaps);
-    // Avoid the same map landing on back-to-back games where possible
-    for (let i = 1; i < selectedMaps.length; i++) {
-      if (selectedMaps[i].name === selectedMaps[i - 1].name) {
-        for (let j = i + 1; j < selectedMaps.length; j++) {
-          if (selectedMaps[j].name !== selectedMaps[i - 1].name) {
-            const tmp = selectedMaps[i];
-            selectedMaps[i] = selectedMaps[j];
-            selectedMaps[j] = tmp;
-            break;
-          }
-        }
-      }
-    }
+    selectedMaps = shuffle(selectedMaps.concat(extras));
   }
-
-  // Track how many times each map has appeared so far to flag repeats in the UI
-  const seenCounts = {};
-  return selectedMaps.map((map, i) => {
-    seenCounts[map.name] = (seenCounts[map.name] || 0) + 1;
-    return {
-      gameNumber: i + 1,
-      mapName: map.name,
-      gametype: pickGametype(map),
-      isRepeat: seenCounts[map.name] > 1
-    };
-  });
+  const entries = arrangeNoAdjacentDuplicates(selectedMaps.map(m => ({ map: m, gametype: pickGametype(m) })));
+  return entriesToResult(entries);
 }
 
 function gametypeBadgeClass(gt) {
@@ -243,8 +315,9 @@ function gametypeBadgeClass(gt) {
 }
 
 function generate() {
-  const pool = currentMode === '4v4' ? FOUR_V_FOUR_MAPS : TWO_V_TWO_MAPS;
-  const series = buildSeries(pool, currentBo);
+  const series = currentMode === '4v4'
+    ? build4v4Series(currentBo)
+    : build2v2Series(TWO_V_TWO_MAPS, currentBo);
   window._lastSeries = series;
   window._lastMode = currentMode;
   window._lastBo = currentBo;
