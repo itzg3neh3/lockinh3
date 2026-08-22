@@ -190,6 +190,12 @@
     </div>
     <div class="admin-unlocked" id="adminUnlocked">
       <div class="admin-section">
+        <div class="admin-section-title">💾 Export Backup</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Download the current leaderboard as a JSON file to your computer — an extra safety net independent of the automatic snapshots below.</p>
+        <button class="admin-btn" onclick="exportBackup()">Download Backup (.json)</button>
+        <div class="admin-msg" id="exportMsg"></div>
+      </div>
+      <div class="admin-section">
         <div class="admin-section-title">📦 Restore a Backup</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Snapshots are saved automatically every time stats change.</p>
         <div class="snapshot-list" id="snapshotList"><div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading snapshots...</div></div>
@@ -200,6 +206,12 @@
         <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Click Edit next to any player to manually correct their stats.</p>
         <div class="admin-player-list" id="adminPlayerList"></div>
         <div class="admin-msg" id="editMsg"></div>
+      </div>
+      <div class="admin-section" id="awardsBackfillSection">
+        <div class="admin-section-title">🏆 Awards Backfill</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Recalculates All-Time MVP / Top Shitter / Assist King / OBJ MVP award counts for the <strong id="backfillModeLabel">4v4</strong> leaderboard from every series stored in History. Safe to re-run — it always recalculates from scratch rather than adding on top, and takes an automatic snapshot first.</p>
+        <button class="admin-btn" onclick="runAwardsBackfill()" id="backfillBtn">Run Awards Backfill</button>
+        <div class="admin-msg" id="backfillMsg"></div>
       </div>
       <div class="admin-section">
         <div class="admin-section-title">🔀 Merge Duplicate Players</div>
@@ -237,6 +249,12 @@
       <div class="modal-field" id="flagCapsField"><label>Flag Caps</label><input type="number" id="editFlagCaps" min="0"></div>
       <div class="modal-field" id="hillSecsField"><label>Hill Time (seconds)</label><input type="number" id="editHillSecs" min="0"></div>
       <div class="modal-field" id="ballSecsField"><label>Ball Time (seconds)</label><input type="number" id="editBallSecs" min="0"></div>
+      <hr class="modal-divider" id="awardsDivider">
+      <div class="modal-section-label" id="awardsSectionLabel">Award Counts</div>
+      <div class="modal-field" id="seriesMVPCountField"><label>Series MVP Wins</label><input type="number" id="editSeriesMVPCount" min="0"></div>
+      <div class="modal-field" id="topShitterCountField"><label>Top Shitter Wins</label><input type="number" id="editTopShitterCount" min="0"></div>
+      <div class="modal-field" id="assistKingCountField"><label>Assist King Wins</label><input type="number" id="editAssistKingCount" min="0"></div>
+      <div class="modal-field" id="objMVPCountField"><label>OBJ MVP Wins</label><input type="number" id="editObjMVPCount" min="0"></div>
     </div>
     <div class="admin-msg" id="modalMsg"></div>
     <div class="modal-actions" style="margin-top:1rem">
@@ -319,6 +337,14 @@ async function switchMode(mode){
   document.getElementById('flagCapsField').style.display=is1v1?'none':'';
   document.getElementById('hillSecsField').style.display=is1v1?'none':'';
   document.getElementById('ballSecsField').style.display=is1v1?'none':'';
+  document.getElementById('awardsBackfillSection').style.display=is1v1?'none':'';
+  document.getElementById('backfillModeLabel').textContent=mode;
+  document.getElementById('awardsDivider').style.display=is1v1?'none':'';
+  document.getElementById('awardsSectionLabel').style.display=is1v1?'none':'';
+  document.getElementById('seriesMVPCountField').style.display=(is1v1||mode==='2v2')?'none':'';
+  document.getElementById('objMVPCountField').style.display=(is1v1||mode==='2v2')?'none':'';
+  document.getElementById('topShitterCountField').style.display=is1v1?'none':'';
+  document.getElementById('assistKingCountField').style.display=is1v1?'none':'';
   await load();
 }
 
@@ -335,6 +361,23 @@ async function load(){
   }catch(e){document.getElementById('content').innerHTML=`<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;}
 }
 
+// Picks the leader for an award-count-based callout: highest count wins, tied by
+// award rate (count / series played) to reward consistency over volume, then by
+// total series played as a final tiebreak. Only players who have won the award at
+// least once are eligible — returns null if nobody in the pool has any yet.
+function pickAwardLeader(pool, countField) {
+  const candidates = pool.filter(p => (p[countField] || 0) > 0);
+  if (!candidates.length) return null;
+  return candidates.slice().sort((a, b) => {
+    const diff = (b[countField] || 0) - (a[countField] || 0);
+    if (diff !== 0) return diff;
+    const aRate = a.seriesPlayed > 0 ? (a[countField] || 0) / a.seriesPlayed : 0;
+    const bRate = b.seriesPlayed > 0 ? (b[countField] || 0) / b.seriesPlayed : 0;
+    if (bRate !== aRate) return bRate - aRate;
+    return (b.seriesPlayed || 0) - (a.seriesPlayed || 0);
+  })[0];
+}
+
 function render(){
   const players=leaderboardData;if(!players.length)return;
   const is1v1=currentMode==='1v1';
@@ -347,15 +390,17 @@ function render(){
   const pool=qualified.length?qualified:players;
 
   const topFragger=[...pool].sort((a,b)=>b.kills-a.kills)[0];
-  const assistKing=!is1v1?[...pool].sort((a,b)=>b.assists-a.assists)[0]:null;
-  const objMVP=hasObj?[...pool].sort((a,b)=>calcWeightedObjScore(b,totals)-calcWeightedObjScore(a,totals))[0]:null;
-  // All-Time MVP and Top Shitter — 4v4/2v2 use the same weighted formula (best/worst).
-  // 1v1 has no assists/OBJ data, so Top Shitter there stays as lowest K/D.
-  let allTimeMVP=null,topShitter=null;
+  // All-Time MVP, Top Shitter, Assist King, and OBJ MVP are now "most times actually
+  // won this award across all recorded series" rather than a formula-derived stat.
+  // MVP and OBJ MVP only ever existed as 4v4 callouts historically, so they stay
+  // 4v4-only here too. Top Shitter and Assist King apply to both 4v4 and 2v2.
+  // 1v1 has no award-tracking system, so it keeps its original K/D-based Top Shitter.
+  const allTimeMVP = currentMode==='4v4' ? pickAwardLeader(pool,'seriesMVPCount') : null;
+  const objMVP = currentMode==='4v4' ? pickAwardLeader(pool,'objMVPCount') : null;
+  const assistKing = !is1v1 ? pickAwardLeader(pool,'assistKingCount') : null;
+  let topShitter=null;
   if(!is1v1){
-    const extremes=calcAllTimeExtremes(pool,totals,hasObj);
-    allTimeMVP=extremes.best;
-    topShitter=extremes.worst;
+    topShitter=pickAwardLeader(pool,'topShitterCount');
   }else{
     topShitter=[...pool].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   }
@@ -386,8 +431,8 @@ function render(){
     }
   });
 
-  // All-Time MVP strip (4v4/2v2 only)
-  const mvpStripHtml=allTimeMVP?`<div class="mvp-strip-wrap"><div class="mvp-strip mvp-strip-trophy"><div class="mvp-star">🏆</div><div><div class="mvp-eyebrow">All-Time MVP</div><div class="mvp-name">${allTimeMVP.displayName}</div><div class="mvp-stats">${allTimeMVP.kills} K · ${allTimeMVP.deaths} D · ${allTimeMVP.assists} A · ${kd(allTimeMVP.kills,allTimeMVP.deaths)} K/D · ${kda(allTimeMVP.kills,allTimeMVP.assists,allTimeMVP.deaths)} KDA · ${allTimeMVP.seriesPlayed} Series</div></div></div></div>`:'';
+  // All-Time MVP strip (4v4 only)
+  const mvpStripHtml=allTimeMVP?`<div class="mvp-strip-wrap"><div class="mvp-strip mvp-strip-trophy"><div class="mvp-star">🏆</div><div><div class="mvp-eyebrow">All-Time MVP</div><div class="mvp-name">${allTimeMVP.displayName}</div><div class="mvp-stats">${allTimeMVP.seriesMVPCount}&times; Series MVP &nbsp;·&nbsp; ${allTimeMVP.seriesPlayed} Series Played</div></div></div></div>`:'';
 
   let calloutsHtml='';
   if(is1v1){
@@ -400,20 +445,20 @@ function render(){
       </div>
     </div>`;
   } else if(currentMode==='2v2'){
-    calloutsHtml=mvpStripHtml+`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2.5rem;">
+    calloutsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2.5rem;">
       <div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D</div></div></div>
-      <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.assists} Assists</div></div></div>
-      ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div></div></div>`:''}
+      ${topShitter?`<div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.topShitterCount}&times; Top Shitter &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series Played</div></div></div>`:''}
+      ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assistKingCount}&times; Assist King &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series Played</div></div></div>`:''}
     </div>`;
   } else {
     calloutsHtml=mvpStripHtml+`<div class="alltime-grid">
       <div>
         <div class="callout-card callout-gold" style="margin-bottom:0.75rem"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div></div></div>
-        <div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.deaths} Deaths &nbsp;·&nbsp; ${kd(topShitter.kills,topShitter.deaths)} K/D &nbsp;·&nbsp; ${topShitter.assists} Assists &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series</div></div></div>
+        ${topShitter?`<div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.topShitterCount}&times; Top Shitter &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series Played</div></div></div>`:''}
       </div>
       <div>
-        ${assistKing?`<div class="callout-card callout-blue" style="margin-bottom:0.75rem"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assists} Assists &nbsp;·&nbsp; ${assistKing.kills} Kills &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series</div></div></div>`:''}
-        ${objMVP?`<div class="callout-card callout-green"><div class="callout-icon">🎯</div><div><div class="callout-eyebrow ey-green">All-Time OBJ MVP</div><div class="callout-name">${objMVP.displayName}</div><div class="callout-stat">${objMVP.flagCaps>0?objMVP.flagCaps+' Caps &nbsp;·&nbsp; ':''}${objMVP.hillSecs>0?fmtTime(objMVP.hillSecs)+' Hill &nbsp;·&nbsp; ':''}${objMVP.ballSecs>0?fmtTime(objMVP.ballSecs)+' Ball':''}</div></div></div>`:''}
+        ${assistKing?`<div class="callout-card callout-blue" style="margin-bottom:0.75rem"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assistKingCount}&times; Assist King &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series Played</div></div></div>`:''}
+        ${objMVP?`<div class="callout-card callout-green"><div class="callout-icon">🎯</div><div><div class="callout-eyebrow ey-green">All-Time OBJ MVP</div><div class="callout-name">${objMVP.displayName}</div><div class="callout-stat">${objMVP.objMVPCount}&times; OBJ MVP &nbsp;·&nbsp; ${objMVP.seriesPlayed} Series Played</div></div></div>`:''}
       </div>
     </div>`;
   }
@@ -490,6 +535,34 @@ async function checkPassword(){
   }catch(e){errEl.textContent='Connection error — try again';errEl.style.display='block';input.value='';}
 }
 
+function exportBackup(){
+  const msgEl=document.getElementById('exportMsg');msgEl.className='admin-msg';msgEl.style.display='none';
+  try{
+    const dateStr=new Date().toISOString().slice(0,10);
+    const filename=`lockinh3-leaderboard-${currentMode}-backup-${dateStr}.json`;
+    const blob=new Blob([JSON.stringify(allPlayersData,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    msgEl.textContent=`✓ Downloaded ${filename}`;msgEl.className='admin-msg success';
+  }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
+}
+
+async function runAwardsBackfill(){
+  const msgEl=document.getElementById('backfillMsg');msgEl.className='admin-msg';msgEl.style.display='none';
+  const btn=document.getElementById('backfillBtn');
+  if(currentMode==='1v1')return;
+  if(!confirm(`Recalculate All-Time award counts for the ${currentMode} leaderboard from every series in History?\n\nA snapshot is taken automatically before anything changes, so this can be undone via Restore a Backup if needed. Continue?`))return;
+  btn.disabled=true;btn.textContent='Running — this may take a moment...';
+  try{
+    const resp=await fetch(WORKER_URL+'/leaderboard/backfill-awards',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({mode:currentMode})});
+    const result=await resp.json();if(result.error)throw new Error(result.error);
+    msgEl.textContent=`✓ Processed ${result.processed} series. Refreshing leaderboard...`;msgEl.className='admin-msg success';
+    setTimeout(()=>load(),1500);
+  }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
+  btn.disabled=false;btn.textContent='Run Awards Backfill';
+}
+
 async function loadSnapshots(){
   const listEl=document.getElementById('snapshotList');
   listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading snapshots...</div>';
@@ -537,6 +610,10 @@ function openEditModal(key){
   document.getElementById('editFlagCaps').value=p.flagCaps||0;
   document.getElementById('editHillSecs').value=p.hillSecs||0;
   document.getElementById('editBallSecs').value=p.ballSecs||0;
+  document.getElementById('editSeriesMVPCount').value=p.seriesMVPCount||0;
+  document.getElementById('editTopShitterCount').value=p.topShitterCount||0;
+  document.getElementById('editAssistKingCount').value=p.assistKingCount||0;
+  document.getElementById('editObjMVPCount').value=p.objMVPCount||0;
   document.getElementById('modalMsg').className='admin-msg';document.getElementById('modalMsg').style.display='none';
   document.getElementById('editModal').classList.add('visible');
 }
@@ -557,7 +634,11 @@ async function saveEdit(){
     assists:is1v1?0:(parseInt(document.getElementById('editAssists').value)||0),
     flagCaps:is1v1?0:(parseInt(document.getElementById('editFlagCaps').value)||0),
     hillSecs:is1v1?0:(parseInt(document.getElementById('editHillSecs').value)||0),
-    ballSecs:is1v1?0:(parseInt(document.getElementById('editBallSecs').value)||0)
+    ballSecs:is1v1?0:(parseInt(document.getElementById('editBallSecs').value)||0),
+    seriesMVPCount:(is1v1||currentMode==='2v2')?0:(parseInt(document.getElementById('editSeriesMVPCount').value)||0),
+    topShitterCount:is1v1?0:(parseInt(document.getElementById('editTopShitterCount').value)||0),
+    assistKingCount:is1v1?0:(parseInt(document.getElementById('editAssistKingCount').value)||0),
+    objMVPCount:(is1v1||currentMode==='2v2')?0:(parseInt(document.getElementById('editObjMVPCount').value)||0)
   };
   try{
     const resp=await fetch(WORKER_URL+'/leaderboard/edit',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({key,stats,mode:currentMode})});
@@ -590,6 +671,7 @@ async function doDelete(key,displayName){
 }
 
 document.getElementById('tiedField').style.display='none';
+document.getElementById('awardsBackfillSection').style.display='';
 
 load();
 </script>
