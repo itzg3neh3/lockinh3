@@ -249,11 +249,11 @@ function calcObjMVPW(players, games) {
 }
 
 // Returns the winner name (or null) for each award in a single series.
-// Series MVP and OBJ MVP only apply to 4v4; Top Shitter and Assist King apply
-// to both 4v4 and 2v2. Awards are computed regardless of whether the series
-// itself ended in a win, loss, or tie.
+// Series MVP and OBJ MVP only apply to 4v4; Top Fragger, Top Shitter, and
+// Assist King apply to both 4v4 and 2v2. Awards are computed regardless of
+// whether the series itself ended in a win, loss, or tie.
 function computeAwardsForSeries(games, mode) {
-  const empty = { seriesMVP: null, topShitter: null, assistKing: null, objMVP: null };
+  const empty = { seriesMVP: null, topFragger: null, topShitter: null, assistKing: null, objMVP: null };
   if (mode === '1v1' || !games || !games.length) return empty;
 
   const { squad1, squad2 } = buildSquadsW(games);
@@ -261,6 +261,7 @@ function computeAwardsForSeries(games, mode) {
   if (!players.length) return empty;
 
   const extremes = calcSeriesExtremesW(players);
+  const topFragger = [...players].sort((a, b) => b.kills - a.kills)[0] || null;
   const assistKing = [...players].sort((a, b) => b.assists - a.assists || b.kills - a.kills)[0] || null;
   const objMVP = mode === '4v4' ? calcObjMVPW(players, games) : null;
   const seriesMVP = mode === '4v4' ? extremes.best : null;
@@ -268,6 +269,7 @@ function computeAwardsForSeries(games, mode) {
 
   return {
     seriesMVP: seriesMVP ? seriesMVP.name : null,
+    topFragger: topFragger ? topFragger.name : null,
     topShitter: topShitter ? topShitter.name : null,
     assistKing: assistKing ? assistKing.name : null,
     objMVP: objMVP ? objMVP.name : null,
@@ -324,13 +326,14 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
         seriesPlayed: 0, seriesWon: 0, seriesLost: 0, seriesTied: 0,
         kills: 0, deaths: 0, assists: 0,
         flagCaps: 0, hillSecs: 0, ballSecs: 0,
-        seriesMVPCount: 0, topShitterCount: 0, assistKingCount: 0, objMVPCount: 0
+        seriesMVPCount: 0, topFraggerCount: 0, topShitterCount: 0, assistKingCount: 0, objMVPCount: 0
       };
     }
     const lb = leaderboard[pKey];
     // Backward compatibility for older entries missing newer fields
     if (lb.seriesTied === undefined) lb.seriesTied = 0;
     if (lb.seriesMVPCount === undefined) lb.seriesMVPCount = 0;
+    if (lb.topFraggerCount === undefined) lb.topFraggerCount = 0;
     if (lb.topShitterCount === undefined) lb.topShitterCount = 0;
     if (lb.assistKingCount === undefined) lb.assistKingCount = 0;
     if (lb.objMVPCount === undefined) lb.objMVPCount = 0;
@@ -359,6 +362,7 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
       bumpAwardCount(leaderboard, awards.seriesMVP, 'seriesMVPCount');
       bumpAwardCount(leaderboard, awards.objMVP, 'objMVPCount');
     }
+    bumpAwardCount(leaderboard, awards.topFragger, 'topFraggerCount');
     bumpAwardCount(leaderboard, awards.topShitter, 'topShitterCount');
     bumpAwardCount(leaderboard, awards.assistKing, 'assistKingCount');
   }
@@ -571,6 +575,7 @@ export default {
         // Award counts are only overwritten if explicitly provided, so editing
         // other stats never accidentally wipes a player's award history.
         if (stats.seriesMVPCount !== undefined) leaderboard[key].seriesMVPCount = stats.seriesMVPCount;
+        if (stats.topFraggerCount !== undefined) leaderboard[key].topFraggerCount = stats.topFraggerCount;
         if (stats.topShitterCount !== undefined) leaderboard[key].topShitterCount = stats.topShitterCount;
         if (stats.assistKingCount !== undefined) leaderboard[key].assistKingCount = stats.assistKingCount;
         if (stats.objMVPCount !== undefined) leaderboard[key].objMVPCount = stats.objMVPCount;
@@ -608,6 +613,7 @@ export default {
         to.hillSecs += from.hillSecs;
         to.ballSecs += from.ballSecs;
         to.seriesMVPCount = (to.seriesMVPCount || 0) + (from.seriesMVPCount || 0);
+        to.topFraggerCount = (to.topFraggerCount || 0) + (from.topFraggerCount || 0);
         to.topShitterCount = (to.topShitterCount || 0) + (from.topShitterCount || 0);
         to.assistKingCount = (to.assistKingCount || 0) + (from.assistKingCount || 0);
         to.objMVPCount = (to.objMVPCount || 0) + (from.objMVPCount || 0);
@@ -660,6 +666,7 @@ export default {
 
         Object.values(leaderboard).forEach(p => {
           p.seriesMVPCount = 0;
+          p.topFraggerCount = 0;
           p.topShitterCount = 0;
           p.assistKingCount = 0;
           p.objMVPCount = 0;
@@ -686,6 +693,7 @@ export default {
             bumpAwardCount(leaderboard, awards.seriesMVP, 'seriesMVPCount');
             bumpAwardCount(leaderboard, awards.objMVP, 'objMVPCount');
           }
+          bumpAwardCount(leaderboard, awards.topFragger, 'topFraggerCount');
           bumpAwardCount(leaderboard, awards.topShitter, 'topShitterCount');
           bumpAwardCount(leaderboard, awards.assistKing, 'assistKingCount');
           processed++;

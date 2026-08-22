@@ -209,7 +209,7 @@
       </div>
       <div class="admin-section" id="awardsBackfillSection">
         <div class="admin-section-title">🏆 Awards Backfill</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Recalculates All-Time MVP / Top Shitter / Assist King / OBJ MVP award counts for the <strong id="backfillModeLabel">4v4</strong> leaderboard from every series stored in History. Safe to re-run — it always recalculates from scratch rather than adding on top, and takes an automatic snapshot first.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Recalculates All-Time MVP / Top Fragger / Top Shitter / Assist King / OBJ MVP award counts for the <strong id="backfillModeLabel">4v4</strong> leaderboard from every series stored in History. Safe to re-run — it always recalculates from scratch rather than adding on top, and takes an automatic snapshot first.</p>
         <button class="admin-btn" onclick="runAwardsBackfill()" id="backfillBtn">Run Awards Backfill</button>
         <div class="admin-msg" id="backfillMsg"></div>
       </div>
@@ -252,6 +252,7 @@
       <hr class="modal-divider" id="awardsDivider">
       <div class="modal-section-label" id="awardsSectionLabel">Award Counts</div>
       <div class="modal-field" id="seriesMVPCountField"><label>Series MVP Wins</label><input type="number" id="editSeriesMVPCount" min="0"></div>
+      <div class="modal-field" id="topFraggerCountField"><label>Top Fragger Wins</label><input type="number" id="editTopFraggerCount" min="0"></div>
       <div class="modal-field" id="topShitterCountField"><label>Top Shitter Wins</label><input type="number" id="editTopShitterCount" min="0"></div>
       <div class="modal-field" id="assistKingCountField"><label>Assist King Wins</label><input type="number" id="editAssistKingCount" min="0"></div>
       <div class="modal-field" id="objMVPCountField"><label>OBJ MVP Wins</label><input type="number" id="editObjMVPCount" min="0"></div>
@@ -342,6 +343,7 @@ async function switchMode(mode){
   document.getElementById('awardsDivider').style.display=is1v1?'none':'';
   document.getElementById('awardsSectionLabel').style.display=is1v1?'none':'';
   document.getElementById('seriesMVPCountField').style.display=(is1v1||mode==='2v2')?'none':'';
+  document.getElementById('topFraggerCountField').style.display=is1v1?'none':'';
   document.getElementById('objMVPCountField').style.display=(is1v1||mode==='2v2')?'none':'';
   document.getElementById('topShitterCountField').style.display=is1v1?'none':'';
   document.getElementById('assistKingCountField').style.display=is1v1?'none':'';
@@ -389,12 +391,13 @@ function render(){
   const qualified=players.filter(p=>p.seriesPlayed>=MIN_SERIES);
   const pool=qualified.length?qualified:players;
 
-  const topFragger=[...pool].sort((a,b)=>b.kills-a.kills)[0];
-  // All-Time MVP, Top Shitter, Assist King, and OBJ MVP are now "most times actually
-  // won this award across all recorded series" rather than a formula-derived stat.
-  // MVP and OBJ MVP only ever existed as 4v4 callouts historically, so they stay
-  // 4v4-only here too. Top Shitter and Assist King apply to both 4v4 and 2v2.
-  // 1v1 has no award-tracking system, so it keeps its original K/D-based Top Shitter.
+  // All-Time MVP, Top Fragger, Top Shitter, Assist King, and OBJ MVP are now "most
+  // times actually won this award across all recorded series" rather than a
+  // formula-derived stat. MVP and OBJ MVP only ever existed as 4v4 callouts
+  // historically, so they stay 4v4-only here too. Top Fragger, Top Shitter, and
+  // Assist King apply to both 4v4 and 2v2. 1v1 has no award-tracking system, so
+  // it keeps its original kills/K-D-based Top Fragger and Top Shitter.
+  const topFragger = !is1v1 ? pickAwardLeader(pool,'topFraggerCount') : [...pool].sort((a,b)=>b.kills-a.kills)[0];
   const allTimeMVP = currentMode==='4v4' ? pickAwardLeader(pool,'seriesMVPCount') : null;
   const objMVP = currentMode==='4v4' ? pickAwardLeader(pool,'objMVPCount') : null;
   const assistKing = !is1v1 ? pickAwardLeader(pool,'assistKingCount') : null;
@@ -446,14 +449,14 @@ function render(){
     </div>`;
   } else if(currentMode==='2v2'){
     calloutsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:2.5rem;">
-      <div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D</div></div></div>
+      ${topFragger?`<div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.topFraggerCount}&times; Top Fragger &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series Played</div></div></div>`:''}
       ${topShitter?`<div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.topShitterCount}&times; Top Shitter &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series Played</div></div></div>`:''}
       ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assistKingCount}&times; Assist King &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series Played</div></div></div>`:''}
     </div>`;
   } else {
     calloutsHtml=mvpStripHtml+`<div class="alltime-grid">
       <div>
-        <div class="callout-card callout-gold" style="margin-bottom:0.75rem"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series</div></div></div>
+        ${topFragger?`<div class="callout-card callout-gold" style="margin-bottom:0.75rem"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.topFraggerCount}&times; Top Fragger &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series Played</div></div></div>`:''}
         ${topShitter?`<div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.topShitterCount}&times; Top Shitter &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series Played</div></div></div>`:''}
       </div>
       <div>
@@ -611,6 +614,7 @@ function openEditModal(key){
   document.getElementById('editHillSecs').value=p.hillSecs||0;
   document.getElementById('editBallSecs').value=p.ballSecs||0;
   document.getElementById('editSeriesMVPCount').value=p.seriesMVPCount||0;
+  document.getElementById('editTopFraggerCount').value=p.topFraggerCount||0;
   document.getElementById('editTopShitterCount').value=p.topShitterCount||0;
   document.getElementById('editAssistKingCount').value=p.assistKingCount||0;
   document.getElementById('editObjMVPCount').value=p.objMVPCount||0;
@@ -636,6 +640,7 @@ async function saveEdit(){
     hillSecs:is1v1?0:(parseInt(document.getElementById('editHillSecs').value)||0),
     ballSecs:is1v1?0:(parseInt(document.getElementById('editBallSecs').value)||0),
     seriesMVPCount:(is1v1||currentMode==='2v2')?0:(parseInt(document.getElementById('editSeriesMVPCount').value)||0),
+    topFraggerCount:is1v1?0:(parseInt(document.getElementById('editTopFraggerCount').value)||0),
     topShitterCount:is1v1?0:(parseInt(document.getElementById('editTopShitterCount').value)||0),
     assistKingCount:is1v1?0:(parseInt(document.getElementById('editAssistKingCount').value)||0),
     objMVPCount:(is1v1||currentMode==='2v2')?0:(parseInt(document.getElementById('editObjMVPCount').value)||0)
