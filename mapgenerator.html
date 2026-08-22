@@ -170,14 +170,10 @@ function renderBoButtons() {
 function renderPoolNote() {
   const note = document.getElementById('poolNote');
   if (currentMode === '4v4') {
-    const extra = currentBo - 3;
-    let extraText = '';
-    if (extra > 0) {
-      extraText = extra > 4
-        ? ` The remaining ${extra} game${extra !== 1 ? 's' : ''} will draw from the leftover maps, with ${extra - 4} repeat${extra - 4 !== 1 ? 's' : ''} needed since only 7 maps exist.`
-        : ` The remaining ${extra} game${extra !== 1 ? 's' : ''} will use different leftover maps, no repeats needed.`;
-    }
-    note.textContent = `Game 1 is always CTF, Game 2 is always Slayer, and Game 3 is always Oddball or KOTH — each on a different map.${extraText}`;
+    const repeatWarning = currentBo >= 9
+      ? ' At this length, some maps and one Oddball/KOTH slot will need to repeat since the pool is limited.'
+      : '';
+    note.textContent = `Follows a repeating CTF → Slayer → Oddball/KOTH pattern (that 3rd slot alternates between Oddball and KOTH each time it comes back around).${repeatWarning}`;
   } else {
     const poolSize = TWO_V_TWO_MAPS.length;
     if (currentBo > poolSize) {
@@ -237,53 +233,49 @@ function entriesToResult(entries) {
   });
 }
 
-// 4v4 series: game 1 is always CTF, game 2 is always Slayer, and game 3 is always
-// Oddball-or-KOTH (randomly chosen between the two) — each on a different map — so
-// every series opens with the same guaranteed gametype sequence. Games 4+ are pulled
-// from whatever maps remain.
+// 4v4 series follows a repeating 3-game cycle: CTF, then Slayer, then Oddball-or-KOTH —
+// and repeats that pattern for as many games as the series needs. The Oddball/KOTH slot
+// alternates between the two each time it comes back around (so game 3 might be Oddball
+// and game 6 would then be KOTH, or vice versa). Each CTF/Slayer slot picks a map that
+// hasn't been used yet in the series where possible, and never repeats the map that was
+// just played in the previous game.
+function pickMapForCategory(pool, usedNames, prevMapName) {
+  let candidates = pool.filter(m => !usedNames.has(m.name) && m.name !== prevMapName);
+  if (!candidates.length) candidates = pool.filter(m => m.name !== prevMapName);
+  if (!candidates.length) candidates = pool.slice();
+  return shuffle(candidates)[0];
+}
+
 function build4v4Series(count) {
+  const ctfPool = FOUR_V_FOUR_MAPS.filter(m => m.types.includes('CTF'));
+  const slayerPool = FOUR_V_FOUR_MAPS.filter(m => m.types.includes('Slayer'));
   const guardian = FOUR_V_FOUR_MAPS.find(m => m.name === 'Guardian');
   const construct = FOUR_V_FOUR_MAPS.find(m => m.name === 'Construct');
-  const thirdPick = Math.random() < 0.5
-    ? { map: guardian, gametype: 'Oddball' }
-    : { map: construct, gametype: 'KOTH' };
+  const objTypeOrder = shuffle(['Oddball', 'KOTH']);
 
-  const ctfCandidates = FOUR_V_FOUR_MAPS.filter(m => m.types.includes('CTF'));
-  const ctfPick = shuffle(ctfCandidates)[0];
-  const slayerCandidates = FOUR_V_FOUR_MAPS.filter(m => m.types.includes('Slayer') && m.name !== ctfPick.name);
-  const slayerPick = shuffle(slayerCandidates)[0];
+  const usedNames = new Set();
+  const entries = [];
+  let objOccurrence = 0;
 
-  let entries = [
-    { map: ctfPick, gametype: 'CTF' },
-    { map: slayerPick, gametype: 'Slayer' },
-    thirdPick
-  ];
+  for (let i = 0; i < count; i++) {
+    const category = i % 3;
+    const prevMapName = entries.length ? entries[entries.length - 1].map.name : null;
 
-  if (count > 3) {
-    const usedNames = new Set(entries.map(e => e.map.name));
-    const leftoverPool = FOUR_V_FOUR_MAPS.filter(m => !usedNames.has(m.name));
-    const extraCount = count - 3;
-
-    let extraMaps;
-    if (extraCount <= leftoverPool.length) {
-      extraMaps = shuffle(leftoverPool).slice(0, extraCount);
+    if (category === 0) {
+      const map = pickMapForCategory(ctfPool, usedNames, prevMapName);
+      entries.push({ map, gametype: 'CTF' });
+      usedNames.add(map.name);
+    } else if (category === 1) {
+      const map = pickMapForCategory(slayerPool, usedNames, prevMapName);
+      entries.push({ map, gametype: 'Slayer' });
+      usedNames.add(map.name);
     } else {
-      extraMaps = shuffle(leftoverPool).slice();
-      const stillNeeded = extraCount - leftoverPool.length;
-      let refillPool = shuffle(FOUR_V_FOUR_MAPS);
-      const extras = [];
-      while (extras.length < stillNeeded) {
-        if (refillPool.length === 0) refillPool = shuffle(FOUR_V_FOUR_MAPS);
-        extras.push(refillPool.pop());
-      }
-      extraMaps = shuffle(extraMaps.concat(extras));
+      const gametype = objTypeOrder[objOccurrence % 2];
+      const map = gametype === 'Oddball' ? guardian : construct;
+      entries.push({ map, gametype });
+      usedNames.add(map.name);
+      objOccurrence++;
     }
-
-    const extraEntries = arrangeNoAdjacentDuplicates(
-      extraMaps.map(m => ({ map: m, gametype: pickGametype(m) })),
-      entries[2].map.name
-    );
-    entries = entries.concat(extraEntries);
   }
 
   return entriesToResult(entries);
