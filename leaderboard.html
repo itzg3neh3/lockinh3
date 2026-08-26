@@ -135,6 +135,11 @@
   .removed-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); background: rgba(255,255,255,0.05); border: 1px solid var(--border2); padding: 3px 10px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
   .callout-top10-link { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; margin-top: 6px; display: inline-block; text-decoration: underline; text-underline-offset: 2px; opacity: 0.85; }
   .callout-top10-link:hover { opacity: 1; }
+  .swindler-banner { background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.02)); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 0.75rem; display: flex; justify-content: center; align-items: center; }
+  .swindler-content { display: flex; align-items: center; gap: 0.75rem; text-align: center; }
+  .swindler-icon { font-size: 24px; flex-shrink: 0; }
+  .swindler-label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 2px; }
+  .swindler-name { font-family: 'Barlow Condensed', sans-serif; font-size: 19px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
   .top10-row { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
   .top10-rank { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; color: var(--muted); width: 28px; text-align: center; flex-shrink: 0; }
   .top10-info { flex: 1; }
@@ -604,9 +609,13 @@ function render(){
     return `<div class="callout-card callout-orange"><div class="callout-icon">👥</div><div><div class="callout-eyebrow ey-orange">All-Time Best Duo</div><div class="callout-name">${bestDuo.names[0]} &amp; ${bestDuo.names[1]}</div><div class="callout-stat">${bestDuo.wins}-${bestDuo.losses}${tieTxt} (${pct}%) as Teammates &nbsp;·&nbsp; ${bestDuo.seriesPlayed} Series Together</div>${link}</div></div>`;
   }
 
+  // A permanent joke callout — always shows the same player regardless of mode or
+  // actual stats, so it's built separately from the real data-driven callouts above.
+  const swindlerBannerHtml = `<div class="swindler-banner"><div class="swindler-content"><span class="swindler-icon">🃏</span><div><div class="swindler-label">All-Time Top Swindler</div><div class="swindler-name">BackOnMyBsss</div></div></div></div>`;
+
   let calloutsHtml='';
   if(is1v1){
-    calloutsHtml=`<div class="alltime-grid">
+    calloutsHtml=swindlerBannerHtml+`<div class="alltime-grid">
       <div>
         ${topFragger?`<div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.kills} Kills &nbsp;·&nbsp; ${kd(topFragger.kills,topFragger.deaths)} K/D &nbsp;·&nbsp; ${topFragger.seriesPlayed} Sessions</div></div></div>`:''}
       </div>
@@ -617,7 +626,7 @@ function render(){
   } else if(currentMode==='2v2'){
     // 2v2 has no MVP/OBJ MVP, so this is a 2-row x 2-col grid:
     // Top Fragger | Assist King, then Best Duo | Top Shitter
-    calloutsHtml=`<div class="mvp-grid-2col">
+    calloutsHtml=swindlerBannerHtml+`<div class="mvp-grid-2col">
       ${topFragger?`<div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.topFraggerCount}&times; Top Fragger &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series Played</div>${topFraggerRanking.length>1?top10LinkHtml('ey-gold',"openTop10Modal('topFraggerCount')"):''}</div></div>`:''}
       ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assistKingCount}&times; Assist King &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series Played</div>${assistKingRanking.length>1?top10LinkHtml('ey-blue',"openTop10Modal('assistKingCount')"):''}</div></div>`:''}
       ${duoCalloutHtml()}
@@ -625,7 +634,7 @@ function render(){
     </div>`;
   } else {
     // 4v4: 3-row x 2-col grid — MVP | Top Fragger, Assist King | OBJ MVP, Best Duo | Top Shitter
-    calloutsHtml=`<div class="mvp-grid-2col">
+    calloutsHtml=swindlerBannerHtml+`<div class="mvp-grid-2col">
       ${allTimeMVP?`<div class="callout-card callout-purple"><div class="callout-icon">🏆</div><div><div class="callout-eyebrow ey-purple">All-Time MVP</div><div class="callout-name">${allTimeMVP.displayName}</div><div class="callout-stat">${allTimeMVP.seriesMVPCount}&times; Series MVP &nbsp;·&nbsp; ${allTimeMVP.seriesPlayed} Series Played</div>${mvpRanking.length>1?top10LinkHtml('ey-purple',"openTop10Modal('seriesMVPCount')"):''}</div></div>`:''}
       ${topFragger?`<div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.topFraggerCount}&times; Top Fragger &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series Played</div>${topFraggerRanking.length>1?top10LinkHtml('ey-gold',"openTop10Modal('topFraggerCount')"):''}</div></div>`:''}
       ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assistKingCount}&times; Assist King &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series Played</div>${assistKingRanking.length>1?top10LinkHtml('ey-blue',"openTop10Modal('assistKingCount')"):''}</div></div>`:''}
