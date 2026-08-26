@@ -552,6 +552,15 @@ function render(){
   }
 
   const sorted=[...players].sort((a,b)=>{
+    // Rate-based stats (K/D, KDA, and the per-series OBJ rates) are easily skewed by a
+    // tiny sample — one great game with only 1-2 series played can outrank a veteran's
+    // whole career. Qualified players (5+ series) always sort above unqualified ones for
+    // these columns specifically; raw totals like Kills are unaffected since they're
+    // naturally self-correcting already.
+    const aQualified=a.seriesPlayed>=MIN_SERIES, bQualified=b.seriesPlayed>=MIN_SERIES;
+    const RATE_SORTS=new Set(['kd','kda','caps_s','hill_s','ball_s']);
+    if(RATE_SORTS.has(currentSort) && aQualified!==bQualified) return aQualified?-1:1;
+
     switch(currentSort){
       case'kills':return b.kills-a.kills;
       case'kd':return(b.deaths?b.kills/b.deaths:b.kills)-(a.deaths?a.kills/a.deaths:a.kills);
