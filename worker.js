@@ -826,13 +826,14 @@ export default {
     if (request.method === 'GET' && url.pathname === '/history') {
       try {
         const list = await env.REPORTS.list({ prefix: 'history:' });
+        // Fetch every entry in parallel rather than one at a time — with a large
+        // History log, sequential reads here were the main cause of slow leaderboard
+        // and history load times.
+        const rawResults = await Promise.all(list.keys.map(k => env.REPORTS.get(k.name)));
         const entries = [];
-        for (const k of list.keys) {
-          const raw = await env.REPORTS.get(k.name);
-          if (raw) {
-            try { entries.push(JSON.parse(raw)); } catch(e) {}
-          }
-        }
+        rawResults.forEach(raw => {
+          if (raw) { try { entries.push(JSON.parse(raw)); } catch(e) {} }
+        });
         entries.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
         return jsonResponse({ entries }, 200, origin);
       } catch (err) {
@@ -927,16 +928,16 @@ export default {
     if (request.method === 'GET' && url.pathname === '/history/players') {
       try {
         const list = await env.REPORTS.list({ prefix: 'history:' });
+        const rawResults = await Promise.all(list.keys.map(k => env.REPORTS.get(k.name)));
         const playerSet = new Set();
-        for (const k of list.keys) {
-          const raw = await env.REPORTS.get(k.name);
+        rawResults.forEach(raw => {
           if (raw) {
             try {
               const entry = JSON.parse(raw);
               [...(entry.squad1||[]), ...(entry.squad2||[])].forEach(n => { if (n) playerSet.add(n); });
             } catch(e) {}
           }
-        }
+        });
         const players = [...playerSet].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
         return jsonResponse({ players }, 200, origin);
       } catch (err) {
@@ -951,11 +952,12 @@ export default {
         const p2 = url.searchParams.get('p2');
         if (!p1 || !p2) throw new Error('p1 and p2 required');
         const list = await env.REPORTS.list({ prefix: 'history:' });
+        const rawResults = await Promise.all(list.keys.map(k => env.REPORTS.get(k.name)));
         const asOpponents = { p1Wins: 0, p2Wins: 0, series: [] };
         const asTeammates = { wins: 0, losses: 0, series: [] };
-        for (const k of list.keys) {
-          const raw = await env.REPORTS.get(k.name);
-          if (!raw) continue;
+        list.keys.forEach((k, idx) => {
+          const raw = rawResults[idx];
+          if (!raw) return;
           try {
             const entry = JSON.parse(raw);
             const s1 = (entry.squad1 || []).map(n => n.toLowerCase());
@@ -964,7 +966,7 @@ export default {
             const p1InS1 = s1.includes(p1Low), p1InS2 = s2.includes(p1Low);
             const p2InS1 = s1.includes(p2Low), p2InS2 = s2.includes(p2Low);
             const p1Present = p1InS1 || p1InS2, p2Present = p2InS1 || p2InS2;
-            if (!p1Present || !p2Present) continue;
+            if (!p1Present || !p2Present) return;
             const sameTeam = (p1InS1 && p2InS1) || (p1InS2 && p2InS2);
             if (sameTeam) {
               const theirSquad = p1InS1 ? 1 : 2;
@@ -978,7 +980,7 @@ export default {
               asOpponents.series.push({ ...entry, histKey: k.name, p1Won });
             }
           } catch(e) {}
-        }
+        });
         asOpponents.series.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
         asTeammates.series.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
         return jsonResponse({ asOpponents, asTeammates, p1, p2 }, 200, origin);

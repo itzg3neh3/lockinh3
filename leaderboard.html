@@ -478,24 +478,27 @@ async function switchMode(mode){
 
 async function load(){
   try{
-    const fetches=[fetch(WORKER_URL+'/leaderboard?mode='+currentMode)];
-    if(!historyLoaded)fetches.push(fetch(WORKER_URL+'/history'));
-    const results=await Promise.all(fetches);
-    const resp=results[0];
+    const resp=await fetch(WORKER_URL+'/leaderboard?mode='+currentMode);
     if(!resp.ok)throw new Error('Failed to load');
     const raw=await resp.json();
-    if(results[1]){
-      try{
-        const histData=await results[1].json();
-        historyEntries=histData.entries||[];
-        historyLoaded=true;
-      }catch(e){historyEntries=[];historyLoaded=true;}
-    }
     allPlayersData=raw;
     const players=Object.values(raw);
     if(!players.length){document.getElementById('content').innerHTML=`<div class="empty"><h2>No ${currentMode} data yet</h2><p>Run a ${currentMode} report and add it to the leaderboard to get started.</p></div>`;return;}
-    leaderboardData=players;render();
+    leaderboardData=players;
+    render();
     if(adminToken){populateAdminPanel(raw);loadSnapshots();renderRemoveSeriesList();}
+
+    // History (needed only for the Best Duo callout) loads in the background so it
+    // never delays the rest of the leaderboard from showing up instantly. Once it
+    // resolves, re-render just to fill in Best Duo — everything else is unaffected.
+    if(!historyLoaded){
+      fetch(WORKER_URL+'/history').then(r=>r.json()).then(histData=>{
+        historyEntries=histData.entries||[];
+        historyLoaded=true;
+        render();
+        if(adminToken)renderRemoveSeriesList();
+      }).catch(()=>{historyEntries=[];historyLoaded=true;});
+    }
   }catch(e){document.getElementById('content').innerHTML=`<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;}
 }
 
@@ -591,6 +594,9 @@ function render(){
   }
 
   function duoCalloutHtml(){
+    if(!historyLoaded){
+      return `<div class="callout-card callout-orange" style="opacity:0.5"><div class="callout-icon">👥</div><div><div class="callout-eyebrow ey-orange">All-Time Best Duo</div><div class="callout-name">Loading…</div></div></div>`;
+    }
     if(!bestDuo)return'';
     const pct=Math.round((bestDuo.wins/bestDuo.seriesPlayed)*100);
     const tieTxt=bestDuo.ties>0?`-${bestDuo.ties}T`:'';
@@ -733,6 +739,7 @@ function renderRemoveSeriesList(){
   const listEl=document.getElementById('removeSeriesList');
   if(!listEl)return;
   if(currentMode==='1v1'){listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Not applicable to 1v1.</div>';return;}
+  if(!historyLoaded){listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading recent series...</div>';return;}
   const filterVal=(document.getElementById('removeSeriesFilter')?.value||'').toLowerCase().trim();
   const filtered=historyEntries
     .filter(e=>(e.mode||'4v4')===currentMode)
