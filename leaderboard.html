@@ -133,6 +133,14 @@
   .snapshot-restore-btn { background: none; border: 1px solid var(--gold); color: var(--gold); border-radius: 4px; padding: 4px 12px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
   .snapshot-restore-btn:hover { background: rgba(245,158,11,0.1); }
   .removed-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); background: rgba(255,255,255,0.05); border: 1px solid var(--border2); padding: 3px 10px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
+  .callout-top10-link { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; margin-top: 6px; display: inline-block; text-decoration: underline; text-underline-offset: 2px; opacity: 0.85; }
+  .callout-top10-link:hover { opacity: 1; }
+  .top10-row { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .top10-rank { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; color: var(--muted); width: 28px; text-align: center; flex-shrink: 0; }
+  .top10-info { flex: 1; }
+  .top10-name { font-weight: 700; font-size: 14px; color: var(--text); text-decoration: none; }
+  .top10-name:hover { color: var(--accent); }
+  .top10-stat { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
   .modal-overlay.visible { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
@@ -276,6 +284,18 @@
   </div>
 </div>
 
+<!-- Top 10 Modal -->
+<div class="modal-overlay" id="top10Modal">
+  <div class="modal">
+    <div class="modal-title" id="top10Title">Top 10</div>
+    <div class="modal-sub">Ranked all-time across every recorded series for this mode.</div>
+    <div id="top10List" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;"></div>
+    <div class="modal-actions" style="margin-top:1.25rem">
+      <button class="modal-cancel" onclick="closeTop10Modal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const WORKER_URL='https://lockinh3.gmil88.workers.dev';
 
@@ -286,6 +306,11 @@ let currentSort='kills';
 let leaderboardData=[];
 let historyEntries=[];
 let historyLoaded=false;
+const MIN_SERIES=5;
+function getQualifiedPool(){
+  const qualified=leaderboardData.filter(p=>p.seriesPlayed>=MIN_SERIES);
+  return qualified.length?qualified:leaderboardData;
+}
 
 function fmtTime(sec){if(!sec)return'—';const m=Math.floor(sec/60),s=sec%60;return`${m}:${String(s).padStart(2,'0')}`;}
 function fmtTimeDecimal(sec){if(!sec)return'—';return fmtTime(Math.round(sec));}
@@ -299,11 +324,11 @@ function calcObjScore(p,totals){const shares=[];if(totals.ball>0)shares.push(p.b
 
 function normalizeNameClient(n){return(n||'').toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'');}
 
-// Finds the teammate pair with the best win rate across every series they've played
-// together on the same squad (4v4 or 2v2 only — no teammates in 1v1). Requires at
-// least 3 series played together to qualify, ties broken by more series played.
+// Returns every qualified teammate pair (4v4 or 2v2 only — no teammates in 1v1),
+// sorted best win rate first, ranked among pairs who've played at least 3 series
+// together, ties broken by more series played.
 const MIN_DUO_SERIES=3;
-function computeBestDuo(entries,mode){
+function getDuoRanking(entries,mode){
   const pairs={};
   entries.forEach(e=>{
     if((e.mode||'4v4')!==mode)return;
@@ -325,14 +350,64 @@ function computeBestDuo(entries,mode){
     });
   });
   const qualified=Object.values(pairs).filter(p=>p.seriesPlayed>=MIN_DUO_SERIES);
-  if(!qualified.length)return null;
   qualified.sort((a,b)=>{
     const aPct=a.wins/a.seriesPlayed,bPct=b.wins/b.seriesPlayed;
     if(bPct!==aPct)return bPct-aPct;
     return b.seriesPlayed-a.seriesPlayed;
   });
-  return qualified[0];
+  return qualified;
 }
+function computeBestDuo(entries,mode){
+  const ranking=getDuoRanking(entries,mode);
+  return ranking.length?ranking[0]:null;
+}
+
+const AWARD_META={
+  seriesMVPCount:{icon:'🏆',label:'Series MVP',colorClass:'ey-purple'},
+  topFraggerCount:{icon:'⭐',label:'Top Fragger',colorClass:'ey-gold'},
+  assistKingCount:{icon:'🤝',label:'Assist King',colorClass:'ey-blue'},
+  objMVPCount:{icon:'🎯',label:'OBJ MVP',colorClass:'ey-green'},
+  topShitterCount:{icon:'🍆',label:'Top Shitter',colorClass:'ey-red'}
+};
+
+function rankBadgeClass(i){return i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';}
+
+function openTop10Modal(type){
+  const pool=getQualifiedPool();
+  const meta=AWARD_META[type];
+  const ranking=getAwardRanking(pool,type).slice(0,10);
+  document.getElementById('top10Title').innerHTML=`${meta.icon} All-Time ${meta.label} — Top 10`;
+  const listEl=document.getElementById('top10List');
+  listEl.innerHTML=ranking.length?ranking.map((p,i)=>`
+    <div class="top10-row">
+      <div class="top10-rank ${rankBadgeClass(i)}">${i+1}</div>
+      <div class="top10-info">
+        <a href="player.html?p=${encodeURIComponent(p.displayName)}" class="top10-name">${p.displayName}</a>
+        <div class="top10-stat">${p[type]}&times; ${meta.label} &middot; ${p.seriesPlayed} Series Played</div>
+      </div>
+    </div>`).join(''):'<div style="padding:1rem 0;color:var(--muted);font-size:13px;">No qualifying players yet.</div>';
+  document.getElementById('top10Modal').classList.add('visible');
+}
+
+function openTop10DuoModal(){
+  const ranking=getDuoRanking(historyEntries,currentMode).slice(0,10);
+  document.getElementById('top10Title').innerHTML='👥 All-Time Best Duos — Top 10';
+  const listEl=document.getElementById('top10List');
+  listEl.innerHTML=ranking.length?ranking.map((d,i)=>{
+    const pct=Math.round((d.wins/d.seriesPlayed)*100);
+    const tieTxt=d.ties>0?`-${d.ties}T`:'';
+    return `<div class="top10-row">
+      <div class="top10-rank ${rankBadgeClass(i)}">${i+1}</div>
+      <div class="top10-info">
+        <div class="top10-name" style="color:var(--text)">${d.names[0]} &amp; ${d.names[1]}</div>
+        <div class="top10-stat">${d.wins}-${d.losses}${tieTxt} (${pct}%) as Teammates &middot; ${d.seriesPlayed} Series Together</div>
+      </div>
+    </div>`;
+  }).join(''):'<div style="padding:1rem 0;color:var(--muted);font-size:13px;">No qualifying duos yet.</div>';
+  document.getElementById('top10Modal').classList.add('visible');
+}
+
+function closeTop10Modal(){document.getElementById('top10Modal').classList.remove('visible');}
 
 // OBJ score (flag caps, ball time, hill time weighted equally) — used for both OBJ MVP and All-Time MVP
 function calcWeightedObjScore(p,totals){
@@ -424,13 +499,11 @@ async function load(){
   }catch(e){document.getElementById('content').innerHTML=`<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;}
 }
 
-// Picks the leader for an award-count-based callout: highest count wins, tied by
-// award rate (count / series played) to reward consistency over volume, then by
-// total series played as a final tiebreak. Only players who have won the award at
-// least once are eligible — returns null if nobody in the pool has any yet.
-function pickAwardLeader(pool, countField) {
+// Returns every player who's won an award at least once, ranked highest count
+// first, tied by award rate (count / series played) to reward consistency over
+// volume, then by total series played as a final tiebreak.
+function getAwardRanking(pool, countField) {
   const candidates = pool.filter(p => (p[countField] || 0) > 0);
-  if (!candidates.length) return null;
   return candidates.slice().sort((a, b) => {
     const diff = (b[countField] || 0) - (a[countField] || 0);
     if (diff !== 0) return diff;
@@ -438,7 +511,11 @@ function pickAwardLeader(pool, countField) {
     const bRate = b.seriesPlayed > 0 ? (b[countField] || 0) / b.seriesPlayed : 0;
     if (bRate !== aRate) return bRate - aRate;
     return (b.seriesPlayed || 0) - (a.seriesPlayed || 0);
-  })[0];
+  });
+}
+function pickAwardLeader(pool, countField) {
+  const ranking = getAwardRanking(pool, countField);
+  return ranking.length ? ranking[0] : null;
 }
 
 function render(){
@@ -448,9 +525,7 @@ function render(){
   const hasObj=!is1v1&&(totals.ball>0||totals.caps>0||totals.hill>0);
   const hasCaps=!is1v1&&totals.caps>0;const hasHill=!is1v1&&totals.hill>0;const hasBall=!is1v1&&totals.ball>0;
 
-  const MIN_SERIES=5;
-  const qualified=players.filter(p=>p.seriesPlayed>=MIN_SERIES);
-  const pool=qualified.length?qualified:players;
+  const pool=getQualifiedPool();
 
   // All-Time MVP, Top Fragger, Top Shitter, Assist King, and OBJ MVP are now "most
   // times actually won this award across all recorded series" rather than a
@@ -458,14 +533,20 @@ function render(){
   // historically, so they stay 4v4-only here too. Top Fragger, Top Shitter, and
   // Assist King apply to both 4v4 and 2v2. 1v1 has no award-tracking system, so
   // it keeps its original kills/K-D-based Top Fragger and Top Shitter.
-  const topFragger = !is1v1 ? pickAwardLeader(pool,'topFraggerCount') : [...pool].sort((a,b)=>b.kills-a.kills)[0];
-  const allTimeMVP = currentMode==='4v4' ? pickAwardLeader(pool,'seriesMVPCount') : null;
-  const objMVP = currentMode==='4v4' ? pickAwardLeader(pool,'objMVPCount') : null;
-  const assistKing = !is1v1 ? pickAwardLeader(pool,'assistKingCount') : null;
-  const bestDuo = !is1v1 ? computeBestDuo(historyEntries,currentMode) : null;
+  const topFraggerRanking = !is1v1 ? getAwardRanking(pool,'topFraggerCount') : [];
+  const topFragger = !is1v1 ? (topFraggerRanking[0]||null) : [...pool].sort((a,b)=>b.kills-a.kills)[0];
+  const mvpRanking = currentMode==='4v4' ? getAwardRanking(pool,'seriesMVPCount') : [];
+  const allTimeMVP = mvpRanking[0]||null;
+  const objMVPRanking = currentMode==='4v4' ? getAwardRanking(pool,'objMVPCount') : [];
+  const objMVP = objMVPRanking[0]||null;
+  const assistKingRanking = !is1v1 ? getAwardRanking(pool,'assistKingCount') : [];
+  const assistKing = assistKingRanking[0]||null;
+  const duoRanking = !is1v1 ? getDuoRanking(historyEntries,currentMode) : [];
+  const bestDuo = duoRanking[0]||null;
+  const topShitterRanking = !is1v1 ? getAwardRanking(pool,'topShitterCount') : [];
   let topShitter=null;
   if(!is1v1){
-    topShitter=pickAwardLeader(pool,'topShitterCount');
+    topShitter=topShitterRanking[0]||null;
   }else{
     topShitter=[...pool].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   }
@@ -496,11 +577,16 @@ function render(){
     }
   });
 
+  function top10LinkHtml(colorClass,onclick){
+    return `<span class="callout-top10-link ${colorClass}" onclick="${onclick}">See Top 10 →</span>`;
+  }
+
   function duoCalloutHtml(){
     if(!bestDuo)return'';
     const pct=Math.round((bestDuo.wins/bestDuo.seriesPlayed)*100);
     const tieTxt=bestDuo.ties>0?`-${bestDuo.ties}T`:'';
-    return `<div class="callout-card callout-orange"><div class="callout-icon">👥</div><div><div class="callout-eyebrow ey-orange">All-Time Best Duo</div><div class="callout-name">${bestDuo.names[0]} &amp; ${bestDuo.names[1]}</div><div class="callout-stat">${bestDuo.wins}-${bestDuo.losses}${tieTxt} (${pct}%) as Teammates &nbsp;·&nbsp; ${bestDuo.seriesPlayed} Series Together</div></div></div>`;
+    const link=duoRanking.length>1?top10LinkHtml('ey-orange',"openTop10DuoModal()"):'';
+    return `<div class="callout-card callout-orange"><div class="callout-icon">👥</div><div><div class="callout-eyebrow ey-orange">All-Time Best Duo</div><div class="callout-name">${bestDuo.names[0]} &amp; ${bestDuo.names[1]}</div><div class="callout-stat">${bestDuo.wins}-${bestDuo.losses}${tieTxt} (${pct}%) as Teammates &nbsp;·&nbsp; ${bestDuo.seriesPlayed} Series Together</div>${link}</div></div>`;
   }
 
   let calloutsHtml='';
@@ -517,20 +603,20 @@ function render(){
     // 2v2 has no MVP/OBJ MVP, so this is a 2-row x 2-col grid:
     // Top Fragger | Assist King, then Best Duo | Top Shitter
     calloutsHtml=`<div class="mvp-grid-2col">
-      ${topFragger?`<div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.topFraggerCount}&times; Top Fragger &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series Played</div></div></div>`:''}
-      ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assistKingCount}&times; Assist King &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series Played</div></div></div>`:''}
+      ${topFragger?`<div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.topFraggerCount}&times; Top Fragger &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series Played</div>${topFraggerRanking.length>1?top10LinkHtml('ey-gold',"openTop10Modal('topFraggerCount')"):''}</div></div>`:''}
+      ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assistKingCount}&times; Assist King &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series Played</div>${assistKingRanking.length>1?top10LinkHtml('ey-blue',"openTop10Modal('assistKingCount')"):''}</div></div>`:''}
       ${duoCalloutHtml()}
-      ${topShitter?`<div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.topShitterCount}&times; Top Shitter &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series Played</div></div></div>`:''}
+      ${topShitter?`<div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.topShitterCount}&times; Top Shitter &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series Played</div>${topShitterRanking.length>1?top10LinkHtml('ey-red',"openTop10Modal('topShitterCount')"):''}</div></div>`:''}
     </div>`;
   } else {
     // 4v4: 3-row x 2-col grid — MVP | Top Fragger, Assist King | OBJ MVP, Best Duo | Top Shitter
     calloutsHtml=`<div class="mvp-grid-2col">
-      ${allTimeMVP?`<div class="callout-card callout-purple"><div class="callout-icon">🏆</div><div><div class="callout-eyebrow ey-purple">All-Time MVP</div><div class="callout-name">${allTimeMVP.displayName}</div><div class="callout-stat">${allTimeMVP.seriesMVPCount}&times; Series MVP &nbsp;·&nbsp; ${allTimeMVP.seriesPlayed} Series Played</div></div></div>`:''}
-      ${topFragger?`<div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.topFraggerCount}&times; Top Fragger &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series Played</div></div></div>`:''}
-      ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assistKingCount}&times; Assist King &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series Played</div></div></div>`:''}
-      ${objMVP?`<div class="callout-card callout-green"><div class="callout-icon">🎯</div><div><div class="callout-eyebrow ey-green">All-Time OBJ MVP</div><div class="callout-name">${objMVP.displayName}</div><div class="callout-stat">${objMVP.objMVPCount}&times; OBJ MVP &nbsp;·&nbsp; ${objMVP.seriesPlayed} Series Played</div></div></div>`:''}
+      ${allTimeMVP?`<div class="callout-card callout-purple"><div class="callout-icon">🏆</div><div><div class="callout-eyebrow ey-purple">All-Time MVP</div><div class="callout-name">${allTimeMVP.displayName}</div><div class="callout-stat">${allTimeMVP.seriesMVPCount}&times; Series MVP &nbsp;·&nbsp; ${allTimeMVP.seriesPlayed} Series Played</div>${mvpRanking.length>1?top10LinkHtml('ey-purple',"openTop10Modal('seriesMVPCount')"):''}</div></div>`:''}
+      ${topFragger?`<div class="callout-card callout-gold"><div class="callout-icon">⭐</div><div><div class="callout-eyebrow ey-gold">All-Time Top Fragger</div><div class="callout-name">${topFragger.displayName}</div><div class="callout-stat">${topFragger.topFraggerCount}&times; Top Fragger &nbsp;·&nbsp; ${topFragger.seriesPlayed} Series Played</div>${topFraggerRanking.length>1?top10LinkHtml('ey-gold',"openTop10Modal('topFraggerCount')"):''}</div></div>`:''}
+      ${assistKing?`<div class="callout-card callout-blue"><div class="callout-icon">🤝</div><div><div class="callout-eyebrow ey-blue">All-Time Assist King</div><div class="callout-name">${assistKing.displayName}</div><div class="callout-stat">${assistKing.assistKingCount}&times; Assist King &nbsp;·&nbsp; ${assistKing.seriesPlayed} Series Played</div>${assistKingRanking.length>1?top10LinkHtml('ey-blue',"openTop10Modal('assistKingCount')"):''}</div></div>`:''}
+      ${objMVP?`<div class="callout-card callout-green"><div class="callout-icon">🎯</div><div><div class="callout-eyebrow ey-green">All-Time OBJ MVP</div><div class="callout-name">${objMVP.displayName}</div><div class="callout-stat">${objMVP.objMVPCount}&times; OBJ MVP &nbsp;·&nbsp; ${objMVP.seriesPlayed} Series Played</div>${objMVPRanking.length>1?top10LinkHtml('ey-green',"openTop10Modal('objMVPCount')"):''}</div></div>`:''}
       ${duoCalloutHtml()}
-      ${topShitter?`<div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.topShitterCount}&times; Top Shitter &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series Played</div></div></div>`:''}
+      ${topShitter?`<div class="callout-card callout-red"><div class="callout-icon">🍆</div><div><div class="callout-eyebrow ey-red">All-Time Top Shitter</div><div class="callout-name">${topShitter.displayName}</div><div class="callout-stat">${topShitter.topShitterCount}&times; Top Shitter &nbsp;·&nbsp; ${topShitter.seriesPlayed} Series Played</div>${topShitterRanking.length>1?top10LinkHtml('ey-red',"openTop10Modal('topShitterCount')"):''}</div></div>`:''}
     </div>`;
   }
 
@@ -740,6 +826,7 @@ function openEditModal(key){
 
 function closeModal(){document.getElementById('editModal').classList.remove('visible');}
 document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('top10Modal').addEventListener('click',function(e){if(e.target===this)closeTop10Modal();});
 
 async function saveEdit(){
   const key=document.getElementById('editKey').value;const msgEl=document.getElementById('modalMsg');msgEl.className='admin-msg';msgEl.style.display='none';
