@@ -238,7 +238,12 @@ function entriesToResult(entries) {
 // alternates between the two each time it comes back around (so game 3 might be Oddball
 // and game 6 would then be KOTH, or vice versa). Each CTF/Slayer slot picks a map that
 // hasn't been used yet in the series where possible, and never repeats the map that was
-// just played in the previous game.
+// just played in the previous game. Additionally, every Slayer game must use a map from
+// the opposite weapon-loadout group of the CTF game that preceded it, so a series never
+// runs two BR-only maps (or two sniper/rockets maps) back-to-back.
+const BR_ONLY_MAPS = new Set(['Onslaught', 'Heretic', 'Amp']);
+const POWER_WEAPON_MAPS = new Set(['Narrows', 'Pit']);
+
 function pickMapForCategory(pool, usedNames, prevMapName) {
   let candidates = pool.filter(m => !usedNames.has(m.name) && m.name !== prevMapName);
   if (!candidates.length) candidates = pool.filter(m => m.name !== prevMapName);
@@ -266,7 +271,17 @@ function build4v4Series(count) {
       entries.push({ map, gametype: 'CTF' });
       usedNames.add(map.name);
     } else if (category === 1) {
-      const map = pickMapForCategory(slayerPool, usedNames, prevMapName);
+      // The Slayer map must come from the opposite weapon-loadout group of the CTF
+      // map that just came before it (prevMapName is always that CTF map here, since
+      // Slayer only ever follows CTF in this cycle).
+      let slayerCandidates = slayerPool;
+      if (prevMapName && BR_ONLY_MAPS.has(prevMapName)) {
+        slayerCandidates = slayerPool.filter(m => POWER_WEAPON_MAPS.has(m.name));
+      } else if (prevMapName && POWER_WEAPON_MAPS.has(prevMapName)) {
+        slayerCandidates = slayerPool.filter(m => BR_ONLY_MAPS.has(m.name));
+      }
+      if (!slayerCandidates.length) slayerCandidates = slayerPool;
+      const map = pickMapForCategory(slayerCandidates, usedNames, prevMapName);
       entries.push({ map, gametype: 'Slayer' });
       usedNames.add(map.name);
     } else {
