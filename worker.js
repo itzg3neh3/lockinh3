@@ -276,12 +276,12 @@ function computeAwardsForSeries(games, mode) {
   };
 }
 
-function bumpAwardCount(leaderboard, name, field) {
+function bumpAwardCount(leaderboard, name, field, delta = 1) {
   if (!name) return;
   const key = normalizeName(name);
   if (!leaderboard[key]) return;
   if (leaderboard[key][field] === undefined) leaderboard[key][field] = 0;
-  leaderboard[key][field] += 1;
+  leaderboard[key][field] = Math.max(0, leaderboard[key][field] + delta);
 }
 
 async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
@@ -673,7 +673,7 @@ export default {
         });
 
         const list = await env.REPORTS.list({ prefix: 'history:' });
-        let processed = 0, skippedNoReport = 0, skippedOtherMode = 0, skippedBadData = 0;
+        let processed = 0, skippedNoReport = 0, skippedOtherMode = 0, skippedBadData = 0, skippedRemoved = 0;
 
         for (const k of list.keys) {
           const raw = await env.REPORTS.get(k.name);
@@ -681,6 +681,7 @@ export default {
           let entry;
           try { entry = JSON.parse(raw); } catch (e) { skippedBadData++; continue; }
           if ((entry.mode || '4v4') !== resolvedMode) { skippedOtherMode++; continue; }
+          if (entry.removedFromLeaderboard) { skippedRemoved++; continue; }
 
           const reportRaw = await env.REPORTS.get(entry.reportId);
           if (!reportRaw) { skippedNoReport++; continue; }
@@ -704,8 +705,118 @@ export default {
 
         return jsonResponse({
           status: 'done', mode: resolvedMode, processed,
-          skippedNoReport, skippedOtherMode, skippedBadData
+          skippedNoReport, skippedOtherMode, skippedBadData, skippedRemoved
         }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── POST /leaderboard/remove-series ──────────────────────────────────
+    // Surgically undoes one specific series' contribution to the leaderboard —
+    // stats, series record, and any awards it earned — without touching any
+    // other series added before or after it. The History entry is kept (not
+    // deleted) but flagged as removed, so there's always an audit trail. A
+    // safety snapshot is taken before anything changes, same as the backfill.
+    if (request.method === 'POST' && url.pathname === '/leaderboard/remove-series') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { historyKey } = await request.json();
+        if (!historyKey) throw new Error('historyKey required');
+
+        const histRaw = await env.REPORTS.get(historyKey);
+        if (!histRaw) throw new Error('History entry not found');
+        const histEntry = JSON.parse(histRaw);
+        if (histEntry.removedFromLeaderboard) throw new Error('This series has already been removed from the leaderboard');
+
+        const resolvedMode = histEntry.mode === '2v2' ? '2v2' : histEntry.mode === '1v1' ? '1v1' : '4v4';
+        const reportRaw = await env.REPORTS.get(histEntry.reportId);
+        if (!reportRaw) throw new Error('Original series data not found — it may have expired (reports are kept 2 years)');
+        const games = JSON.parse(reportRaw);
+        if (!Array.isArray(games) || !games.length) throw new Error('Invalid series data');
+
+        const key = lbKey(resolvedMode);
+        const lbRaw = await env.REPORTS.get(key);
+        const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
+
+        // Safety snapshot of the state before anything changes
+        await saveSnapshot(leaderboard, env, resolvedMode);
+
+        const squad1Names = new Set((histEntry.squad1 || []).map(n => normalizeName(n)).filter(Boolean));
+        const squad2Names = new Set((histEntry.squad2 || []).map(n => normalizeName(n)).filter(Boolean));
+        const seriesWinner = histEntry.seriesWinner;
+        const winningSquadNames = seriesWinner === 1 ? squad1Names : squad2Names;
+        const losingSquadNames = seriesWinner === 1 ? squad2Names : squad1Names;
+
+        const playerStats = {};
+        games.forEach(g => {
+          const allPlayers = [...(g.redTeam || []).map(p => ({ ...p })), ...(g.blueTeam || []).map(p => ({ ...p }))];
+          allPlayers.forEach(p => {
+            if (!p.name) return;
+            const pKey = normalizeName(p.name);
+            if (!playerStats[pKey]) playerStats[pKey] = { kills: 0, deaths: 0, assists: 0, flagCaps: 0, hillSecs: 0, ballSecs: 0 };
+            const s = playerStats[pKey];
+            s.kills += p.kills || 0;
+            s.deaths += p.deaths || 0;
+            s.assists += p.assists || 0;
+            s.flagCaps += p.flagCaps || 0;
+            s.hillSecs += parseTimeSecs(p.hillTime);
+            s.ballSecs += parseTimeSecs(p.ballTime);
+          });
+        });
+
+        let playersAffected = 0;
+        Object.entries(playerStats).forEach(([pKey, stats]) => {
+          const lb = leaderboard[pKey];
+          if (!lb) return;
+          playersAffected++;
+          lb.kills = Math.max(0, lb.kills - stats.kills);
+          lb.deaths = Math.max(0, lb.deaths - stats.deaths);
+          lb.assists = Math.max(0, lb.assists - stats.assists);
+          lb.flagCaps = Math.max(0, (lb.flagCaps || 0) - stats.flagCaps);
+          lb.hillSecs = Math.max(0, (lb.hillSecs || 0) - stats.hillSecs);
+          lb.ballSecs = Math.max(0, (lb.ballSecs || 0) - stats.ballSecs);
+          lb.seriesPlayed = Math.max(0, (lb.seriesPlayed || 0) - 1);
+          if (resolvedMode === '1v1' && seriesWinner === 0) {
+            lb.seriesTied = Math.max(0, (lb.seriesTied || 0) - 1);
+          } else if (winningSquadNames.has(pKey)) {
+            lb.seriesWon = Math.max(0, (lb.seriesWon || 0) - 1);
+          } else if (losingSquadNames.has(pKey)) {
+            lb.seriesLost = Math.max(0, (lb.seriesLost || 0) - 1);
+          }
+        });
+
+        // Undo any awards this series had earned
+        if (resolvedMode !== '1v1') {
+          const awards = computeAwardsForSeries(games, resolvedMode);
+          if (resolvedMode === '4v4') {
+            bumpAwardCount(leaderboard, awards.seriesMVP, 'seriesMVPCount', -1);
+            bumpAwardCount(leaderboard, awards.objMVP, 'objMVPCount', -1);
+          }
+          bumpAwardCount(leaderboard, awards.topFragger, 'topFraggerCount', -1);
+          bumpAwardCount(leaderboard, awards.topShitter, 'topShitterCount', -1);
+          bumpAwardCount(leaderboard, awards.assistKing, 'assistKingCount', -1);
+        }
+
+        await env.REPORTS.put(key, JSON.stringify(leaderboard));
+        await saveSnapshot(leaderboard, env, resolvedMode);
+
+        // Clear the duplicate-detection fingerprint so this series could be
+        // re-added later without being blocked as a duplicate, if needed.
+        try {
+          const fingerprint = await createFingerprint(games);
+          const hash = await hashString(fingerprint);
+          await env.REPORTS.delete(`fp:${resolvedMode}:${hash}`);
+        } catch (e) { /* non-fatal */ }
+
+        // Flag (don't delete) the History entry so there's an audit trail
+        histEntry.removedFromLeaderboard = true;
+        histEntry.removedAt = new Date().toISOString();
+        await env.REPORTS.put(historyKey, JSON.stringify(histEntry), {
+          expirationTtl: 60 * 60 * 24 * 365 * 2,
+        });
+
+        return jsonResponse({ status: 'removed', mode: resolvedMode, playersAffected }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }

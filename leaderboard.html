@@ -132,6 +132,7 @@
   .snapshot-key { font-size: 11px; color: var(--muted); font-family: monospace; margin-top: 2px; }
   .snapshot-restore-btn { background: none; border: 1px solid var(--gold); color: var(--gold); border-radius: 4px; padding: 4px 12px; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
   .snapshot-restore-btn:hover { background: rgba(245,158,11,0.1); }
+  .removed-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); background: rgba(255,255,255,0.05); border: 1px solid var(--border2); padding: 3px 10px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
   .modal-overlay.visible { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
@@ -215,6 +216,13 @@
         <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Recalculates All-Time MVP / Top Fragger / Top Shitter / Assist King / OBJ MVP award counts for the <strong id="backfillModeLabel">4v4</strong> leaderboard from every series stored in History. Safe to re-run — it always recalculates from scratch rather than adding on top, and takes an automatic snapshot first.</p>
         <button class="admin-btn" onclick="runAwardsBackfill()" id="backfillBtn">Run Awards Backfill</button>
         <div class="admin-msg" id="backfillMsg"></div>
+      </div>
+      <div class="admin-section" id="removeSeriesSection">
+        <div class="admin-section-title">🗑️ Remove a Series</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Unlike restoring a backup — which undoes every change since that point — this surgically undoes just one series' contribution to the <strong id="removeModeLabel">4v4</strong> leaderboard (stats, record, and any awards it earned), no matter how many series have been added since. The series stays visible in History, just marked as removed. Takes an automatic snapshot first.</p>
+        <input type="text" class="admin-input" id="removeSeriesFilter" placeholder="Filter by player name..." oninput="renderRemoveSeriesList()" style="margin-bottom:0.75rem">
+        <div class="admin-player-list" id="removeSeriesList"><div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading recent series...</div></div>
+        <div class="admin-msg" id="removeSeriesMsg"></div>
       </div>
       <div class="admin-section">
         <div class="admin-section-title">🔀 Merge Duplicate Players</div>
@@ -382,6 +390,7 @@ async function switchMode(mode){
   document.getElementById('ballSecsField').style.display=is1v1?'none':'';
   document.getElementById('awardsBackfillSection').style.display=is1v1?'none':'';
   document.getElementById('backfillModeLabel').textContent=mode;
+  document.getElementById('removeModeLabel').textContent=mode;
   document.getElementById('awardsDivider').style.display=is1v1?'none':'';
   document.getElementById('awardsSectionLabel').style.display=is1v1?'none':'';
   document.getElementById('seriesMVPCountField').style.display=(is1v1||mode==='2v2')?'none':'';
@@ -411,7 +420,7 @@ async function load(){
     const players=Object.values(raw);
     if(!players.length){document.getElementById('content').innerHTML=`<div class="empty"><h2>No ${currentMode} data yet</h2><p>Run a ${currentMode} report and add it to the leaderboard to get started.</p></div>`;return;}
     leaderboardData=players;render();
-    if(adminToken){populateAdminPanel(raw);loadSnapshots();}
+    if(adminToken){populateAdminPanel(raw);loadSnapshots();renderRemoveSeriesList();}
   }catch(e){document.getElementById('content').innerHTML=`<div class="empty"><h2>Could not load</h2><p>${e.message}</p></div>`;}
 }
 
@@ -592,7 +601,7 @@ async function checkPassword(){
   try{
     const resp=await fetch(WORKER_URL+'/admin/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:input.value})});
     const result=await resp.json();
-    if(result.token){adminToken=result.token;input.value='';document.getElementById('adminLocked').style.display='none';document.getElementById('adminUnlocked').classList.add('visible');populateAdminPanel(allPlayersData);loadSnapshots();}
+    if(result.token){adminToken=result.token;input.value='';document.getElementById('adminLocked').style.display='none';document.getElementById('adminUnlocked').classList.add('visible');populateAdminPanel(allPlayersData);loadSnapshots();renderRemoveSeriesList();}
     else{errEl.style.display='block';input.value='';}
   }catch(e){errEl.textContent='Connection error — try again';errEl.style.display='block';input.value='';}
 }
@@ -623,6 +632,54 @@ async function runAwardsBackfill(){
     setTimeout(()=>load(),1500);
   }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
   btn.disabled=false;btn.textContent='Run Awards Backfill';
+}
+
+function renderRemoveSeriesList(){
+  const listEl=document.getElementById('removeSeriesList');
+  if(!listEl)return;
+  if(currentMode==='1v1'){listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Not applicable to 1v1.</div>';return;}
+  const filterVal=(document.getElementById('removeSeriesFilter')?.value||'').toLowerCase().trim();
+  const filtered=historyEntries
+    .filter(e=>(e.mode||'4v4')===currentMode)
+    .filter(e=>!filterVal||(e.squad1||[]).concat(e.squad2||[]).some(n=>(n||'').toLowerCase().includes(filterVal)))
+    .sort((a,b)=>new Date(b.playedAt)-new Date(a.playedAt))
+    .slice(0,40);
+  if(!filtered.length){
+    listEl.innerHTML=`<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">No series found for ${currentMode}${filterVal?' matching that name':''}.</div>`;
+    return;
+  }
+  listEl.innerHTML=filtered.map(e=>{
+    const histKey='history:'+e.playedAt+':'+e.reportId;
+    const dateStr=fmtDateTime(e.playedAt);
+    const s1=(e.squad1||[]).join(', ');
+    const s2=(e.squad2||[]).join(', ');
+    const scoreStr=(e.squad1Wins??'?')+'-'+(e.squad2Wins??'?');
+    const removed=e.removedFromLeaderboard;
+    const safeKey=histKey.replace(/'/g,"&#39;");
+    return `<div class="admin-player-row"${removed?' style="opacity:0.55"':''}>
+      <div class="admin-player-info">
+        <div class="admin-player-name">${s1} <span style="color:var(--muted);font-weight:400;">vs</span> ${s2}</div>
+        <div class="admin-player-key">${scoreStr} &middot; ${dateStr}</div>
+      </div>
+      <div class="admin-action-btns">
+        ${removed?'<span class="removed-badge">Removed</span>':`<button class="admin-delete-btn" onclick="removeSeries('${safeKey}')">Remove</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function removeSeries(historyKey){
+  const msgEl=document.getElementById('removeSeriesMsg');msgEl.className='admin-msg';msgEl.style.display='none';
+  if(!confirm(`Remove this series from the ${currentMode} leaderboard?\n\nThis subtracts its stats, record, and any awards it earned from every player who played it. A snapshot is taken automatically first, so this can be undone via Restore a Backup if needed. Continue?`))return;
+  try{
+    const resp=await fetch(WORKER_URL+'/leaderboard/remove-series',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({historyKey})});
+    const result=await resp.json();if(result.error)throw new Error(result.error);
+    const entry=historyEntries.find(e=>('history:'+e.playedAt+':'+e.reportId)===historyKey);
+    if(entry){entry.removedFromLeaderboard=true;entry.removedAt=new Date().toISOString();}
+    msgEl.textContent=`✓ Removed — ${result.playersAffected} player(s) updated. Refreshing leaderboard...`;msgEl.className='admin-msg success';
+    renderRemoveSeriesList();
+    setTimeout(()=>load(),1500);
+  }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
 }
 
 async function loadSnapshots(){
