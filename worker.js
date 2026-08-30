@@ -1048,6 +1048,85 @@ export default {
       }
     }
 
+    // ── POST /leaderboard/rename-in-history ──────────────────────────────
+    // Renames a player inside their History entries AND the underlying per-game
+    // report data they link to (not just the leaderboard). This is the fix for
+    // when a name change was already consolidated via Merge Duplicate Players —
+    // that tool correctly sums raw totals, but leaves old-named History entries
+    // permanently invisible to any name-based lookup for the current name, so
+    // backfill can never count them no matter how many times it's re-run. After
+    // this runs, a normal Awards Backfill will pick up everything correctly.
+    if (request.method === 'POST' && url.pathname === '/leaderboard/rename-in-history') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { mode, oldName, newName } = await request.json();
+        if (!oldName || !newName) throw new Error('oldName and newName required');
+        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        const oldKey = normalizeName(oldName);
+        const newKeyNorm = normalizeName(newName);
+        if (!oldKey || !newKeyNorm) throw new Error('Invalid name(s)');
+        if (oldKey === newKeyNorm) throw new Error('Old and new names normalize to the same key — nothing to rename');
+
+        const lbRaw = await env.REPORTS.get(lbKey(resolvedMode));
+        const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
+        const canonicalNewName = leaderboard[newKeyNorm] ? leaderboard[newKeyNorm].displayName : newName;
+
+        const list = await listAllKeys(env, 'history:');
+        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+
+        const toUpdate = [];
+        list.forEach((k, idx) => {
+          const raw = rawResults[idx];
+          if (!raw) return;
+          let entry;
+          try { entry = JSON.parse(raw); } catch (e) { return; }
+          if ((entry.mode || '4v4') !== resolvedMode) return;
+          const allNames = [...(entry.squad1 || []), ...(entry.squad2 || [])];
+          if (allNames.some(n => normalizeName(n) === oldKey)) {
+            toUpdate.push({ histKey: k.name, entry });
+          }
+        });
+
+        let historyEntriesRenamed = 0, reportsUpdated = 0, reportsNotFound = 0, reportsBadData = 0;
+
+        for (const { histKey, entry } of toUpdate) {
+          entry.squad1 = (entry.squad1 || []).map(n => normalizeName(n) === oldKey ? canonicalNewName : n);
+          entry.squad2 = (entry.squad2 || []).map(n => normalizeName(n) === oldKey ? canonicalNewName : n);
+          await env.REPORTS.put(histKey, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+          historyEntriesRenamed++;
+
+          const reportRaw = await env.REPORTS.get(entry.reportId);
+          if (!reportRaw) { reportsNotFound++; continue; }
+          let games;
+          try { games = JSON.parse(reportRaw); } catch (e) { reportsBadData++; continue; }
+          if (!Array.isArray(games)) { reportsBadData++; continue; }
+
+          let changed = false;
+          games.forEach(g => {
+            ['redTeam', 'blueTeam'].forEach(teamKey => {
+              (g[teamKey] || []).forEach(p => {
+                if (p.name && normalizeName(p.name) === oldKey) {
+                  p.name = canonicalNewName;
+                  changed = true;
+                }
+              });
+            });
+          });
+          if (changed) {
+            await env.REPORTS.put(entry.reportId, JSON.stringify(games), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+            reportsUpdated++;
+          }
+        }
+
+        return jsonResponse({
+          mode: resolvedMode, oldName, newName: canonicalNewName,
+          historyEntriesRenamed, reportsUpdated, reportsNotFound, reportsBadData,
+        }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
     // ── GET /history ─────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history') {
       try {

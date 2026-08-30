@@ -243,6 +243,15 @@
         <button class="admin-btn" onclick="findOrphanedNames()" id="orphanedNamesBtn">Scan for Orphaned Names</button>
         <div id="orphanedNamesResults"></div>
         <div class="admin-msg" id="orphanedNamesMsg"></div>
+        <hr class="modal-divider" style="margin:1.25rem 0">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">Rename a Player in History</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Fixes the root cause once and for all — updates the old name to the current one inside every History entry and its underlying game data, so a normal Awards Backfill can finally find and count those series. Doesn't touch current leaderboard totals (already correct from your past merges).</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0.75rem">
+          <div><label style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Old Name (in History)</label><input type="text" class="admin-input" id="renameOldName" placeholder="e.g. Rights" style="margin-bottom:0"></div>
+          <div><label style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Current Name</label><input type="text" class="admin-input" id="renameNewName" placeholder="e.g. Riqhts" style="margin-bottom:0"></div>
+        </div>
+        <button class="admin-btn" onclick="renameInHistory()" id="renameInHistoryBtn">Rename in History</button>
+        <div class="admin-msg" id="renameInHistoryMsg"></div>
       </div>
       <div class="admin-section" id="debugPlayerSection">
         <div class="admin-section-title">🔍 Debug Player OBJ Rates</div>
@@ -852,13 +861,39 @@ async function findOrphanedNames(){
       resultsEl.innerHTML=`<div style="font-size:13px;color:var(--green);padding:0.5rem 0">✓ No orphaned names found — every name in History for ${r.mode} matches a current leaderboard entry.</div>`;
     }else{
       resultsEl.innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${r.orphanedNames.length} name(s) found in History with no matching current leaderboard entry:</div>`+
-        r.orphanedNames.map(n=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:13px;">
-          <strong>${n.displayName}</strong> <span style="color:var(--muted);font-size:12px">(key: ${n.normalizedKey})</span><br>
-          <span style="font-size:12px;color:var(--muted)">Appears in ${n.count} series &middot; ${fmtDateTime(n.earliest)} through ${fmtDateTime(n.latest)}</span>
-        </div>`).join('');
+        r.orphanedNames.map(n=>{
+          const safeName=n.displayName.replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+          return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <strong>${n.displayName}</strong> <span style="color:var(--muted);font-size:12px">(key: ${n.normalizedKey})</span><br>
+            <span style="font-size:12px;color:var(--muted)">Appears in ${n.count} series &middot; ${fmtDateTime(n.earliest)} through ${fmtDateTime(n.latest)}</span>
+          </div>
+          <button class="admin-btn" style="margin-bottom:0;flex-shrink:0;padding:6px 12px;font-size:11px" onclick="document.getElementById('renameOldName').value='${safeName}';document.getElementById('renameOldName').scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('renameNewName').focus();">Use as Old Name →</button>
+        </div>`;
+        }).join('');
     }
   }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
   btn.disabled=false;btn.textContent='Scan for Orphaned Names';
+}
+
+async function renameInHistory(){
+  const msgEl=document.getElementById('renameInHistoryMsg');msgEl.className='admin-msg';msgEl.style.display='none';
+  const btn=document.getElementById('renameInHistoryBtn');
+  const oldName=(document.getElementById('renameOldName').value||'').trim();
+  const newName=(document.getElementById('renameNewName').value||'').trim();
+  if(!oldName||!newName){msgEl.textContent='Enter both the old and current name.';msgEl.className='admin-msg error';return;}
+  if(!confirm(`Rename "${oldName}" to "${newName}" inside every History entry and its underlying game data for ${currentMode}?\n\nThis does NOT change current leaderboard totals — those are already correct from your past merges. This only fixes History so Awards Backfill can finally find and count those old series. Continue?`))return;
+  btn.disabled=true;btn.textContent='Renaming — this may take a moment...';
+  try{
+    const resp=await fetch(WORKER_URL+'/leaderboard/rename-in-history',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({mode:currentMode,oldName,newName})});
+    const r=await resp.json();if(r.error)throw new Error(r.error);
+    msgEl.textContent=`✓ Renamed "${oldName}" → "${r.newName}" in ${r.historyEntriesRenamed} History entries (${r.reportsUpdated} game reports updated${r.reportsNotFound?`, ${r.reportsNotFound} expired`:''}). Now re-run Awards Backfill to recalculate their stats.`;
+    msgEl.className='admin-msg success';
+    document.getElementById('renameOldName').value='';
+    document.getElementById('renameNewName').value='';
+    findOrphanedNames();
+  }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
+  btn.disabled=false;btn.textContent='Rename in History';
 }
 
 async function debugPlayer(){
