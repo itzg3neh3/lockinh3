@@ -999,6 +999,55 @@ export default {
       }
     }
 
+    // ── POST /leaderboard/find-orphaned-names ────────────────────────────
+    // Read-only diagnostic: scans every non-removed History entry for a mode
+    // and collects every player name that appears, then reports which of those
+    // names don't match ANY current leaderboard entry. This surfaces old
+    // gamertags — e.g. from a name change that was later consolidated via the
+    // Merge Duplicate Players tool — whose History entries would otherwise be
+    // permanently invisible to any name-based lookup for the player's current name.
+    if (request.method === 'POST' && url.pathname === '/leaderboard/find-orphaned-names') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { mode } = await request.json();
+        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+
+        const lbRaw = await env.REPORTS.get(lbKey(resolvedMode));
+        const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
+        const currentKeys = new Set(Object.keys(leaderboard));
+
+        const list = await listAllKeys(env, 'history:');
+        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+
+        const nameStats = {};
+        rawResults.forEach(raw => {
+          if (!raw) return;
+          let entry;
+          try { entry = JSON.parse(raw); } catch (e) { return; }
+          if ((entry.mode || '4v4') !== resolvedMode) return;
+          if (entry.removedFromLeaderboard) return;
+          [...(entry.squad1 || []), ...(entry.squad2 || [])].forEach(rawName => {
+            if (!rawName) return;
+            const pk = normalizeName(rawName);
+            if (!pk) return;
+            if (!nameStats[pk]) nameStats[pk] = { displayName: rawName, count: 0, earliest: entry.playedAt, latest: entry.playedAt };
+            nameStats[pk].count++;
+            if (entry.playedAt < nameStats[pk].earliest) nameStats[pk].earliest = entry.playedAt;
+            if (entry.playedAt > nameStats[pk].latest) nameStats[pk].latest = entry.playedAt;
+          });
+        });
+
+        const orphaned = Object.entries(nameStats)
+          .filter(([pk]) => !currentKeys.has(pk))
+          .map(([pk, stats]) => ({ normalizedKey: pk, ...stats }))
+          .sort((a, b) => b.count - a.count);
+
+        return jsonResponse({ mode: resolvedMode, orphanedNames: orphaned }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
     // ── GET /history ─────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history') {
       try {

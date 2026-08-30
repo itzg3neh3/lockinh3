@@ -237,6 +237,13 @@
         <div class="admin-player-list" id="removeSeriesList"><div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading recent series...</div></div>
         <div class="admin-msg" id="removeSeriesMsg"></div>
       </div>
+      <div class="admin-section" id="orphanedNamesSection">
+        <div class="admin-section-title">👻 Find Orphaned Names</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Scans every series in History for the <strong id="orphanedModeLabel">4v4</strong> leaderboard and lists any player name that doesn't match a current leaderboard entry — usually an old gamertag left behind after a name change that was later merged, whose History entries are now invisible to any lookup under the current name.</p>
+        <button class="admin-btn" onclick="findOrphanedNames()" id="orphanedNamesBtn">Scan for Orphaned Names</button>
+        <div id="orphanedNamesResults"></div>
+        <div class="admin-msg" id="orphanedNamesMsg"></div>
+      </div>
       <div class="admin-section" id="debugPlayerSection">
         <div class="admin-section-title">🔍 Debug Player OBJ Rates</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">If a player's Hill/S, Ball/S, or Caps/S looks impossibly low or high, this walks their entire History and shows exactly which series counted toward those rates and why any were missed — usually an OCR name-spelling inconsistency in one specific report.</p>
@@ -485,6 +492,8 @@ async function switchMode(mode){
   document.getElementById('ballSecsField').style.display=is1v1?'none':'';
   document.getElementById('awardsBackfillSection').style.display=is1v1?'none':'';
   document.getElementById('debugPlayerSection').style.display=is1v1?'none':'';
+  document.getElementById('orphanedNamesSection').style.display=is1v1?'none':'';
+  document.getElementById('orphanedModeLabel').textContent=mode;
   document.getElementById('backfillModeLabel').textContent=mode;
   document.getElementById('removeModeLabel').textContent=mode;
   document.getElementById('awardsDivider').style.display=is1v1?'none':'';
@@ -580,15 +589,31 @@ function render(){
     topShitter=[...pool].filter(p=>p.deaths>0).sort((a,b)=>(a.kills/a.deaths)-(b.kills/b.deaths))[0];
   }
 
+  const OBJ_MIN_SAMPLE=3;
   const sorted=[...players].sort((a,b)=>{
     // Rate-based stats (K/D, KDA, and the per-series OBJ rates) are easily skewed by a
     // tiny sample — one great game with only 1-2 series played can outrank a veteran's
     // whole career. Qualified players (5+ series) always sort above unqualified ones for
     // these columns specifically; raw totals like Kills are unaffected since they're
     // naturally self-correcting already.
+    //
+    // Caps/S, Hill/S, and Ball/S need an EXTRA check beyond overall series played: their
+    // denominator is specifically "series that contained that gametype", which can stay
+    // tiny for veteran players whose early series predate History logging (the only place
+    // that per-series gametype breakdown is recorded). A player can easily clear the
+    // general 5-series bar while still having only 1-2 series counted toward a specific
+    // OBJ rate, which produces a wildly misleading number — so those three columns also
+    // require their own gametype-specific sample size before qualifying as "above the fold".
     const aQualified=a.seriesPlayed>=MIN_SERIES, bQualified=b.seriesPlayed>=MIN_SERIES;
     const RATE_SORTS=new Set(['kd','kda','caps_s','hill_s','ball_s']);
-    if(RATE_SORTS.has(currentSort) && aQualified!==bQualified) return aQualified?-1:1;
+    const OBJ_RATE_FIELD={caps_s:'capsSeriesCount',hill_s:'hillSeriesCount',ball_s:'ballSeriesCount'};
+    if(RATE_SORTS.has(currentSort)){
+      const objField=OBJ_RATE_FIELD[currentSort];
+      const aObjQualified=objField?(a[objField]||0)>=OBJ_MIN_SAMPLE:true;
+      const bObjQualified=objField?(b[objField]||0)>=OBJ_MIN_SAMPLE:true;
+      const aFullyQualified=aQualified&&aObjQualified, bFullyQualified=bQualified&&bObjQualified;
+      if(aFullyQualified!==bFullyQualified)return aFullyQualified?-1:1;
+    }
 
     switch(currentSort){
       case'kills':return b.kills-a.kills;
@@ -692,9 +717,9 @@ function render(){
       ${!is1v1?`<th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th>`:''}
       <th class="${currentSort==='kd'?'sorted':''}" onclick="setSort('kd')">K/D</th>
       ${!is1v1?`<th class="${currentSort==='kda'?'sorted':''}" onclick="setSort('kda')">KDA</th>`:''}
-      ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th><th class="obj-per ${currentSort==='caps_s'?'sorted':''}" onclick="setSort('caps_s')" title="Per series that actually had a CTF game — not divided by total series played">Caps/S</th>`:''}
-      ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th><th class="obj-per ${currentSort==='hill_s'?'sorted':''}" onclick="setSort('hill_s')" title="Per series that actually had a KOTH game — not divided by total series played">Hill/S</th>`:''}
-      ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th><th class="obj-per ${currentSort==='ball_s'?'sorted':''}" onclick="setSort('ball_s')" title="Per series that actually had an Oddball game — not divided by total series played">Ball/S</th>`:''}
+      ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th><th class="obj-per ${currentSort==='caps_s'?'sorted':''}" onclick="setSort('caps_s')" title="Per series that actually had a CTF game — not total series played. Shows — if fewer than 3 such series are on record.">Caps/S</th>`:''}
+      ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th><th class="obj-per ${currentSort==='hill_s'?'sorted':''}" onclick="setSort('hill_s')" title="Per series that actually had a KOTH game — not total series played. Shows — if fewer than 3 such series are on record.">Hill/S</th>`:''}
+      ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th><th class="obj-per ${currentSort==='ball_s'?'sorted':''}" onclick="setSort('ball_s')" title="Per series that actually had an Oddball game — not total series played. Shows — if fewer than 3 such series are on record.">Ball/S</th>`:''}
     </tr></thead><tbody>`;
 
   sorted.forEach((p,i)=>{
@@ -714,9 +739,9 @@ function render(){
       ${!is1v1?`<td>${p.assists}</td>`:''}
       <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
       ${!is1v1?`<td class="${kdaClass(p.kills,p.assists,p.deaths)}">${kda(p.kills,p.assists,p.deaths)}</td>`:''}
-      ${hasCaps?`<td>${p.flagCaps||0}</td><td class="obj-per-val">${capsPS>0?capsPS.toFixed(2):'—'}</td>`:''}
-      ${hasHill?`<td>${fmtTime(p.hillSecs)}</td><td class="obj-per-val">${hillPS>0?fmtTimeDecimal(hillPS):'—'}</td>`:''}
-      ${hasBall?`<td>${fmtTime(p.ballSecs)}</td><td class="obj-per-val">${ballPS>0?fmtTimeDecimal(ballPS):'—'}</td>`:''}
+      ${hasCaps?`<td>${p.flagCaps||0}</td><td class="obj-per-val">${(p.capsSeriesCount||0)>=OBJ_MIN_SAMPLE?capsPS.toFixed(2):'—'}</td>`:''}
+      ${hasHill?`<td>${fmtTime(p.hillSecs)}</td><td class="obj-per-val">${(p.hillSeriesCount||0)>=OBJ_MIN_SAMPLE?fmtTimeDecimal(hillPS):'—'}</td>`:''}
+      ${hasBall?`<td>${fmtTime(p.ballSecs)}</td><td class="obj-per-val">${(p.ballSeriesCount||0)>=OBJ_MIN_SAMPLE?fmtTimeDecimal(ballPS):'—'}</td>`:''}
     </tr>`;
   });
   html+=`</tbody></table></div>`;
@@ -812,6 +837,28 @@ async function removeSeries(historyKey){
     renderRemoveSeriesList();
     setTimeout(()=>load(),1500);
   }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
+}
+
+async function findOrphanedNames(){
+  const msgEl=document.getElementById('orphanedNamesMsg');msgEl.className='admin-msg';msgEl.style.display='none';
+  const resultsEl=document.getElementById('orphanedNamesResults');
+  const btn=document.getElementById('orphanedNamesBtn');
+  resultsEl.innerHTML='';
+  btn.disabled=true;btn.textContent='Scanning — this may take a moment...';
+  try{
+    const resp=await fetch(WORKER_URL+'/leaderboard/find-orphaned-names',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({mode:currentMode})});
+    const r=await resp.json();if(r.error)throw new Error(r.error);
+    if(!r.orphanedNames.length){
+      resultsEl.innerHTML=`<div style="font-size:13px;color:var(--green);padding:0.5rem 0">✓ No orphaned names found — every name in History for ${r.mode} matches a current leaderboard entry.</div>`;
+    }else{
+      resultsEl.innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${r.orphanedNames.length} name(s) found in History with no matching current leaderboard entry:</div>`+
+        r.orphanedNames.map(n=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:13px;">
+          <strong>${n.displayName}</strong> <span style="color:var(--muted);font-size:12px">(key: ${n.normalizedKey})</span><br>
+          <span style="font-size:12px;color:var(--muted)">Appears in ${n.count} series &middot; ${fmtDateTime(n.earliest)} through ${fmtDateTime(n.latest)}</span>
+        </div>`).join('');
+    }
+  }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
+  btn.disabled=false;btn.textContent='Scan for Orphaned Names';
 }
 
 async function debugPlayer(){
@@ -985,6 +1032,7 @@ async function doDelete(key,displayName){
 document.getElementById('tiedField').style.display='none';
 document.getElementById('awardsBackfillSection').style.display='';
 document.getElementById('debugPlayerSection').style.display='';
+document.getElementById('orphanedNamesSection').style.display='';
 
 load();
 </script>
