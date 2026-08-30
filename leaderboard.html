@@ -226,7 +226,7 @@
       </div>
       <div class="admin-section" id="awardsBackfillSection">
         <div class="admin-section-title">🏆 Awards Backfill</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Recalculates All-Time MVP / Top Fragger / Top Shitter / Assist King / OBJ MVP award counts for the <strong id="backfillModeLabel">4v4</strong> leaderboard from every series stored in History. Safe to re-run — it always recalculates from scratch rather than adding on top, and takes an automatic snapshot first.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Recalculates All-Time MVP / Top Fragger / Top Shitter / Assist King / OBJ MVP award counts, plus fixes Hill/S, Ball/S, and Caps/S to divide by series that actually had that gametype (not total series played), for the <strong id="backfillModeLabel">4v4</strong> leaderboard — from every series stored in History. Safe to re-run — it always recalculates from scratch rather than adding on top, and takes an automatic snapshot first.</p>
         <button class="admin-btn" onclick="runAwardsBackfill()" id="backfillBtn">Run Awards Backfill</button>
         <div class="admin-msg" id="backfillMsg"></div>
       </div>
@@ -280,6 +280,11 @@
       <div class="modal-field" id="topShitterCountField"><label>Top Shitter Wins</label><input type="number" id="editTopShitterCount" min="0"></div>
       <div class="modal-field" id="assistKingCountField"><label>Assist King Wins</label><input type="number" id="editAssistKingCount" min="0"></div>
       <div class="modal-field" id="objMVPCountField"><label>OBJ MVP Wins</label><input type="number" id="editObjMVPCount" min="0"></div>
+      <hr class="modal-divider" id="objSeriesDivider">
+      <div class="modal-section-label" id="objSeriesSectionLabel">OBJ Rate Denominators</div>
+      <div class="modal-field" id="capsSeriesCountField"><label>Series with a CTF Game</label><input type="number" id="editCapsSeriesCount" min="0"></div>
+      <div class="modal-field" id="hillSeriesCountField"><label>Series with a KOTH Game</label><input type="number" id="editHillSeriesCount" min="0"></div>
+      <div class="modal-field" id="ballSeriesCountField"><label>Series with an Oddball Game</label><input type="number" id="editBallSeriesCount" min="0"></div>
     </div>
     <div class="admin-msg" id="modalMsg"></div>
     <div class="modal-actions" style="margin-top:1rem">
@@ -476,6 +481,11 @@ async function switchMode(mode){
   document.getElementById('seriesMVPCountField').style.display=(is1v1||mode==='2v2')?'none':'';
   document.getElementById('topFraggerCountField').style.display=is1v1?'none':'';
   document.getElementById('objMVPCountField').style.display=(is1v1||mode==='2v2')?'none':'';
+  document.getElementById('objSeriesDivider').style.display=is1v1?'none':'';
+  document.getElementById('objSeriesSectionLabel').style.display=is1v1?'none':'';
+  document.getElementById('capsSeriesCountField').style.display=is1v1?'none':'';
+  document.getElementById('hillSeriesCountField').style.display=is1v1?'none':'';
+  document.getElementById('ballSeriesCountField').style.display=is1v1?'none':'';
   document.getElementById('topShitterCountField').style.display=is1v1?'none':'';
   document.getElementById('assistKingCountField').style.display=is1v1?'none':'';
   await load();
@@ -585,11 +595,11 @@ function render(){
       }
       case'ties':return(b.seriesTied||0)-(a.seriesTied||0);
       case'caps':return(b.flagCaps||0)-(a.flagCaps||0);
-      case'caps_s':return perSeries(b.flagCaps||0,b.seriesPlayed)-perSeries(a.flagCaps||0,a.seriesPlayed);
+      case'caps_s':return perSeries(b.flagCaps||0,b.capsSeriesCount||0)-perSeries(a.flagCaps||0,a.capsSeriesCount||0);
       case'hill':return(b.hillSecs||0)-(a.hillSecs||0);
-      case'hill_s':return perSeries(b.hillSecs||0,b.seriesPlayed)-perSeries(a.hillSecs||0,a.seriesPlayed);
+      case'hill_s':return perSeries(b.hillSecs||0,b.hillSeriesCount||0)-perSeries(a.hillSecs||0,a.hillSeriesCount||0);
       case'ball':return(b.ballSecs||0)-(a.ballSecs||0);
-      case'ball_s':return perSeries(b.ballSecs||0,b.seriesPlayed)-perSeries(a.ballSecs||0,a.seriesPlayed);
+      case'ball_s':return perSeries(b.ballSecs||0,b.ballSeriesCount||0)-perSeries(a.ballSecs||0,a.ballSeriesCount||0);
       default:return b.kills-a.kills;
     }
   });
@@ -671,16 +681,16 @@ function render(){
       ${!is1v1?`<th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th>`:''}
       <th class="${currentSort==='kd'?'sorted':''}" onclick="setSort('kd')">K/D</th>
       ${!is1v1?`<th class="${currentSort==='kda'?'sorted':''}" onclick="setSort('kda')">KDA</th>`:''}
-      ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th><th class="obj-per ${currentSort==='caps_s'?'sorted':''}" onclick="setSort('caps_s')">Caps/S</th>`:''}
-      ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th><th class="obj-per ${currentSort==='hill_s'?'sorted':''}" onclick="setSort('hill_s')">Hill/S</th>`:''}
-      ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th><th class="obj-per ${currentSort==='ball_s'?'sorted':''}" onclick="setSort('ball_s')">Ball/S</th>`:''}
+      ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th><th class="obj-per ${currentSort==='caps_s'?'sorted':''}" onclick="setSort('caps_s')" title="Per series that actually had a CTF game — not divided by total series played">Caps/S</th>`:''}
+      ${hasHill?`<th class="${currentSort==='hill'?'sorted':''}" onclick="setSort('hill')">Hill Time</th><th class="obj-per ${currentSort==='hill_s'?'sorted':''}" onclick="setSort('hill_s')" title="Per series that actually had a KOTH game — not divided by total series played">Hill/S</th>`:''}
+      ${hasBall?`<th class="${currentSort==='ball'?'sorted':''}" onclick="setSort('ball')">Ball Time</th><th class="obj-per ${currentSort==='ball_s'?'sorted':''}" onclick="setSort('ball_s')" title="Per series that actually had an Oddball game — not divided by total series played">Ball/S</th>`:''}
     </tr></thead><tbody>`;
 
   sorted.forEach((p,i)=>{
     const rank=i+1;const rankClass=rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
     const winPct=p.seriesPlayed>0?Math.round((p.seriesWon/p.seriesPlayed)*100):0;
     const tied=p.seriesTied||0;
-    const capsPS=perSeries(p.flagCaps||0,p.seriesPlayed);const hillPS=perSeries(p.hillSecs||0,p.seriesPlayed);const ballPS=perSeries(p.ballSecs||0,p.seriesPlayed);
+    const capsPS=perSeries(p.flagCaps||0,p.capsSeriesCount||0);const hillPS=perSeries(p.hillSecs||0,p.hillSeriesCount||0);const ballPS=perSeries(p.ballSecs||0,p.ballSeriesCount||0);
     const recordCell=is1v1
       ?`${p.seriesWon}W &nbsp;<span class="tie-count">${tied}T</span>&nbsp; <span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`
       :`${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`;
@@ -845,6 +855,9 @@ function openEditModal(key){
   document.getElementById('editTopShitterCount').value=p.topShitterCount||0;
   document.getElementById('editAssistKingCount').value=p.assistKingCount||0;
   document.getElementById('editObjMVPCount').value=p.objMVPCount||0;
+  document.getElementById('editCapsSeriesCount').value=p.capsSeriesCount||0;
+  document.getElementById('editHillSeriesCount').value=p.hillSeriesCount||0;
+  document.getElementById('editBallSeriesCount').value=p.ballSeriesCount||0;
   document.getElementById('modalMsg').className='admin-msg';document.getElementById('modalMsg').style.display='none';
   document.getElementById('editModal').classList.add('visible');
 }
@@ -871,7 +884,10 @@ async function saveEdit(){
     topFraggerCount:is1v1?0:(parseInt(document.getElementById('editTopFraggerCount').value)||0),
     topShitterCount:is1v1?0:(parseInt(document.getElementById('editTopShitterCount').value)||0),
     assistKingCount:is1v1?0:(parseInt(document.getElementById('editAssistKingCount').value)||0),
-    objMVPCount:(is1v1||currentMode==='2v2')?0:(parseInt(document.getElementById('editObjMVPCount').value)||0)
+    objMVPCount:(is1v1||currentMode==='2v2')?0:(parseInt(document.getElementById('editObjMVPCount').value)||0),
+    capsSeriesCount:is1v1?0:(parseInt(document.getElementById('editCapsSeriesCount').value)||0),
+    hillSeriesCount:is1v1?0:(parseInt(document.getElementById('editHillSeriesCount').value)||0),
+    ballSeriesCount:is1v1?0:(parseInt(document.getElementById('editBallSeriesCount').value)||0)
   };
   try{
     const resp=await fetch(WORKER_URL+'/leaderboard/edit',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({key,stats,mode:currentMode})});

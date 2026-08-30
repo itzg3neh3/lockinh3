@@ -295,6 +295,13 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
   const winningSquadNames = seriesWinner === 1 ? squad1Names : squad2Names;
   const losingSquadNames = seriesWinner === 1 ? squad2Names : squad1Names;
 
+  // Whether this series actually contained each objective gametype at all — used so
+  // the per-series OBJ rates (Hill/S, Ball/S, Caps/S) are only averaged against series
+  // that could have contributed to them, not every series a player has ever played.
+  const hasHillGame = games.some(g => isKOTHW(g.gameType));
+  const hasBallGame = games.some(g => isOddballW(g.gameType));
+  const hasCapsGame = games.some(g => isCTFW(g.gameType));
+
   const playerStats = {};
   games.forEach(g => {
     const allPlayers = [
@@ -326,7 +333,8 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
         seriesPlayed: 0, seriesWon: 0, seriesLost: 0, seriesTied: 0,
         kills: 0, deaths: 0, assists: 0,
         flagCaps: 0, hillSecs: 0, ballSecs: 0,
-        seriesMVPCount: 0, topFraggerCount: 0, topShitterCount: 0, assistKingCount: 0, objMVPCount: 0
+        seriesMVPCount: 0, topFraggerCount: 0, topShitterCount: 0, assistKingCount: 0, objMVPCount: 0,
+        hillSeriesCount: 0, ballSeriesCount: 0, capsSeriesCount: 0
       };
     }
     const lb = leaderboard[pKey];
@@ -337,6 +345,9 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
     if (lb.topShitterCount === undefined) lb.topShitterCount = 0;
     if (lb.assistKingCount === undefined) lb.assistKingCount = 0;
     if (lb.objMVPCount === undefined) lb.objMVPCount = 0;
+    if (lb.hillSeriesCount === undefined) lb.hillSeriesCount = 0;
+    if (lb.ballSeriesCount === undefined) lb.ballSeriesCount = 0;
+    if (lb.capsSeriesCount === undefined) lb.capsSeriesCount = 0;
 
     lb.displayName = stats.displayName;
     lb.seriesPlayed += 1;
@@ -353,6 +364,9 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
     lb.flagCaps += stats.flagCaps;
     lb.hillSecs += stats.hillSecs;
     lb.ballSecs += stats.ballSecs;
+    if (hasHillGame) lb.hillSeriesCount += 1;
+    if (hasBallGame) lb.ballSeriesCount += 1;
+    if (hasCapsGame) lb.capsSeriesCount += 1;
   });
 
   // Tally awards for this series into each player's running totals
@@ -579,6 +593,9 @@ export default {
         if (stats.topShitterCount !== undefined) leaderboard[key].topShitterCount = stats.topShitterCount;
         if (stats.assistKingCount !== undefined) leaderboard[key].assistKingCount = stats.assistKingCount;
         if (stats.objMVPCount !== undefined) leaderboard[key].objMVPCount = stats.objMVPCount;
+        if (stats.hillSeriesCount !== undefined) leaderboard[key].hillSeriesCount = stats.hillSeriesCount;
+        if (stats.ballSeriesCount !== undefined) leaderboard[key].ballSeriesCount = stats.ballSeriesCount;
+        if (stats.capsSeriesCount !== undefined) leaderboard[key].capsSeriesCount = stats.capsSeriesCount;
         await env.REPORTS.put(lbKey(resolvedMode), JSON.stringify(leaderboard));
         await saveSnapshot(leaderboard, env, resolvedMode);
         return jsonResponse({ status: 'saved' }, 200, origin);
@@ -617,6 +634,9 @@ export default {
         to.topShitterCount = (to.topShitterCount || 0) + (from.topShitterCount || 0);
         to.assistKingCount = (to.assistKingCount || 0) + (from.assistKingCount || 0);
         to.objMVPCount = (to.objMVPCount || 0) + (from.objMVPCount || 0);
+        to.hillSeriesCount = (to.hillSeriesCount || 0) + (from.hillSeriesCount || 0);
+        to.ballSeriesCount = (to.ballSeriesCount || 0) + (from.ballSeriesCount || 0);
+        to.capsSeriesCount = (to.capsSeriesCount || 0) + (from.capsSeriesCount || 0);
         delete leaderboard[fromKey];
         await env.REPORTS.put(lbKey(resolvedMode), JSON.stringify(leaderboard));
         await saveSnapshot(leaderboard, env, resolvedMode);
@@ -650,8 +670,14 @@ export default {
     // One-time (but safely re-runnable) migration: walks every stored series
     // in History for the given mode, recomputes who won each award using the
     // exact same formulas as the live report page, and stores the totals on
-    // each player's leaderboard entry. Always recalculates from zero rather
-    // than incrementing, so re-running it after a fix is always safe.
+    // each player's leaderboard entry. Also recomputes hillSeriesCount /
+    // ballSeriesCount / capsSeriesCount — the number of series that actually
+    // contained each objective gametype, used as the correct denominator for
+    // the Hill/S, Ball/S, and Caps/S leaderboard columns (previously divided
+    // by total series played, which understated the rate whenever a player's
+    // history included series with no Hill/Ball/CTF games at all). Always
+    // recalculates from zero rather than incrementing, so re-running it after
+    // a fix is always safe.
     if (request.method === 'POST' && url.pathname === '/leaderboard/backfill-awards') {
       if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
       try {
@@ -670,24 +696,33 @@ export default {
           p.topShitterCount = 0;
           p.assistKingCount = 0;
           p.objMVPCount = 0;
+          p.hillSeriesCount = 0;
+          p.ballSeriesCount = 0;
+          p.capsSeriesCount = 0;
         });
 
         const list = await env.REPORTS.list({ prefix: 'history:' });
+        const rawHistoryResults = await Promise.all(list.keys.map(k => env.REPORTS.get(k.name)));
+
         let processed = 0, skippedNoReport = 0, skippedOtherMode = 0, skippedBadData = 0, skippedRemoved = 0;
 
-        for (const k of list.keys) {
-          const raw = await env.REPORTS.get(k.name);
-          if (!raw) continue;
+        const validEntries = [];
+        rawHistoryResults.forEach(raw => {
+          if (!raw) return;
           let entry;
-          try { entry = JSON.parse(raw); } catch (e) { skippedBadData++; continue; }
-          if ((entry.mode || '4v4') !== resolvedMode) { skippedOtherMode++; continue; }
-          if (entry.removedFromLeaderboard) { skippedRemoved++; continue; }
+          try { entry = JSON.parse(raw); } catch (e) { skippedBadData++; return; }
+          if ((entry.mode || '4v4') !== resolvedMode) { skippedOtherMode++; return; }
+          if (entry.removedFromLeaderboard) { skippedRemoved++; return; }
+          validEntries.push(entry);
+        });
 
-          const reportRaw = await env.REPORTS.get(entry.reportId);
-          if (!reportRaw) { skippedNoReport++; continue; }
+        const reportRawResults = await Promise.all(validEntries.map(entry => env.REPORTS.get(entry.reportId)));
+
+        reportRawResults.forEach(reportRaw => {
+          if (!reportRaw) { skippedNoReport++; return; }
           let games;
-          try { games = JSON.parse(reportRaw); } catch (e) { skippedBadData++; continue; }
-          if (!Array.isArray(games) || !games.length) { skippedBadData++; continue; }
+          try { games = JSON.parse(reportRaw); } catch (e) { skippedBadData++; return; }
+          if (!Array.isArray(games) || !games.length) { skippedBadData++; return; }
 
           const awards = computeAwardsForSeries(games, resolvedMode);
           if (resolvedMode === '4v4') {
@@ -697,8 +732,24 @@ export default {
           bumpAwardCount(leaderboard, awards.topFragger, 'topFraggerCount');
           bumpAwardCount(leaderboard, awards.topShitter, 'topShitterCount');
           bumpAwardCount(leaderboard, awards.assistKing, 'assistKingCount');
+
+          const hasHillGame = games.some(g => isKOTHW(g.gameType));
+          const hasBallGame = games.some(g => isOddballW(g.gameType));
+          const hasCapsGame = games.some(g => isCTFW(g.gameType));
+          if (hasHillGame || hasBallGame || hasCapsGame) {
+            const { squad1, squad2 } = buildSquadsW(games);
+            const seriesPlayers = aggregatePlayersW(games, squad1, squad2);
+            seriesPlayers.forEach(p => {
+              const pk = normalizeName(p.name);
+              if (!leaderboard[pk]) return;
+              if (hasHillGame) leaderboard[pk].hillSeriesCount = (leaderboard[pk].hillSeriesCount || 0) + 1;
+              if (hasBallGame) leaderboard[pk].ballSeriesCount = (leaderboard[pk].ballSeriesCount || 0) + 1;
+              if (hasCapsGame) leaderboard[pk].capsSeriesCount = (leaderboard[pk].capsSeriesCount || 0) + 1;
+            });
+          }
+
           processed++;
-        }
+        });
 
         await env.REPORTS.put(key, JSON.stringify(leaderboard));
         await saveSnapshot(leaderboard, env, resolvedMode);
