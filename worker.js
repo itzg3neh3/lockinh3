@@ -18,6 +18,22 @@ function jsonResponse(data, status, origin) {
   });
 }
 
+// Cloudflare KV's list() returns at most 1000 keys per call, with a cursor for
+// continuation. Every place in this worker that lists 'history:' keys needs every
+// entry, not just the first 1000 — otherwise, once total history entries pass that
+// threshold, the most recent series (which sort last, since keys are timestamp-based)
+// silently stop showing up anywhere. This loops until Cloudflare reports the list complete.
+async function listAllKeys(env, prefix) {
+  let allKeys = [];
+  let cursor;
+  do {
+    const result = await env.REPORTS.list({ prefix, cursor });
+    allKeys = allKeys.concat(result.keys);
+    cursor = result.list_complete ? undefined : result.cursor;
+  } while (cursor);
+  return allKeys;
+}
+
 function randomId(len = 6) {
   const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
   let id = '';
@@ -95,8 +111,8 @@ async function saveSnapshot(leaderboard, env, mode) {
   await env.REPORTS.put(snapshotKey, JSON.stringify({ timestamp, data: leaderboard }), {
     expirationTtl: 60 * 60 * 24 * 365,
   });
-  const list = await env.REPORTS.list({ prefix });
-  const keys = list.keys.map(k => k.name).sort();
+  const list = await listAllKeys(env, prefix);
+  const keys = list.map(k => k.name).sort();
   if (keys.length > MAX_SNAPSHOTS) {
     const toDelete = keys.slice(0, keys.length - MAX_SNAPSHOTS);
     await Promise.all(toDelete.map(k => env.REPORTS.delete(k)));
@@ -538,8 +554,8 @@ export default {
       try {
         const mode = url.searchParams.get('mode') === '2v2' ? '2v2' : url.searchParams.get('mode') === '1v1' ? '1v1' : '4v4';
         const prefix = snapshotPrefix(mode);
-        const list = await env.REPORTS.list({ prefix });
-        const snapshots = list.keys
+        const list = await listAllKeys(env, prefix);
+        const snapshots = list
           .map(k => ({ key: k.name, timestamp: k.name.replace(prefix, '') }))
           .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
         return jsonResponse({ snapshots }, 200, origin);
@@ -701,8 +717,8 @@ export default {
           p.capsSeriesCount = 0;
         });
 
-        const list = await env.REPORTS.list({ prefix: 'history:' });
-        const rawHistoryResults = await Promise.all(list.keys.map(k => env.REPORTS.get(k.name)));
+        const list = await listAllKeys(env, 'history:');
+        const rawHistoryResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
 
         let processed = 0, skippedNoReport = 0, skippedOtherMode = 0, skippedBadData = 0, skippedRemoved = 0;
 
@@ -876,11 +892,11 @@ export default {
     // ── GET /history ─────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history') {
       try {
-        const list = await env.REPORTS.list({ prefix: 'history:' });
+        const list = await listAllKeys(env, 'history:');
         // Fetch every entry in parallel rather than one at a time — with a large
         // History log, sequential reads here were the main cause of slow leaderboard
         // and history load times.
-        const rawResults = await Promise.all(list.keys.map(k => env.REPORTS.get(k.name)));
+        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
         const entries = [];
         rawResults.forEach(raw => {
           if (raw) { try { entries.push(JSON.parse(raw)); } catch(e) {} }
@@ -917,8 +933,8 @@ export default {
           }
         });
         const seriesWinner = s1Wins > s2Wins ? 1 : s2Wins > s1Wins ? 2 : 0;
-        const list = await env.REPORTS.list({ prefix: 'history:' });
-        for (const k of list.keys) {
+        const list = await listAllKeys(env, 'history:');
+        for (const k of list) {
           if (k.name.includes(reportId)) {
             return jsonResponse({ error: 'This report is already in history' }, 400, origin);
           }
@@ -978,8 +994,8 @@ export default {
     // ── GET /history/players ─────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history/players') {
       try {
-        const list = await env.REPORTS.list({ prefix: 'history:' });
-        const rawResults = await Promise.all(list.keys.map(k => env.REPORTS.get(k.name)));
+        const list = await listAllKeys(env, 'history:');
+        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
         const playerSet = new Set();
         rawResults.forEach(raw => {
           if (raw) {
@@ -1002,11 +1018,11 @@ export default {
         const p1 = url.searchParams.get('p1');
         const p2 = url.searchParams.get('p2');
         if (!p1 || !p2) throw new Error('p1 and p2 required');
-        const list = await env.REPORTS.list({ prefix: 'history:' });
-        const rawResults = await Promise.all(list.keys.map(k => env.REPORTS.get(k.name)));
+        const list = await listAllKeys(env, 'history:');
+        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
         const asOpponents = { p1Wins: 0, p2Wins: 0, series: [] };
         const asTeammates = { wins: 0, losses: 0, series: [] };
-        list.keys.forEach((k, idx) => {
+        list.forEach((k, idx) => {
           const raw = rawResults[idx];
           if (!raw) return;
           try {
@@ -1068,11 +1084,12 @@ export default {
         if (!stats4v4 && !stats2v2 && !stats1v1) {
           return jsonResponse({ error: 'Player not found' }, 404, origin);
         }
-        const list = await env.REPORTS.list({ prefix: 'history:' });
+        const list = await listAllKeys(env, 'history:');
+        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
         const seriesHistory = [];
-        for (const k of list.keys) {
-          const raw = await env.REPORTS.get(k.name);
-          if (!raw) continue;
+        list.forEach((k, idx) => {
+          const raw = rawResults[idx];
+          if (!raw) return;
           try {
             const entry = JSON.parse(raw);
             const allPlayers = [...(entry.squad1||[]), ...(entry.squad2||[])];
@@ -1089,7 +1106,7 @@ export default {
               });
             }
           } catch(e) {}
-        }
+        });
         seriesHistory.sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
         const opponentRecords = {};
         seriesHistory.forEach(s => {
