@@ -237,6 +237,16 @@
         <div class="admin-player-list" id="removeSeriesList"><div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading recent series...</div></div>
         <div class="admin-msg" id="removeSeriesMsg"></div>
       </div>
+      <div class="admin-section" id="debugPlayerSection">
+        <div class="admin-section-title">🔍 Debug Player OBJ Rates</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">If a player's Hill/S, Ball/S, or Caps/S looks impossibly low or high, this walks their entire History and shows exactly which series counted toward those rates and why any were missed — usually an OCR name-spelling inconsistency in one specific report.</p>
+        <div style="display:flex;gap:8px;margin-bottom:0.75rem">
+          <input type="text" class="admin-input" id="debugPlayerName" placeholder="Exact player name..." style="flex:1;margin-bottom:0">
+          <button class="admin-btn" onclick="debugPlayer()" id="debugPlayerBtn" style="margin-bottom:0;white-space:nowrap">Debug</button>
+        </div>
+        <div id="debugPlayerResults"></div>
+        <div class="admin-msg" id="debugPlayerMsg"></div>
+      </div>
       <div class="admin-section">
         <div class="admin-section-title">🔀 Merge Duplicate Players</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect duplicate and the correct name to merge into.</p>
@@ -474,6 +484,7 @@ async function switchMode(mode){
   document.getElementById('hillSecsField').style.display=is1v1?'none':'';
   document.getElementById('ballSecsField').style.display=is1v1?'none':'';
   document.getElementById('awardsBackfillSection').style.display=is1v1?'none':'';
+  document.getElementById('debugPlayerSection').style.display=is1v1?'none':'';
   document.getElementById('backfillModeLabel').textContent=mode;
   document.getElementById('removeModeLabel').textContent=mode;
   document.getElementById('awardsDivider').style.display=is1v1?'none':'';
@@ -803,6 +814,58 @@ async function removeSeries(historyKey){
   }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
 }
 
+async function debugPlayer(){
+  const msgEl=document.getElementById('debugPlayerMsg');msgEl.className='admin-msg';msgEl.style.display='none';
+  const resultsEl=document.getElementById('debugPlayerResults');
+  const btn=document.getElementById('debugPlayerBtn');
+  const name=(document.getElementById('debugPlayerName').value||'').trim();
+  if(!name){msgEl.textContent='Enter a player name first.';msgEl.className='admin-msg error';return;}
+  resultsEl.innerHTML='';
+  btn.disabled=true;btn.textContent='Checking...';
+  try{
+    const resp=await fetch(WORKER_URL+'/leaderboard/debug-player',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({name,mode:currentMode})});
+    const r=await resp.json();if(r.error)throw new Error(r.error);
+
+    const cur=r.currentLeaderboardEntry;
+    let html=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:0.75rem;font-size:13px;line-height:1.7">`;
+    html+=`<strong>${cur?cur.displayName:r.searchedName}</strong> (key: ${r.normalizedKey})<br>`;
+    if(cur){
+      html+=`Current leaderboard: ${cur.seriesPlayed} series played &middot; ${cur.flagCaps} caps / <strong>${cur.capsSeriesCount} caps-series</strong> &middot; ${cur.hillSecs}s hill / <strong>${cur.hillSeriesCount} hill-series</strong> &middot; ${cur.ballSecs}s ball / <strong>${cur.ballSeriesCount} ball-series</strong><br>`;
+    }else{
+      html+=`<span style="color:var(--red)">No leaderboard entry found for this exact name/key.</span><br>`;
+    }
+    html+=`Found in ${r.squadListMatchCount} History entries for ${r.mode} (${r.removedSeriesInvolvingPlayer} removed, excluded) &middot; ${r.objSeriesAmongMatches} of those contained an OBJ gametype<br>`;
+    html+=`<span style="color:${r.objSeriesSuccessfullyCounted===r.objSeriesAmongMatches?'var(--green)':'var(--gold)'}">${r.objSeriesSuccessfullyCounted} / ${r.objSeriesAmongMatches} OBJ series were successfully counted</span>`;
+    if(r.missingReportCount)html+=` &middot; ${r.missingReportCount} report(s) expired/missing`;
+    html+=`</div>`;
+
+    if(r.mismatches && r.mismatches.length){
+      html+=`<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Series that were missed or double-counted:</div>`;
+      html+=r.mismatches.map(m=>{
+        const dateStr=fmtDateTime(m.playedAt);
+        if(m.type==='no_match_in_report_data'){
+          return `<div style="background:rgba(255,85,85,0.08);border:1px solid rgba(255,85,85,0.25);border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:12px;">
+            <strong style="color:var(--red)">Missed</strong> — ${dateStr} &middot; ${m.gameTypes.join(', ')}<br>
+            Raw names found in this report's game data: ${m.allRawNamesInReport.map(n=>`<code>${n}</code>`).join(', ')}<br>
+            <span style="color:var(--muted)">None of these normalize to match "${r.normalizedKey}" — likely an OCR misread in this specific report.</span>
+          </div>`;
+        }else{
+          return `<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:12px;">
+            <strong style="color:var(--gold)">Double-counted</strong> — ${dateStr} &middot; ${m.gameTypes.join(', ')}<br>
+            Matching name fragments in this report: ${m.rawNameFragmentsFound.map(n=>`<code>${n}</code>`).join(', ')}<br>
+            <span style="color:var(--muted)">This player appeared spelled differently between games in the same series.</span>
+          </div>`;
+        }
+      }).join('');
+    }else if(r.objSeriesAmongMatches>0){
+      html+=`<div style="font-size:13px;color:var(--green);padding:0.5rem 0">✓ No mismatches found — every OBJ series for this player counted correctly.</div>`;
+    }
+
+    resultsEl.innerHTML=html;
+  }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
+  btn.disabled=false;btn.textContent='Debug';
+}
+
 async function loadSnapshots(){
   const listEl=document.getElementById('snapshotList');
   listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading snapshots...</div>';
@@ -921,6 +984,7 @@ async function doDelete(key,displayName){
 
 document.getElementById('tiedField').style.display='none';
 document.getElementById('awardsBackfillSection').style.display='';
+document.getElementById('debugPlayerSection').style.display='';
 
 load();
 </script>

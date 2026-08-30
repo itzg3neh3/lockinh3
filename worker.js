@@ -889,6 +889,116 @@ export default {
       }
     }
 
+    // ── POST /leaderboard/debug-player ───────────────────────────────────
+    // Read-only diagnostic: for a given player, walks every History entry for
+    // that mode and shows exactly which series matched them at the squad-list
+    // level vs. which ones actually got counted toward hillSeriesCount /
+    // ballSeriesCount / capsSeriesCount — and why any gap exists. Built to
+    // debug reports of implausibly low OBJ-rate denominators for specific
+    // players without having to guess blind.
+    if (request.method === 'POST' && url.pathname === '/leaderboard/debug-player') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { name, mode } = await request.json();
+        if (!name) throw new Error('name required');
+        const resolvedMode = mode === '2v2' ? '2v2' : '4v4';
+        const pk = normalizeName(name);
+
+        const lbRaw = await env.REPORTS.get(lbKey(resolvedMode));
+        const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
+        const currentEntry = leaderboard[pk] || null;
+
+        const list = await listAllKeys(env, 'history:');
+        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const entries = [];
+        list.forEach((k, idx) => {
+          const raw = rawResults[idx];
+          if (!raw) return;
+          try {
+            const entry = JSON.parse(raw);
+            if ((entry.mode || '4v4') !== resolvedMode) return;
+            entries.push({ ...entry, histKey: k.name });
+          } catch (e) {}
+        });
+
+        let removedCount = 0;
+        const squadListMatches = entries.filter(e => {
+          if (e.removedFromLeaderboard) { removedCount++; return false; }
+          const allNames = [...(e.squad1 || []), ...(e.squad2 || [])];
+          return allNames.some(n => normalizeName(n) === pk);
+        });
+
+        const reportRaws = await Promise.all(squadListMatches.map(e => env.REPORTS.get(e.reportId)));
+
+        let objSeriesCount = 0, matchedObjSeriesCount = 0, missingReportCount = 0;
+        const mismatches = [];
+
+        squadListMatches.forEach((e, idx) => {
+          const reportRaw = reportRaws[idx];
+          if (!reportRaw) { missingReportCount++; return; }
+          let games;
+          try { games = JSON.parse(reportRaw); } catch (err) { return; }
+          if (!Array.isArray(games) || !games.length) return;
+
+          const hasHillGame = games.some(g => isKOTHW(g.gameType));
+          const hasBallGame = games.some(g => isOddballW(g.gameType));
+          const hasCapsGame = games.some(g => isCTFW(g.gameType));
+          if (!hasHillGame && !hasBallGame && !hasCapsGame) return;
+          objSeriesCount++;
+
+          const { squad1, squad2 } = buildSquadsW(games);
+          const seriesPlayers = aggregatePlayersW(games, squad1, squad2);
+          const rawNamesFound = seriesPlayers.map(p => p.name);
+          const matchedFragments = rawNamesFound.filter(n => normalizeName(n) === pk);
+
+          if (matchedFragments.length > 0) {
+            matchedObjSeriesCount++;
+            if (matchedFragments.length > 1) {
+              mismatches.push({
+                type: 'duplicate_fragments_same_series',
+                histKey: e.histKey, playedAt: e.playedAt, reportId: e.reportId,
+                gameTypes: games.map(g => g.gameType),
+                rawNameFragmentsFound: matchedFragments,
+                note: 'This player appeared as multiple differently-spelled name variants within the SAME series\' game data, which would inflate their count for this one series rather than deflate it.'
+              });
+            }
+          } else {
+            mismatches.push({
+              type: 'no_match_in_report_data',
+              histKey: e.histKey, playedAt: e.playedAt, reportId: e.reportId,
+              gameTypes: games.map(g => g.gameType),
+              allRawNamesInReport: rawNamesFound,
+              note: 'This player was found in the History entry\'s squad list, but none of the raw per-game names in the underlying report data normalize to match them — likely an OCR spelling inconsistency in this specific report.'
+            });
+          }
+        });
+
+        return jsonResponse({
+          mode: resolvedMode,
+          searchedName: name,
+          normalizedKey: pk,
+          currentLeaderboardEntry: currentEntry ? {
+            displayName: currentEntry.displayName,
+            seriesPlayed: currentEntry.seriesPlayed,
+            flagCaps: currentEntry.flagCaps, hillSecs: currentEntry.hillSecs, ballSecs: currentEntry.ballSecs,
+            capsSeriesCount: currentEntry.capsSeriesCount || 0,
+            hillSeriesCount: currentEntry.hillSeriesCount || 0,
+            ballSeriesCount: currentEntry.ballSeriesCount || 0,
+          } : null,
+          totalHistoryEntriesForMode: entries.length,
+          removedSeriesInvolvingPlayer: removedCount,
+          squadListMatchCount: squadListMatches.length,
+          objSeriesAmongMatches: objSeriesCount,
+          objSeriesSuccessfullyCounted: matchedObjSeriesCount,
+          objSeriesMissedOrDuplicated: mismatches.length,
+          missingReportCount,
+          mismatches,
+        }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
     // ── GET /history ─────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history') {
       try {
