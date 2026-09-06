@@ -170,10 +170,13 @@ function renderBoButtons() {
 function renderPoolNote() {
   const note = document.getElementById('poolNote');
   if (currentMode === '4v4') {
-    const repeatWarning = currentBo >= 9
-      ? ' At this length, some maps and one Oddball/KOTH slot will need to repeat since the pool is limited.'
+    const repeatWarning = currentBo >= 7
+      ? ' At this length, some CTF/Slayer maps will need to repeat since the pool is limited.'
       : '';
-    note.textContent = `Follows a repeating CTF → Slayer → Oddball/KOTH pattern (that 3rd slot alternates between Oddball and KOTH each time it comes back around).${repeatWarning}`;
+    const secondObjNote = currentBo >= 9
+      ? ' Best of 9 gets a second objective game partway through (game 6) so both Oddball and KOTH get used.'
+      : '';
+    note.textContent = `Opens CTF → Slayer → one objective game (Oddball or KOTH), then alternates CTF/Slayer the rest of the way.${secondObjNote}${repeatWarning}`;
   } else {
     const poolSize = TWO_V_TWO_MAPS.length;
     if (currentBo > poolSize) {
@@ -233,14 +236,19 @@ function entriesToResult(entries) {
   });
 }
 
-// 4v4 series follows a repeating 3-game cycle: CTF, then Slayer, then Oddball-or-KOTH —
-// and repeats that pattern for as many games as the series needs. The Oddball/KOTH slot
-// alternates between the two each time it comes back around (so game 3 might be Oddball
-// and game 6 would then be KOTH, or vice versa). Each CTF/Slayer slot picks a map that
-// hasn't been used yet in the series where possible, and never repeats the map that was
-// just played in the previous game. Additionally, every Slayer game must use a map from
-// the opposite weapon-loadout group of the CTF game that preceded it, so a series never
-// runs two BR-only maps (or two sniper/rockets maps) back-to-back.
+// 4v4 series starts CTF, then Slayer, then hits a time-based objective game (Oddball or
+// KOTH) at game 3 — same as before. From there, every series just keeps alternating
+// CTF/Slayer for the rest of its games, EXCEPT Best of 9, which gets one more objective
+// slot partway through (game 6) so both Oddball and KOTH get used across a longer series.
+// Best of 3/5/7 only ever get that single objective game at game 3 — a Bo7 no longer
+// forces a second time-based game in, so its back half (games 4-7) is just a normal
+// CTF → Slayer → CTF → Slayer continuation. The Oddball/KOTH slot alternates between the
+// two if there happen to be two of them in a series (so game 3 might be Oddball and game
+// 6 would then be KOTH, or vice versa). Each CTF/Slayer slot picks a map that hasn't been
+// used yet in the series where possible, and never repeats the map that was just played
+// in the previous game. Additionally, every Slayer game must use a map from the opposite
+// weapon-loadout group of the CTF game that preceded it, so a series never runs two
+// BR-only maps (or two sniper/rockets maps) back-to-back.
 const BR_ONLY_MAPS = new Set(['Onslaught', 'Heretic', 'Amp']);
 const POWER_WEAPON_MAPS = new Set(['Narrows', 'Pit']);
 
@@ -258,22 +266,36 @@ function build4v4Series(count) {
   const construct = FOUR_V_FOUR_MAPS.find(m => m.name === 'Construct');
   const objTypeOrder = shuffle(['Oddball', 'KOTH']);
 
+  // Objective slots land at game 3, and again at game 6 for Best of 9 only — everything
+  // shorter caps out at that first one. (Walking in steps of 3 and stopping once the cap
+  // is hit is just a compact way to say "game 3, then game 6 if we need a second one.")
+  const maxObjSlots = count >= 9 ? 2 : 1;
+  const objSlotIndices = new Set();
+  for (let i = 2; i < count && objSlotIndices.size < maxObjSlots; i += 3) objSlotIndices.add(i);
+
   const usedNames = new Set();
   const entries = [];
   let objOccurrence = 0;
+  let nextNonObjType = 'CTF'; // Alternates CTF/Slayer across every non-objective slot, independent of where the objective slot(s) fall.
 
   for (let i = 0; i < count; i++) {
-    const category = i % 3;
     const prevMapName = entries.length ? entries[entries.length - 1].map.name : null;
 
-    if (category === 0) {
+    if (objSlotIndices.has(i)) {
+      const gametype = objTypeOrder[objOccurrence % 2];
+      const map = gametype === 'Oddball' ? guardian : construct;
+      entries.push({ map, gametype });
+      usedNames.add(map.name);
+      objOccurrence++;
+    } else if (nextNonObjType === 'CTF') {
       const map = pickMapForCategory(ctfPool, usedNames, prevMapName);
       entries.push({ map, gametype: 'CTF' });
       usedNames.add(map.name);
-    } else if (category === 1) {
+      nextNonObjType = 'Slayer';
+    } else {
       // The Slayer map must come from the opposite weapon-loadout group of the CTF
       // map that just came before it (prevMapName is always that CTF map here, since
-      // Slayer only ever follows CTF in this cycle).
+      // Slayer only ever follows CTF in this alternation).
       let slayerCandidates = slayerPool;
       if (prevMapName && BR_ONLY_MAPS.has(prevMapName)) {
         slayerCandidates = slayerPool.filter(m => POWER_WEAPON_MAPS.has(m.name));
@@ -284,12 +306,7 @@ function build4v4Series(count) {
       const map = pickMapForCategory(slayerCandidates, usedNames, prevMapName);
       entries.push({ map, gametype: 'Slayer' });
       usedNames.add(map.name);
-    } else {
-      const gametype = objTypeOrder[objOccurrence % 2];
-      const map = gametype === 'Oddball' ? guardian : construct;
-      entries.push({ map, gametype });
-      usedNames.add(map.name);
-      objOccurrence++;
+      nextNonObjType = 'CTF';
     }
   }
 
