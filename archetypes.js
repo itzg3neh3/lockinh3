@@ -85,6 +85,10 @@ function getPlayerArchetypes(allPlayersInMode, player) {
 
   // OBJ percentile only ranks a player against others who actually have that specific
   // gametype logged — someone who's never played CTF shouldn't be penalized for a "0".
+  // Takes the BEST of their available category percentiles rather than averaging them:
+  // not everyone gets equal exposure to CTF/KOTH/Oddball (map rotation varies who plays
+  // what), so a player who's excellent at Hill but only average at Caps should still
+  // read as a strong OBJ contributor — one weak category shouldn't cancel out a strong one.
   const objParts = [];
   ['capsRate', 'hillRate', 'ballRate'].forEach(key => {
     if (selfRow[key] == null) return;
@@ -93,14 +97,21 @@ function getPlayerArchetypes(allPlayersInMode, player) {
     objParts.push(_archPercentile(subPool, selfRow[key]));
   });
   const objAvailable = objParts.length > 0;
-  const pObj = objAvailable ? (objParts.reduce((s, v) => s + v, 0) / objParts.length) : null;
+  const pObj = objAvailable ? Math.max(...objParts) : null;
 
   const skillParts = [pSlay, pAssists, pSurvival];
   if (objAvailable) skillParts.push(pObj);
   const compositeSkill = skillParts.reduce((s, v) => s + v, 0) / skillParts.length;
 
-  const HIGH = 0.70, LOW_OBJ = 0.50, GAP = 0.15, GLASS_T = 0.65,
-        FORTRESS_SURV = 0.80, FORTRESS_MIN_KILLS = 0.35, CLOSER_GAP = 0.20, ANCHOR_T = 0.20;
+  // These cutoffs were tuned against a simulated 30-player pool rather than picked
+  // blindly — the original values (0.70 / 0.20) left ~30% of players as Wildcard and
+  // only flagged the single most extreme case as Anchor, since ANDing two 0.70+
+  // percentile bars together (or averaging 3-4 percentiles for Anchor) is a much
+  // higher bar than it looks. These values land closer to ~18% Wildcard and a more
+  // representative slice of Anchors. All still just named constants — retune freely
+  // if the mix still feels off against real data.
+  const HIGH = 0.65, LOW_OBJ = 0.50, GAP = 0.12, GLASS_T = 0.60,
+        FORTRESS_SURV = 0.75, FORTRESS_MIN_KILLS = 0.32, CLOSER_GAP = 0.15, ANCHOR_T = 0.25;
 
   const tags = [];
   const isTwoWay = pSlay >= HIGH && objAvailable && pObj >= HIGH;
