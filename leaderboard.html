@@ -58,6 +58,20 @@
   .ey-gold { color: var(--gold); } .ey-red { color: var(--red); } .ey-blue { color: var(--accent); } .ey-green { color: var(--green); } .ey-purple { color: var(--s1); } .ey-orange { color: var(--s2); }
   .callout-name { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
   .callout-stat { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .search-wrap { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 9px 14px; margin-bottom: 1.25rem; transition: border-color 0.15s; }
+  .search-wrap:focus-within { border-color: var(--accent); }
+  .search-icon { color: var(--muted); flex-shrink: 0; }
+  .search-input { flex: 1; min-width: 0; background: none; border: none; outline: none; color: var(--text); font-family: 'Barlow', sans-serif; font-size: 14px; }
+  .search-input::placeholder { color: var(--muted); }
+  .search-count { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+  .search-count.has-matches { color: var(--accent); }
+  .search-count.no-matches { color: var(--red); }
+  .search-clear { display: none; background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; transition: color 0.15s; }
+  .search-clear:hover { color: var(--red); }
+  .search-clear.visible { display: block; }
+  tbody tr.row-match td { background: rgba(74,158,255,0.1); }
+  tbody tr.row-match .player-cell { color: var(--accent); }
+  tbody tr.row-match-active td { background: rgba(74,158,255,0.2); }
   .sort-wrap { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
   .sort-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border2); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
   .sort-btn:hover { color: var(--text); }
@@ -187,6 +201,13 @@
     <button class="mode-tab active-4v4" id="tab4v4" onclick="switchMode('4v4')">4v4</button>
     <button class="mode-tab" id="tab2v2" onclick="switchMode('2v2')">2v2</button>
     <button class="mode-tab" id="tab1v1" onclick="switchMode('1v1')">1v1</button>
+  </div>
+
+  <div class="search-wrap">
+    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="playerSearchInput" class="search-input" placeholder="Search for a player..." autocomplete="off">
+    <span class="search-count" id="playerSearchCount"></span>
+    <button class="search-clear" id="playerSearchClear" title="Clear search">×</button>
   </div>
 
   <div id="content"><div class="loading">Loading leaderboard...</div></div>
@@ -739,7 +760,7 @@ function render(){
     const recordCell=is1v1
       ?`${p.seriesWon}W &nbsp;<span class="tie-count">${tied}T</span>&nbsp; <span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`
       :`${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`;
-    html+=`<tr>
+    html+=`<tr data-player="${String(p.displayName).toLowerCase().replace(/"/g,'&quot;')}">
       <td class="rank-cell ${rankClass}">${rank}</td>
       <td class="player-cell"><a href="player.html?p=${encodeURIComponent(p.displayName)}" class="player-link">${p.displayName}</a></td>
       <td>${recordCell}</td>
@@ -755,9 +776,57 @@ function render(){
   });
   html+=`</tbody></table></div>`;
   document.getElementById('content').innerHTML=html;
+  applySearchHighlight(false);
 }
 
 function setSort(col){currentSort=col;render();}
+
+// Player search: highlights every row-name match live as the user types (works
+// against whichever mode/sort is currently rendered), auto-jumps to the first
+// match, and Enter cycles through the rest if there's more than one. Since
+// render() fully rebuilds #content on every sort click and mode switch, this
+// gets re-applied at the end of render() so a search stays active across both.
+let searchMatchIndex=0;
+function applySearchHighlight(jumpToFirst){
+  const input=document.getElementById('playerSearchInput');
+  const countEl=document.getElementById('playerSearchCount');
+  const clearBtn=document.getElementById('playerSearchClear');
+  if(!input)return;
+  const q=input.value.trim().toLowerCase();
+  clearBtn.classList.toggle('visible',q.length>0);
+  const rows=[...document.querySelectorAll('#content tbody tr')];
+  rows.forEach(r=>r.classList.remove('row-match','row-match-active'));
+  if(!q){countEl.textContent='';countEl.className='search-count';return;}
+  const matches=rows.filter(r=>(r.dataset.player||'').includes(q));
+  matches.forEach(r=>r.classList.add('row-match'));
+  countEl.textContent=matches.length?`${matches.length} match${matches.length>1?'es':''}`:'No matches';
+  countEl.className='search-count '+(matches.length?'has-matches':'no-matches');
+  if(matches.length){
+    if(jumpToFirst)searchMatchIndex=0;
+    const active=matches[searchMatchIndex]||matches[0];
+    active.classList.add('row-match-active');
+    if(jumpToFirst)active.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+}
+document.getElementById('playerSearchInput').addEventListener('input',()=>{searchMatchIndex=0;applySearchHighlight(true);});
+document.getElementById('playerSearchInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    e.preventDefault();
+    const matches=[...document.querySelectorAll('#content tbody tr.row-match')];
+    if(!matches.length)return;
+    searchMatchIndex=(searchMatchIndex+1)%matches.length;
+    matches.forEach(r=>r.classList.remove('row-match-active'));
+    matches[searchMatchIndex].classList.add('row-match-active');
+    matches[searchMatchIndex].scrollIntoView({behavior:'smooth',block:'center'});
+  }else if(e.key==='Escape'){
+    input_clearSearch();
+  }
+});
+document.getElementById('playerSearchClear').addEventListener('click',input_clearSearch);
+function input_clearSearch(){
+  const input=document.getElementById('playerSearchInput');
+  input.value='';searchMatchIndex=0;applySearchHighlight(false);input.focus();
+}
 function toggleAdmin(){document.getElementById('adminPanel').classList.toggle('visible');}
 
 async function checkPassword(){
