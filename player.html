@@ -62,6 +62,26 @@
   .win-rate-bar { height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }
   .win-rate-fill { height: 100%; border-radius: 99px; background: var(--green); transition: width 0.6s ease; }
   .win-rate-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  /* Playstyle / archetype bio */
+  .arch-badge { display: inline-flex; align-items: center; gap: 4px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; white-space: nowrap; cursor: help; }
+  .arch-purple { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
+  .arch-gold   { background: rgba(245,158,11,0.12); color: var(--gold); border: 1px solid rgba(245,158,11,0.3); }
+  .arch-green  { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+  .arch-blue   { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(74,158,255,0.3); }
+  .arch-orange { background: var(--s2-dim); color: var(--s2); border: 1px solid var(--s2-border); }
+  .arch-teal   { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+  .arch-red    { background: var(--red-dim); color: var(--red); border: 1px solid var(--red-border); }
+  .arch-muted  { background: rgba(107,114,128,0.12); color: var(--muted); border: 1px solid rgba(107,114,128,0.3); }
+  .arch-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; }
+  .arch-badges-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.9rem; }
+  .arch-desc-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
+  .arch-desc-row { font-size: 13px; color: var(--muted); }
+  .arch-desc-row strong { color: var(--text); }
+  .arch-sw-row { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 13px; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+  .arch-sw-label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .arch-sw-strength { color: var(--green); }
+  .arch-sw-weakness { color: var(--red); }
+  .arch-no-data { font-size: 13px; color: var(--muted); }
   /* Section title */
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
@@ -140,6 +160,7 @@
   <div id="content"><div class="loading"><span class="spinner"></span>Loading profile...</div></div>
 </div>
 
+<script src="archetypes.js"></script>
 <script>
 const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
 
@@ -162,6 +183,12 @@ let showAllSeries = false;
 let showAllOpponents = false;
 const SERIES_LIMIT = 8;
 const OPP_LIMIT = 8;
+// Playstyle archetypes need to rank this player against everyone else in the same
+// mode, which the /player response alone doesn't include — so both mode leaderboards
+// are fetched once here, alongside the player's own data, and reused for whichever
+// tab is active. If either fetch fails, archetypes are just skipped for that mode
+// rather than breaking the rest of the profile page.
+let archetypePools = { '4v4': null, '2v2': null };
 
 async function load() {
   const params = new URLSearchParams(window.location.search);
@@ -174,8 +201,17 @@ async function load() {
   // Update page title
   document.title = `Lock in H3 — ${playerName}`;
 
+  const loadPool = (mode) => fetch(`${WORKER_URL}/leaderboard?mode=${mode}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(raw => { archetypePools[mode] = raw ? Object.values(raw) : []; })
+    .catch(() => { archetypePools[mode] = []; });
+
   try {
-    const resp = await fetch(`${WORKER_URL}/player?name=${encodeURIComponent(playerName)}`);
+    const [resp] = await Promise.all([
+      fetch(`${WORKER_URL}/player?name=${encodeURIComponent(playerName)}`),
+      loadPool('4v4'),
+      loadPool('2v2')
+    ]);
     if (resp.status === 404) {
       document.getElementById('content').innerHTML = `<div class="not-found"><h2>Player not found</h2><p>"${playerName}" doesn't exist in the leaderboard yet.</p></div>`;
       return;
@@ -197,6 +233,45 @@ function setMode(mode) {
   currentMode = mode;
   showAllSeries = false;
   render();
+}
+
+// Builds the "Playstyle" bio block: badges for every archetype this player currently
+// qualifies for (there can be more than one, or none yet), plus a couple of
+// stat-backed strength/potential-focus-area lines. Everything here is recomputed live
+// from the current pool, so it's expected to shift over time — see archetypes.js.
+const SECTION_TITLE_ARCH = `<div class="section-title">Playstyle</div>`;
+function renderArchetypeSection(displayName, mode) {
+  const pool = archetypePools[mode];
+  if (!pool || !pool.length) {
+    return `${SECTION_TITLE_ARCH}<div class="arch-wrap"><div class="arch-no-data">Couldn't load pool data to determine playstyle right now.</div></div>`;
+  }
+  const selfEntry = pool.find(p => (p.displayName || '').toLowerCase() === displayName.toLowerCase());
+  const result = selfEntry ? getPlayerArchetypes(pool, selfEntry) : null;
+
+  if (!result) {
+    return `${SECTION_TITLE_ARCH}<div class="arch-wrap"><div class="arch-no-data">Not enough ${mode} series yet to determine a playstyle — needs ${ARCHETYPE_MIN_SERIES}+ series played.</div></div>`;
+  }
+
+  const badgesHtml = result.tags.map(t => archetypeBadgeHtml(t)).join('');
+  const descListHtml = result.tags.map(t => {
+    const d = ARCHETYPE_DEFS[t];
+    return `<div class="arch-desc-row"><strong>${d.emoji} ${d.name}:</strong> ${d.desc}</div>`;
+  }).join('');
+
+  const { strengths, weaknesses } = getStrengthsAndWeaknesses(result.percentiles);
+  let swHtml = '';
+  if (strengths.length || weaknesses.length) {
+    swHtml = `<div class="arch-sw-row">
+      ${strengths.length ? `<div><div class="arch-sw-label">Strengths</div><div class="arch-sw-strength">${strengths.join(', ')}</div></div>` : ''}
+      ${weaknesses.length ? `<div><div class="arch-sw-label">Potential Focus Area</div><div class="arch-sw-weakness">${weaknesses.join(', ')}</div></div>` : ''}
+    </div>`;
+  }
+
+  return `${SECTION_TITLE_ARCH}<div class="arch-wrap">
+    <div class="arch-badges-row">${badgesHtml}</div>
+    <div class="arch-desc-list">${descListHtml}</div>
+    ${swHtml}
+  </div>`;
 }
 
 function render() {
@@ -284,6 +359,9 @@ function render() {
       <div class="win-rate-bar"><div class="win-rate-fill" style="width:${winPct}%"></div></div>
       <div class="win-rate-labels"><span>${won}W</span><span>${played} Series</span><span>${lost}L</span></div>
     </div>`;
+
+    // Playstyle / archetype bio
+    html += renderArchetypeSection(displayName, currentMode);
 
     // Stats grid
     html += `<div class="section-title">Combat Stats</div>
