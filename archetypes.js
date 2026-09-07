@@ -12,16 +12,26 @@
 // player.html — everything here is just plain globals, no build step or exports.
 
 const ARCHETYPE_MIN_SERIES = 5;      // same MIN_SERIES bar used for leaderboard sorting
-const ARCHETYPE_OBJ_MIN_SAMPLE = 3;  // same OBJ_MIN_SAMPLE bar used for Caps/S, Hill/S, Ball/S
+const ARCHETYPE_OBJ_MIN_SAMPLE = 8;  // higher than the leaderboard's own OBJ_MIN_SAMPLE (3) —
+                                       // archetypes take the BEST of a player's 3 OBJ categories,
+                                       // so a small sample in just one category can swing the whole
+                                       // tag off variance alone. A higher bar here (this constant is
+                                       // only used for archetype math, the leaderboard display's own
+                                       // 3-series bar is untouched) keeps that from happening.
 
 const ARCHETYPE_DEFS = {
   twoWay:      { name: 'Two-Way Star',   emoji: '🏅', color: 'purple', desc: 'Elite at both slaying and the objective — no real hole in their game.' },
   slayer:      { name: 'Slayer',         emoji: '⭐', color: 'gold',   desc: 'Racks up frags well above the pool average; objective time takes a backseat.' },
-  objSpec:     { name: 'OBJ Specialist', emoji: '🎯', color: 'green',  desc: 'Wins games on the objective — caps, hill time, or ball time stand out.' },
+  flagRunner:  { name: 'Flag Runner',    emoji: '🚩', color: 'green',  desc: 'Elite at capturing the flag — among the best Caps/Series rates in the pool.' },
+  hillHolder:  { name: 'Hill Holder',    emoji: '⛰️', color: 'green',  desc: 'Elite at holding the hill — among the best Hill/Series times in the pool.' },
+  ballCarrier: { name: 'Ball Carrier',   emoji: '🏈', color: 'green',  desc: 'Elite at carrying the ball — among the best Ball/Series times in the pool.' },
   playmaker:   { name: 'Playmaker',      emoji: '🤝', color: 'blue',   desc: 'Sets teammates up more than they finish plays themselves.' },
+  lonewolf:    { name: 'Lone Wolf',      emoji: '🐺', color: 'pink',   desc: 'Finishes plays more than they set teammates up — a self-sufficient, individual style.' },
   glassCannon: { name: 'Glass Cannon',   emoji: '💥', color: 'orange', desc: 'Feast or famine — gets frags in bunches, but dies plenty doing it.' },
+  feeder:      { name: 'Feeder',         emoji: '☠️', color: 'red',    desc: "Dies well above the pool average without the kills to show for it." },
   fortress:    { name: 'Fortress',       emoji: '🛡️', color: 'teal',   desc: 'Rarely dies — the steady, hard-to-kill piece of the squad.' },
   closer:      { name: 'Closer',         emoji: '🏆', color: 'green',  desc: 'Just gets it done — their win rate outpaces what their raw numbers suggest.' },
+  bigGameHunter:{ name: 'Big Game Hunter', emoji: '🎖️', color: 'gold', desc: 'Wins Series MVP, Top Fragger, Assist King, or OBJ MVP at an unusually high rate.' },
   anchor:      { name: 'Anchor',         emoji: '⚓', color: 'red',    desc: 'Currently trending below the pool on most stats — plenty of room to climb.' },
   wildcard:    { name: 'Wildcard',       emoji: '🎲', color: 'muted',  desc: "No standout trait yet — a jack-of-all-trades, or just needs more series to read." }
 };
@@ -52,6 +62,10 @@ function _archBuildPool(players) {
         deathsPS: deaths / played,
         kdRatio: deaths > 0 ? kills / deaths : kills,
         winPct: (p.seriesWon || 0) / played,
+        // Sum of every "won this specific series" award — MVP/OBJ MVP are 4v4-only in
+        // practice (always 0 elsewhere), Top Fragger/Assist King apply to 4v4 and 2v2.
+        // Either way this only ever adds real signal, never subtracts any.
+        awardRate: ((p.seriesMVPCount || 0) + (p.topFraggerCount || 0) + (p.assistKingCount || 0) + (p.objMVPCount || 0)) / played,
         capsRate: (p.capsSeriesCount || 0) >= ARCHETYPE_OBJ_MIN_SAMPLE ? (p.flagCaps || 0) / p.capsSeriesCount : null,
         hillRate: (p.hillSeriesCount || 0) >= ARCHETYPE_OBJ_MIN_SAMPLE ? (p.hillSecs || 0) / p.hillSeriesCount : null,
         ballRate: (p.ballSeriesCount || 0) >= ARCHETYPE_OBJ_MIN_SAMPLE ? (p.ballSecs || 0) / p.ballSeriesCount : null
@@ -89,15 +103,18 @@ function getPlayerArchetypes(allPlayersInMode, player) {
   // not everyone gets equal exposure to CTF/KOTH/Oddball (map rotation varies who plays
   // what), so a player who's excellent at Hill but only average at Caps should still
   // read as a strong OBJ contributor — one weak category shouldn't cancel out a strong one.
-  const objParts = [];
+  // Keeps each category's own percentile too (not just the max) so a player can be
+  // tagged for every specific gametype they're elite at, not just their single best.
+  const objCategoryPcts = {}; // e.g. { capsRate: 0.83, hillRate: 0.41 }
   ['capsRate', 'hillRate', 'ballRate'].forEach(key => {
     if (selfRow[key] == null) return;
     const subPool = poolRows.filter(r => r[key] != null).map(r => r[key]);
     if (subPool.length < 4) return; // not enough of the pool has this gametype logged to rank fairly
-    objParts.push(_archPercentile(subPool, selfRow[key]));
+    objCategoryPcts[key] = _archPercentile(subPool, selfRow[key]);
   });
-  const objAvailable = objParts.length > 0;
-  const pObj = objAvailable ? Math.max(...objParts) : null;
+  const objAvailable = Object.keys(objCategoryPcts).length > 0;
+  const pObj = objAvailable ? Math.max(...Object.values(objCategoryPcts)) : null;
+  const pAward = pctOf('awardRate');
 
   const skillParts = [pSlay, pAssists, pSurvival];
   if (objAvailable) skillParts.push(pObj);
@@ -110,32 +127,57 @@ function getPlayerArchetypes(allPlayersInMode, player) {
   // higher bar than it looks. These values land closer to ~18% Wildcard and a more
   // representative slice of Anchors. All still just named constants — retune freely
   // if the mix still feels off against real data.
-  const HIGH = 0.65, LOW_OBJ = 0.50, GAP = 0.12, GLASS_T = 0.60,
-        FORTRESS_SURV = 0.75, FORTRESS_MIN_KILLS = 0.32, CLOSER_GAP = 0.15, ANCHOR_T = 0.25;
+  const HIGH = 0.65, GAP = 0.12, GLASS_T = 0.60,
+        FORTRESS_SURV = 0.75, FORTRESS_MIN_KILLS = 0.32, CLOSER_GAP = 0.15, ANCHOR_T = 0.25,
+        FEEDER_DEATH_T = 0.65, FEEDER_KILL_CAP = 0.45, BIGGAME_T = 0.80;
 
   const tags = [];
   const isTwoWay = pSlay >= HIGH && objAvailable && pObj >= HIGH;
   if (isTwoWay) tags.push('twoWay');
-  if (!isTwoWay && pSlay >= HIGH && (!objAvailable || pObj < LOW_OBJ)) tags.push('slayer');
-  if (!isTwoWay && objAvailable && pObj >= HIGH && pSlay < LOW_OBJ) tags.push('objSpec');
+  // Slayer only requires clearing its own bar and NOT already being Two-Way Star
+  // (which already implies excellence at both, so it stands alone rather than
+  // stacking) — Slayer's own description explicitly says OBJ "takes a backseat",
+  // which would contradict also being tagged Two-Way Star.
+  if (!isTwoWay && pSlay >= HIGH) tags.push('slayer');
+  // Each OBJ category is checked independently rather than picking just the best
+  // one — a player elite at both Hill and Ball gets both tags, not a forced choice.
+  // These don't claim anything about the player's OTHER stats, so they're not
+  // gated behind !isTwoWay the way Slayer is — an elite two-way player can still
+  // usefully be flagged as specifically a Flag Runner on top of that.
+  const OBJ_TAG_BY_KEY = { capsRate: 'flagRunner', hillRate: 'hillHolder', ballRate: 'ballCarrier' };
+  Object.keys(objCategoryPcts).forEach(key => {
+    if (objCategoryPcts[key] >= HIGH) tags.push(OBJ_TAG_BY_KEY[key]);
+  });
   if (pAssists >= HIGH && (pAssists - pSlay) >= GAP) tags.push('playmaker');
+  // Lone Wolf is Playmaker's mirror — elite slaying with assists lagging notably
+  // behind. The opposite-sign gap requirement means these two can never both fire.
+  if (pSlay >= HIGH && (pSlay - pAssists) >= GAP) tags.push('lonewolf');
   if (pKills >= GLASS_T && pDeaths >= GLASS_T) tags.push('glassCannon');
+  // Feeder requires kills to stay clearly below Glass Cannon's own bar (0.60), so
+  // the two are mutually exclusive — Feeder is specifically "dying a lot WITHOUT
+  // the kills to show for it", not the aggressive-but-productive Glass Cannon read.
+  if (pDeaths >= FEEDER_DEATH_T && pKills < FEEDER_KILL_CAP) tags.push('feeder');
   if (pSurvival >= FORTRESS_SURV && pKills >= FORTRESS_MIN_KILLS) tags.push('fortress');
   if ((pWin - compositeSkill) >= CLOSER_GAP) tags.push('closer');
+  // Big Game Hunter taps completely different data than everything else here — actual
+  // in-series award wins (MVP/Top Fragger/Assist King/OBJ MVP) rather than season-long
+  // stat averages, so it can flag a "shows up big" player independent of their overall
+  // percentile elsewhere.
+  if (pAward >= BIGGAME_T) tags.push('bigGameHunter');
   if (compositeSkill <= ANCHOR_T) tags.push('anchor');
   if (tags.length === 0) tags.push('wildcard');
 
   return {
     tags,
     compositeSkill,
-    percentiles: { pKills, pAssists, pDeaths, pSurvival, pKD, pWin, pSlay, pObj }
+    percentiles: { pKills, pAssists, pDeaths, pSurvival, pKD, pWin, pSlay, pObj, pAward }
   };
 }
 
 // Order to show tags in when space is limited (leaderboard row) — leads with the
 // more distinctive/flattering tags, since a player's full set still shows on their
 // profile page regardless of what gets cut here.
-const ARCHETYPE_ROW_PRIORITY = ['twoWay', 'closer', 'objSpec', 'slayer', 'playmaker', 'glassCannon', 'fortress', 'anchor', 'wildcard'];
+const ARCHETYPE_ROW_PRIORITY = ['twoWay', 'bigGameHunter', 'closer', 'flagRunner', 'hillHolder', 'ballCarrier', 'slayer', 'playmaker', 'lonewolf', 'glassCannon', 'fortress', 'feeder', 'anchor', 'wildcard'];
 
 function archetypeBadgeHtml(key, extraClass) {
   const d = ARCHETYPE_DEFS[key];
@@ -157,7 +199,7 @@ function archetypeLegendHtml() {
 // strength / potential-focus-area lines for a player's bio. Only calls out a category
 // when it's clearly above or below the pack — otherwise it's left out rather than
 // forcing a weak signal into a strength or weakness.
-const ARCHETYPE_STAT_LABELS = { pSlay: 'Slaying', pAssists: 'Playmaking', pObj: 'Objective Play', pSurvival: 'Survivability', pWin: 'Winning' };
+const ARCHETYPE_STAT_LABELS = { pSlay: 'Slaying', pAssists: 'Playmaking', pObj: 'Objective Play', pSurvival: 'Survivability', pWin: 'Winning', pAward: 'Big-Game Performance' };
 function getStrengthsAndWeaknesses(percentiles) {
   const entries = Object.keys(ARCHETYPE_STAT_LABELS)
     .filter(key => percentiles[key] != null)

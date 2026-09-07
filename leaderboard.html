@@ -81,6 +81,7 @@
   .arch-teal   { background: var(--s3-dim); color: var(--s3); border: 1px solid var(--s3-border); }
   .arch-red    { background: var(--red-dim); color: var(--red); border: 1px solid var(--red-border); }
   .arch-muted  { background: rgba(107,114,128,0.12); color: var(--muted); border: 1px solid rgba(107,114,128,0.3); }
+  .arch-pink   { background: rgba(236,72,153,0.12); color: #ec4899; border: 1px solid rgba(236,72,153,0.3); }
   .player-cell { white-space: normal; }
   .arch-badges-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .arch-legend-toggle { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 0.75rem; text-decoration: underline; text-underline-offset: 3px; }
@@ -796,7 +797,7 @@ function render(){
     if(!is1v1){
       const archResult=getPlayerArchetypes(players,p);
       if(archResult){
-        const rowTags=archResult.tags.slice().sort((a,b)=>ARCHETYPE_ROW_PRIORITY.indexOf(a)-ARCHETYPE_ROW_PRIORITY.indexOf(b)).slice(0,2);
+        const rowTags=archResult.tags.slice().sort((a,b)=>ARCHETYPE_ROW_PRIORITY.indexOf(a)-ARCHETYPE_ROW_PRIORITY.indexOf(b)).slice(0,3);
         archBadgesHtml=`<div class="arch-badges-row">${rowTags.map(t=>archetypeBadgeHtml(t)).join('')}</div>`;
       }
     }
