@@ -21,11 +21,13 @@ const ARCHETYPE_OBJ_MIN_SAMPLE = 8;  // higher than the leaderboard's own OBJ_MI
 
 const ARCHETYPE_DEFS = {
   twoWay:      { name: 'Two-Way Star',   emoji: '🏅', color: 'purple', desc: 'Elite at both slaying and the objective — no real hole in their game.' },
+  allRounder:  { name: 'All-Rounder',    emoji: '⚖️', color: 'cyan',   desc: 'No real weakness anywhere — solidly at or above the pool average across the board, even without one single standout spike.' },
   slayer:      { name: 'Slayer',         emoji: '⭐', color: 'gold',   desc: 'Racks up frags well above the pool average; objective time takes a backseat.' },
   flagRunner:  { name: 'Flag Runner',    emoji: '🚩', color: 'green',  desc: 'Elite at capturing the flag — among the best Caps/Series rates in the pool.' },
   hillHolder:  { name: 'Hill Holder',    emoji: '⛰️', color: 'green',  desc: 'Elite at holding the hill — among the best Hill/Series times in the pool.' },
   ballCarrier: { name: 'Ball Carrier',   emoji: '🏈', color: 'green',  desc: 'Elite at carrying the ball — among the best Ball/Series times in the pool.' },
   playmaker:   { name: 'Playmaker',      emoji: '🤝', color: 'blue',   desc: 'Sets teammates up more than they finish plays themselves.' },
+  assistMachine:{ name: 'Assist Machine', emoji: '🙌', color: 'blue',   desc: 'Elite assist numbers, full stop — among the best in the pool regardless of their kill game.' },
   lonewolf:    { name: 'Lone Wolf',      emoji: '🐺', color: 'pink',   desc: 'Finishes plays more than they set teammates up — a self-sufficient, individual style.' },
   glassCannon: { name: 'Glass Cannon',   emoji: '💥', color: 'orange', desc: 'Feast or famine — gets frags in bunches, but dies plenty doing it.' },
   feeder:      { name: 'Feeder',         emoji: '☠️', color: 'red',    desc: "Dies well above the pool average without the kills to show for it." },
@@ -134,6 +136,14 @@ function getPlayerArchetypes(allPlayersInMode, player) {
   const tags = [];
   const isTwoWay = pSlay >= HIGH && objAvailable && pObj >= HIGH;
   if (isTwoWay) tags.push('twoWay');
+  // All-Rounder catches exactly the gap Two-Way Star leaves behind: a player who's
+  // solidly at-or-above the pool median in EVERY category (no glaring weakness) but
+  // doesn't have the one specific elite spike (or pair of them) that the more
+  // pointed archetypes require. "Good at everything" deserves its own callout
+  // distinct from "not good enough at anything to earn a specific tag" (Wildcard).
+  const allRoundCats = [pSlay, pAssists, pSurvival, pWin];
+  if (objAvailable) allRoundCats.push(pObj);
+  if (!isTwoWay && allRoundCats.every(v => v >= 0.50)) tags.push('allRounder');
   // Slayer only requires clearing its own bar and NOT already being Two-Way Star
   // (which already implies excellence at both, so it stands alone rather than
   // stacking) — Slayer's own description explicitly says OBJ "takes a backseat",
@@ -148,7 +158,15 @@ function getPlayerArchetypes(allPlayersInMode, player) {
   Object.keys(objCategoryPcts).forEach(key => {
     if (objCategoryPcts[key] >= HIGH) tags.push(OBJ_TAG_BY_KEY[key]);
   });
-  if (pAssists >= HIGH && (pAssists - pSlay) >= GAP) tags.push('playmaker');
+  const isPlaymaker = pAssists >= HIGH && (pAssists - pSlay) >= GAP;
+  if (isPlaymaker) tags.push('playmaker');
+  // Playmaker is a RELATIVE claim (assists clearly outpace this player's own slaying),
+  // so a player who's elite at assists but also a strong killer never trips that gap —
+  // their assist game goes completely unrecognized even at, say, 90th-percentile
+  // assists. Assist Machine is the absolute backstop: elite assists on their own
+  // terms, regardless of how good their slaying also happens to be. Only fires when
+  // Playmaker didn't already, so the two don't just duplicate each other.
+  if (!isPlaymaker && pAssists >= HIGH) tags.push('assistMachine');
   // Lone Wolf is Playmaker's mirror — elite slaying with assists lagging notably
   // behind. The opposite-sign gap requirement means these two can never both fire.
   if (pSlay >= HIGH && (pSlay - pAssists) >= GAP) tags.push('lonewolf');
@@ -177,7 +195,7 @@ function getPlayerArchetypes(allPlayersInMode, player) {
 // Order to show tags in when space is limited (leaderboard row) — leads with the
 // more distinctive/flattering tags, since a player's full set still shows on their
 // profile page regardless of what gets cut here.
-const ARCHETYPE_ROW_PRIORITY = ['twoWay', 'bigGameHunter', 'closer', 'flagRunner', 'hillHolder', 'ballCarrier', 'slayer', 'playmaker', 'lonewolf', 'glassCannon', 'fortress', 'feeder', 'anchor', 'wildcard'];
+const ARCHETYPE_ROW_PRIORITY = ['twoWay', 'allRounder', 'bigGameHunter', 'closer', 'flagRunner', 'hillHolder', 'ballCarrier', 'slayer', 'playmaker', 'assistMachine', 'lonewolf', 'glassCannon', 'fortress', 'feeder', 'anchor', 'wildcard'];
 
 function archetypeBadgeHtml(key, extraClass) {
   const d = ARCHETYPE_DEFS[key];
