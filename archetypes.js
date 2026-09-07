@@ -200,17 +200,61 @@ const ARCHETYPE_ROW_PRIORITY = ['twoWay', 'allRounder', 'bigGameHunter', 'closer
 function archetypeBadgeHtml(key, extraClass) {
   const d = ARCHETYPE_DEFS[key];
   if (!d) return '';
-  const safeDesc = d.desc.replace(/"/g, '&quot;');
-  return `<span class="arch-badge arch-${d.color}${extraClass ? ' ' + extraClass : ''}" title="${d.name} — ${safeDesc}">${d.emoji} ${d.name}</span>`;
+  // A <button> rather than a hover-only title="" — title tooltips don't exist on
+  // touch devices at all, so descriptions need to open on tap and work identically
+  // on mobile and desktop. See showArchPopup()/hideArchPopup() below.
+  return `<button type="button" class="arch-badge arch-${d.color}${extraClass ? ' ' + extraClass : ''}" onclick="showArchPopup(event,'${key}')">${d.emoji} ${d.name}</button>`;
 }
 
-// A compact "what these mean" glossary, reused by both pages so the wording never
-// drifts out of sync between them.
+// Legend-row badges are already sitting right next to their own description — no
+// need to make these ones tappable too, so they get a plain, non-interactive span
+// with a slightly different modifier class to drop the pointer cursor.
 function archetypeLegendHtml() {
   return Object.keys(ARCHETYPE_DEFS).map(key => {
     const d = ARCHETYPE_DEFS[key];
-    return `<div class="arch-legend-row"><span class="arch-badge arch-${d.color}">${d.emoji} ${d.name}</span><span class="arch-legend-desc">${d.desc}</span></div>`;
+    return `<div class="arch-legend-row"><span class="arch-badge arch-badge-static arch-${d.color}">${d.emoji} ${d.name}</span><span class="arch-legend-desc">${d.desc}</span></div>`;
   }).join('');
+}
+
+// One shared tap/click popup for archetype descriptions, reused across every badge
+// on the page. Works the same on mobile (tap) and desktop (click) — no hover
+// dependency. Closes on: tapping its own × button, tapping anywhere else on the
+// page, pressing Escape, or scrolling (so it never ends up floating over the wrong
+// row after the page moves under it).
+function showArchPopup(evt, key) {
+  evt.stopPropagation();
+  const d = ARCHETYPE_DEFS[key];
+  if (!d) return;
+  let popup = document.getElementById('archPopup');
+  if (!popup) {
+    popup = document.createElement('div');
+    popup.id = 'archPopup';
+    popup.className = 'arch-popup';
+    document.body.appendChild(popup);
+    document.addEventListener('click', (e) => {
+      if (popup.classList.contains('visible') && !popup.contains(e.target)) hideArchPopup();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideArchPopup(); });
+    window.addEventListener('scroll', hideArchPopup, true);
+    window.addEventListener('resize', hideArchPopup);
+  }
+  popup.innerHTML = `<button type="button" class="arch-popup-close" onclick="hideArchPopup()">×</button>
+    <div class="arch-popup-title">${d.emoji} ${d.name}</div>
+    <div class="arch-popup-desc">${d.desc}</div>`;
+  // Position under the tapped badge, clamped so it never runs off-screen sideways.
+  const rect = evt.currentTarget.getBoundingClientRect();
+  const popupWidth = 260;
+  const viewportWidth = document.documentElement.clientWidth;
+  let left = rect.left + window.scrollX;
+  left = Math.min(left, window.scrollX + viewportWidth - popupWidth - 12);
+  left = Math.max(left, window.scrollX + 12);
+  popup.style.left = left + 'px';
+  popup.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+  popup.classList.add('visible');
+}
+function hideArchPopup() {
+  const popup = document.getElementById('archPopup');
+  if (popup) popup.classList.remove('visible');
 }
 
 // Turns the raw percentiles from getPlayerArchetypes() into a couple of plain-language

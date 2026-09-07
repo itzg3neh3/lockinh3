@@ -63,7 +63,14 @@
   .win-rate-fill { height: 100%; border-radius: 99px; background: var(--green); transition: width 0.6s ease; }
   .win-rate-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
   /* Playstyle / archetype bio */
-  .arch-badge { display: inline-flex; align-items: center; gap: 4px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; white-space: nowrap; cursor: help; }
+  .arch-badge { display: inline-flex; align-items: center; gap: 4px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; white-space: nowrap; cursor: pointer; -webkit-appearance: none; appearance: none; }
+  .arch-badge-static { cursor: default; }
+  .arch-popup { position: absolute; z-index: 999; display: none; max-width: 260px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px 12px 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .arch-popup.visible { display: block; }
+  .arch-popup-close { position: absolute; top: 4px; right: 6px; background: none; border: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 6px; }
+  .arch-popup-close:hover { color: var(--text); }
+  .arch-popup-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 4px; padding-right: 14px; }
+  .arch-popup-desc { font-size: 12.5px; color: var(--muted); line-height: 1.4; font-family: 'Barlow', sans-serif; }
   .arch-purple { background: var(--s1-dim); color: var(--s1); border: 1px solid var(--s1-border); }
   .arch-gold   { background: rgba(245,158,11,0.12); color: var(--gold); border: 1px solid rgba(245,158,11,0.3); }
   .arch-green  { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
