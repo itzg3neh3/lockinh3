@@ -198,6 +198,11 @@
   .copy-btn { padding: 9px 16px; background: #4ade80; color: #000; border: none; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
   .copy-btn:hover { background: #86efac; }
   .copy-btn.copied { background: var(--surface2); color: var(--muted); }
+  .discord-copy-row { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.08); }
+  .discord-roster-preview { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-bottom: 0.5rem; white-space: pre-wrap; font-family: 'Barlow', sans-serif; }
+  .discord-copy-btn { padding: 9px 16px; background: #5865F2; color: #fff; border: none; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.15s; display: inline-flex; align-items: center; gap: 8px; }
+  .discord-copy-btn:hover { background: #6b74f5; }
+  .discord-copy-btn.copied { background: var(--surface2); color: var(--muted); }
   .lb-btn-wrap { margin-top: 0.75rem; display: none; }
   .lb-btn { width: 100%; padding: 13px; background: transparent; color: var(--gold); border: 1.5px solid var(--gold); border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 10px; }
   .lb-btn:hover { background: rgba(245,158,11,0.08); }
@@ -311,6 +316,13 @@
         <div class="share-url-row">
           <input type="text" class="share-url-input" id="shareUrlInput" readonly placeholder="Saving report...">
           <button class="copy-btn" id="copyBtn">Copy</button>
+        </div>
+        <div class="discord-copy-row">
+          <div class="discord-roster-preview" id="discordRosterPreview"></div>
+          <button class="discord-copy-btn" id="discordCopyBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+            Copy for Discord (Teams + Link)
+          </button>
         </div>
       </div>
     </div>
@@ -839,14 +851,49 @@ document.getElementById('shareBtn').addEventListener('click',async()=>{
   if(panel.style.display==='block'){panel.style.display='none';return;}
   if(!window._lastGames)return;panel.style.display='block';
   document.getElementById('shareUrlInput').value='Saving report...';document.getElementById('copyBtn').disabled=true;btn.disabled=true;
-  try{const id=await saveReport(window._lastGames);document.getElementById('shareUrlInput').value=BASE_URL+'?r='+id;document.getElementById('copyBtn').disabled=false;}
+  document.getElementById('discordRosterPreview').textContent='';document.getElementById('discordCopyBtn').disabled=true;
+  try{
+    const id=await saveReport(window._lastGames);
+    const url=BASE_URL+'?r='+id;
+    document.getElementById('shareUrlInput').value=url;document.getElementById('copyBtn').disabled=false;
+    const discordText=buildDiscordShareText(window._lastGames,window._seriesMode,url);
+    document.getElementById('discordRosterPreview').textContent=discordText;
+    document.getElementById('discordCopyBtn').disabled=false;
+    document.getElementById('discordCopyBtn')._shareText=discordText;
+  }
   catch(err){document.getElementById('shareUrlInput').value='Error — check Worker KV binding';}
   btn.disabled=false;
 });
+// Builds the ready-to-paste Discord message: team rosters as plain text (so they
+// show up in the message itself, independent of whatever Discord's link-preview
+// embed does) plus the report link underneath. Squad 1/Squad 2 naming matches how
+// teams are already labeled in the visual report above.
+function buildDiscordShareText(games,mode,url){
+  if(mode==='1v1'){
+    const p1=(games[0]?.redTeam||[])[0]?.name||'Player 1';
+    const p2=(games[0]?.blueTeam||[])[0]?.name||'Player 2';
+    return`🔒 Lock In H3 — Series Report\n\n${p1} vs ${p2}\n\n${url}`;
+  }
+  const{squad1,squad2}=buildSquads(games);
+  const s1=[...squad1].join(', ')||'—';
+  const s2=[...squad2].join(', ')||'—';
+  return`🔒 Lock In H3 — Series Report\n\nSquad 1: ${s1}\nSquad 2: ${s2}\n\n${url}`;
+}
 document.getElementById('copyBtn').addEventListener('click',()=>{
   const input=document.getElementById('shareUrlInput'),btn=document.getElementById('copyBtn');
   navigator.clipboard.writeText(input.value).catch(()=>{input.select();document.execCommand('copy');});
   btn.textContent='Copied!';btn.classList.add('copied');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},2000);
+});
+document.getElementById('discordCopyBtn').addEventListener('click',()=>{
+  const btn=document.getElementById('discordCopyBtn');
+  const text=btn._shareText||document.getElementById('discordRosterPreview').textContent;
+  if(!text)return;
+  navigator.clipboard.writeText(text).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+  });
+  const original=btn.innerHTML;
+  btn.classList.add('copied');btn.textContent='Copied!';
+  setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML=original;},2000);
 });
 (async function(){
   const id=new URLSearchParams(window.location.search).get('r');
