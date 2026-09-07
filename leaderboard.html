@@ -85,6 +85,10 @@
   .arch-badges-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .arch-legend-toggle { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 0.75rem; text-decoration: underline; text-underline-offset: 3px; }
   .arch-legend-toggle:hover { color: var(--text); }
+  .top-links-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 0.75rem; }
+  .export-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); background: none; border: 1px solid var(--border2); border-radius: 6px; cursor: pointer; padding: 5px 12px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+  .export-btn:hover { color: var(--text); border-color: var(--accent); }
+  .export-btn:disabled { opacity: 0.5; cursor: default; }
   .arch-legend-panel { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
   .arch-legend-panel.visible { display: block; }
   .arch-legend-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); }
@@ -229,7 +233,10 @@
     <button class="search-clear" id="playerSearchClear" title="Clear search">×</button>
   </div>
 
-  <button class="arch-legend-toggle" id="archLegendToggle" onclick="toggleArchLegend()">What do the playstyle badges mean?</button>
+  <div class="top-links-row">
+    <button class="arch-legend-toggle" id="archLegendToggle" onclick="toggleArchLegend()">What do the playstyle badges mean?</button>
+    <button class="export-btn" id="exportAllBtn" onclick="exportAllData()">⬇ Export All Stats (JSON)</button>
+  </div>
   <div class="arch-legend-panel" id="archLegendPanel"></div>
 
   <div id="content"><div class="loading">Loading leaderboard...</div></div>
@@ -866,6 +873,35 @@ function toggleArchLegend(){
   const panel=document.getElementById('archLegendPanel');
   if(!panel.dataset.filled){panel.innerHTML=archetypeLegendHtml();panel.dataset.filled='1';}
   panel.classList.toggle('visible');
+}
+
+// Pulls the full, unfiltered stats for every player in every mode straight from the
+// same /leaderboard endpoint the page itself uses, and bundles it into one JSON file.
+// No password needed — this is exactly the data already visible in the table, just
+// in raw form so it's easy to hand off for debugging instead of screenshotting rows.
+async function exportAllData(){
+  const btn=document.getElementById('exportAllBtn');
+  const originalLabel=btn.innerHTML;
+  btn.disabled=true;btn.innerHTML='Exporting…';
+  try{
+    const modes=['4v4','2v2','1v1'];
+    const results=await Promise.all(modes.map(m=>
+      fetch(WORKER_URL+'/leaderboard?mode='+m).then(r=>r.ok?r.json():{error:'Failed to load '+m})
+    ));
+    const bundle={exportedAt:new Date().toISOString()};
+    modes.forEach((m,i)=>{bundle[m]=results[i];});
+    const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const dateStr=new Date().toISOString().slice(0,10);
+    const a=document.createElement('a');
+    a.href=url;a.download=`lockinh3-stats-export-${dateStr}.json`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert('Export failed: '+e.message);
+  }finally{
+    btn.disabled=false;btn.innerHTML=originalLabel;
+  }
 }
 
 async function checkPassword(){
