@@ -866,18 +866,30 @@ document.getElementById('shareBtn').addEventListener('click',async()=>{
 });
 // Builds the ready-to-paste Discord message: team rosters as plain text (so they
 // show up in the message itself, independent of whatever Discord's link-preview
-// embed does) plus the report link underneath. Squad 1/Squad 2 naming matches how
-// teams are already labeled in the visual report above.
+// embed does), the series score, and the report link underneath. Squad 1/Squad 2
+// naming matches how teams are already labeled in the visual report above. Score
+// is computed the exact same way renderReport() does (games[].winner is already
+// attached by the time this runs, since window._lastGames is set after that pass).
 function buildDiscordShareText(games,mode,url){
   if(mode==='1v1'){
     const p1=(games[0]?.redTeam||[])[0]?.name||'Player 1';
     const p2=(games[0]?.blueTeam||[])[0]?.name||'Player 2';
-    return`🔒 Lock In H3 — Series Report\n\n${p1} vs ${p2}\n\n${url}`;
+    let p1Wins=0,p2Wins=0;
+    games.forEach(g=>{if(g.winner==='Red')p1Wins++;else if(g.winner==='Blue')p2Wins++;});
+    const scoreLine=p1Wins===p2Wins?`Series tied ${p1Wins}-${p2Wins}`:(p1Wins>p2Wins?`🏆 ${p1} wins ${p1Wins}-${p2Wins}`:`🏆 ${p2} wins ${p2Wins}-${p1Wins}`);
+    return`🔒 Lock In H3 — Series Report\n\n${p1} vs ${p2}\n\n${scoreLine}\n\n${url}`;
   }
   const{squad1,squad2}=buildSquads(games);
   const s1=[...squad1].join(', ')||'—';
   const s2=[...squad2].join(', ')||'—';
-  return`🔒 Lock In H3 — Series Report\n\nSquad 1: ${s1}\nSquad 2: ${s2}\n\n${url}`;
+  let s1Wins=0,s2Wins=0;
+  games.forEach(g=>{
+    if(g.winner==='Tie')return;
+    const wt=g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
+    if(wt.length>0){let s1v=0,s2v=0;wt.forEach(p=>{if(getSquad(p.name,squad1,squad2)===1)s1v++;else s2v++;});if(s1v>s2v)s1Wins++;else s2Wins++;}
+  });
+  const scoreLine=s1Wins===s2Wins?`Series tied ${s1Wins}-${s2Wins}`:(s1Wins>s2Wins?`🏆 Squad 1 wins ${s1Wins}-${s2Wins}`:`🏆 Squad 2 wins ${s2Wins}-${s1Wins}`);
+  return`🔒 Lock In H3 — Series Report\n\nSquad 1: ${s1}\nSquad 2: ${s2}\n\n${scoreLine}\n\n${url}`;
 }
 document.getElementById('copyBtn').addEventListener('click',()=>{
   const input=document.getElementById('shareUrlInput'),btn=document.getElementById('copyBtn');
