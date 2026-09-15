@@ -86,6 +86,13 @@
   .arch-cyan   { background: rgba(34,211,238,0.12); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
   .player-cell { white-space: normal; }
   .arch-badges-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .award-mini-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .award-mini { display: inline-flex; align-items: center; gap: 3px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
+  .award-mini-purple { background: var(--s1-dim); color: var(--s1); }
+  .award-mini-gold   { background: rgba(245,158,11,0.12); color: var(--gold); }
+  .award-mini-blue   { background: var(--accent-dim); color: var(--accent); }
+  .award-mini-green  { background: rgba(74,222,128,0.12); color: var(--green); }
+  .award-mini-red    { background: var(--red-dim); color: var(--red); }
   .arch-legend-toggle { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 0.75rem; text-decoration: underline; text-underline-offset: 3px; }
   .arch-legend-toggle:hover { color: var(--text); }
   .top-links-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 0.75rem; }
@@ -403,6 +410,13 @@ let leaderboardData=[];
 let historyEntries=[];
 let historyLoaded=false;
 const MIN_SERIES=5;
+const AWARD_MINI_DEFS=[
+  {key:'seriesMVPCount',icon:'🏆',color:'purple'},
+  {key:'topFraggerCount',icon:'⭐',color:'gold'},
+  {key:'assistKingCount',icon:'🤝',color:'blue'},
+  {key:'objMVPCount',icon:'🎯',color:'green'},
+  {key:'topShitterCount',icon:'🍆',color:'red'}
+];
 function getQualifiedPool(){
   const qualified=leaderboardData.filter(p=>p.seriesPlayed>=MIN_SERIES);
   return qualified.length?qualified:leaderboardData;
@@ -809,9 +823,17 @@ function render(){
         archBadgesHtml=`<div class="arch-badges-row">${rowTags.map(t=>archetypeBadgeHtml(t)).join('')}</div>`;
       }
     }
+    // Award chips — this player's own lifetime win count per award, compact icon+number
+    // form to fit a table row (full labels are on the player page instead). Skips
+    // whichever awards they haven't won rather than padding the row with zeroes.
+    const awardMiniHtml=AWARD_MINI_DEFS
+      .filter(a=>(p[a.key]||0)>0)
+      .map(a=>`<span class="award-mini award-mini-${a.color}">${a.icon}${p[a.key]}</span>`)
+      .join('');
+    const awardBadgesHtml=awardMiniHtml?`<div class="award-mini-row">${awardMiniHtml}</div>`:'';
     html+=`<tr data-player="${String(p.displayName).toLowerCase().replace(/"/g,'&quot;')}">
       <td class="rank-cell ${rankClass}">${rank}</td>
-      <td class="player-cell"><a href="player.html?p=${encodeURIComponent(p.displayName)}" class="player-link">${p.displayName}</a>${archBadgesHtml}</td>
+      <td class="player-cell"><a href="player.html?p=${encodeURIComponent(p.displayName)}" class="player-link">${p.displayName}</a>${archBadgesHtml}${awardBadgesHtml}</td>
       <td>${recordCell}</td>
       <td>${p.seriesPlayed}</td>
       <td>${p.kills}</td><td>${p.deaths}</td>

@@ -91,6 +91,17 @@
   .arch-sw-strength { color: var(--green); }
   .arch-sw-weakness { color: var(--red); }
   .arch-no-data { font-size: 13px; color: var(--muted); }
+  /* Awards */
+  .awards-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 10px; }
+  .award-chip { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; }
+  .award-icon { font-size: 16px; }
+  .award-count { font-weight: 800; font-size: 15px; }
+  .award-label { font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); }
+  .award-purple { background: var(--s1-dim); border: 1px solid var(--s1-border); } .award-purple .award-count { color: var(--s1); }
+  .award-gold   { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); } .award-gold .award-count { color: var(--gold); }
+  .award-blue   { background: var(--accent-dim); border: 1px solid rgba(74,158,255,0.3); } .award-blue .award-count { color: var(--accent); }
+  .award-green  { background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3); } .award-green .award-count { color: var(--green); }
+  .award-red    { background: var(--red-dim); border: 1px solid var(--red-border); } .award-red .award-count { color: var(--red); }
   /* Section title */
   .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; }
   .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
@@ -238,6 +249,26 @@ async function load() {
   }
 }
 
+// Builds the "Awards" chip row: this player's own lifetime count of each in-series
+// award they've won (Series MVP, Top Fragger, Assist King, OBJ MVP, Top Shitter),
+// pulled straight from their stats object — the same counts already used elsewhere
+// on the leaderboard to crown the all-time #1 per award. Skips any award they've
+// never won rather than showing a row of zeroes, and returns nothing at all if
+// they haven't won anything yet.
+const AWARD_DEFS = [
+  { key: 'seriesMVPCount', icon: '🏆', label: 'Series MVP', color: 'purple' },
+  { key: 'topFraggerCount', icon: '⭐', label: 'Top Fragger', color: 'gold' },
+  { key: 'assistKingCount', icon: '🤝', label: 'Assist King', color: 'blue' },
+  { key: 'objMVPCount', icon: '🎯', label: 'OBJ MVP', color: 'green' },
+  { key: 'topShitterCount', icon: '🍆', label: 'Top Shitter', color: 'red' }
+];
+function renderAwardsSection(stats) {
+  const entries = AWARD_DEFS.filter(a => (stats[a.key] || 0) > 0);
+  if (!entries.length) return '';
+  const chips = entries.map(a => `<div class="award-chip award-${a.color}"><span class="award-icon">${a.icon}</span><span class="award-count">${stats[a.key]}×</span><span class="award-label">${a.label}</span></div>`).join('');
+  return `<div class="section-title">Awards</div><div class="awards-wrap">${chips}</div>`;
+}
+
 function setMode(mode) {
   currentMode = mode;
   showAllSeries = false;
@@ -371,6 +402,9 @@ function render() {
 
     // Playstyle / archetype bio
     html += renderArchetypeSection(displayName, currentMode);
+
+    // Awards
+    html += renderAwardsSection(stats);
 
     // Stats grid
     html += `<div class="section-title">Combat Stats</div>
