@@ -67,6 +67,14 @@
   .badge-oddball { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.25); }
   .badge-koth { background: rgba(245,158,11,0.12); color: var(--gold); border: 1px solid rgba(245,158,11,0.25); }
   .repeat-pill { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); padding: 2px 8px; border-radius: 99px; margin-left: 8px; }
+  .edit-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-size: 15px; padding: 6px 9px; cursor: pointer; flex-shrink: 0; transition: all 0.15s; line-height: 1; }
+  .edit-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .game-row.editing { border-color: var(--accent); }
+  .edit-select-group { flex: 1; display: flex; gap: 8px; flex-wrap: wrap; }
+  .edit-select { background: var(--bg); color: var(--text); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; }
+  .edit-select:focus { outline: none; border-color: var(--accent); }
+  .edit-done-btn { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: 8px 14px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
+  .edit-done-btn:hover { background: #6bacff; }
   @media (max-width: 600px) {
     .mode-btns { flex-direction: column; }
     .bo-btn { min-width: calc(50% - 4px); }
@@ -347,10 +355,83 @@ function generate() {
   window._lastSeries = series;
   window._lastMode = currentMode;
   window._lastBo = currentBo;
+  editingIndex = null;
 
   document.getElementById('resultsTitle').textContent = `${currentMode} · Best of ${currentBo}`;
+  renderGamesGrid();
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('tieNote').classList.add('visible');
+  document.getElementById('copyListBtn').textContent = 'Copy for Discord';
+  document.getElementById('copyListBtn').classList.remove('copied');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Manual per-game editing: lets the user swap a single game's map and/or gametype
+// without rerolling the whole series. Which row (if any) is currently being edited
+// lives here rather than in the series data itself.
+let editingIndex = null;
+
+function gametypeOptionsForMode(mode) {
+  return mode === '4v4' ? ['CTF', 'Slayer', 'Oddball', 'KOTH'] : ['Slayer'];
+}
+function mapsForGametype(mode, gametype) {
+  const pool = mode === '4v4' ? FOUR_V_FOUR_MAPS : TWO_V_TWO_MAPS;
+  return pool.filter(m => m.types.includes(gametype)).map(m => m.name);
+}
+// Recomputes the Repeat pill across the whole series after a manual edit — only the
+// 2nd+ occurrence of a map name gets flagged, matching the same rule the generator
+// itself uses, so a manual override that happens to create (or resolve) a repeat is
+// still visibly flagged rather than silently allowed through.
+function recomputeRepeats(series) {
+  const seenCounts = {};
+  series.forEach(g => {
+    seenCounts[g.mapName] = (seenCounts[g.mapName] || 0) + 1;
+    g.isRepeat = seenCounts[g.mapName] > 1;
+  });
+}
+
+function openEditRow(idx) { editingIndex = idx; renderGamesGrid(); }
+function closeEditRow() { editingIndex = null; renderGamesGrid(); }
+
+function updateGameGametype(idx, newGametype) {
+  const g = window._lastSeries[idx];
+  g.gametype = newGametype;
+  // The old map may not support the new gametype (e.g. switching CTF -> Oddball) —
+  // fall back to the first valid map for whatever gametype was just picked.
+  const validMaps = mapsForGametype(window._lastMode, newGametype);
+  if (!validMaps.includes(g.mapName)) g.mapName = validMaps[0];
+  recomputeRepeats(window._lastSeries);
+  renderGamesGrid();
+}
+function updateGameMap(idx, newMapName) {
+  window._lastSeries[idx].mapName = newMapName;
+  recomputeRepeats(window._lastSeries);
+  renderGamesGrid();
+}
+
+function renderGamesGrid() {
+  const series = window._lastSeries;
   const grid = document.getElementById('gamesGrid');
-  grid.innerHTML = series.map(g => `
+  grid.innerHTML = series.map((g, idx) => {
+    if (editingIndex === idx) {
+      const gtOptions = gametypeOptionsForMode(window._lastMode);
+      const mapOptions = mapsForGametype(window._lastMode, g.gametype);
+      return `
+      <div class="game-row editing">
+        <div class="game-num${g.isRepeat ? ' repeat' : ''}">${g.gameNumber}</div>
+        <div class="edit-select-group">
+          ${gtOptions.length > 1 ? `<select class="edit-select" onchange="updateGameGametype(${idx}, this.value)">
+            ${gtOptions.map(gt => `<option value="${gt}"${gt === g.gametype ? ' selected' : ''}>${gt}</option>`).join('')}
+          </select>` : ''}
+          <select class="edit-select" onchange="updateGameMap(${idx}, this.value)">
+            ${mapOptions.map(m => `<option value="${m}"${m === g.mapName ? ' selected' : ''}>${m}</option>`).join('')}
+          </select>
+        </div>
+        <button class="edit-done-btn" onclick="closeEditRow()">✓ Done</button>
+      </div>`;
+    }
+    return `
     <div class="game-row">
       <div class="game-num${g.isRepeat ? ' repeat' : ''}">${g.gameNumber}</div>
       <div class="game-info">
@@ -358,14 +439,9 @@ function generate() {
         <div class="game-meta">Game ${g.gameNumber} of ${series.length}</div>
       </div>
       <div class="gametype-badge ${gametypeBadgeClass(g.gametype)}">${g.gametype}</div>
-    </div>
-  `).join('');
-
-  document.getElementById('results').classList.add('visible');
-  document.getElementById('tieNote').classList.add('visible');
-  document.getElementById('copyListBtn').textContent = 'Copy for Discord';
-  document.getElementById('copyListBtn').classList.remove('copied');
-  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      <button class="edit-btn" onclick="openEditRow(${idx})" title="Edit this game">✏️</button>
+    </div>`;
+  }).join('');
 }
 
 function copyList() {
