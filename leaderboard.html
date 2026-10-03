@@ -91,7 +91,7 @@
      every badge. This means row height never grows no matter how many archetypes
      a player has, and the table itself never needs to get wider to accommodate
      them — the overflow is handled locally, inside this one small strip. */
-  .player-name-archs { display: flex; align-items: center; gap: 8px; }
+  .player-name-archs { display: flex; align-items: center; gap: 8px; max-width: 340px; }
   .player-name-archs .player-link { flex-shrink: 0; }
   .arch-badges-row { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; padding-bottom: 3px; scrollbar-width: thin; }
   .arch-badges-row::-webkit-scrollbar { height: 4px; }
