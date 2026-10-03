@@ -85,7 +85,8 @@
   .arch-pink   { background: rgba(236,72,153,0.12); color: #ec4899; border: 1px solid rgba(236,72,153,0.3); }
   .arch-cyan   { background: rgba(34,211,238,0.12); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
   .player-cell { white-space: normal; }
-  .arch-badges-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .player-name-archs { display: flex; align-items: center; flex-wrap: wrap; column-gap: 8px; row-gap: 6px; }
+  .arch-badges-row { display: contents; }
   .award-mini-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .award-mini { display: inline-flex; align-items: center; gap: 3px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
   .award-mini-purple { background: var(--s1-dim); color: var(--s1); }
@@ -251,7 +252,6 @@
 
   <div class="top-links-row">
     <button class="arch-legend-toggle" id="archLegendToggle" onclick="toggleArchLegend()">What do the playstyle badges mean?</button>
-    <button class="export-btn" id="exportAllBtn" onclick="exportAllData()">⬇ Export All Stats (JSON)</button>
   </div>
   <div class="arch-legend-panel" id="archLegendPanel"></div>
 
@@ -273,9 +273,13 @@
     </div>
     <div class="admin-unlocked" id="adminUnlocked">
       <div class="admin-section">
-        <div class="admin-section-title">💾 Export Backup</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Download the current leaderboard as a JSON file to your computer — an extra safety net independent of the automatic snapshots below.</p>
-        <button class="admin-btn" onclick="exportBackup()">Download Backup (.json)</button>
+        <div class="admin-section-title">💾 Backups & Exports</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Download your data as JSON files — a safety net independent of the automatic snapshots below, and independent of Cloudflare/GitHub entirely once saved somewhere else (email it to yourself, Drive, wherever). <strong>Export All Stats</strong> covers leaderboard totals for every mode; <strong>Export Full History</strong> covers every individual series ever recorded (dates, squads, per-game stats) — the aggregate totals alone can't rebuild that if it's ever lost.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:0.5rem">
+          <button class="admin-btn" onclick="exportBackup()">Download Backup — Current Mode (.json)</button>
+          <button class="admin-btn" id="exportAllBtn" onclick="exportAllData()">Export All Stats — All Modes (.json)</button>
+          <button class="admin-btn" id="exportHistoryBtn" onclick="exportFullHistory()">Export Full History (.json)</button>
+        </div>
         <div class="admin-msg" id="exportMsg"></div>
       </div>
       <div class="admin-section">
@@ -814,18 +818,26 @@ function render(){
       ?`${p.seriesWon}W &nbsp;<span class="tie-count">${tied}T</span>&nbsp; <span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`
       :`${p.seriesWon}W &nbsp;<span class="win-pct">${p.seriesLost}L &nbsp;(${winPct}%)</span>`;
     // Playstyle badges — 1v1 has no assists/OBJ tracking so there's nothing meaningful
-    // to build an archetype off of there; only 4v4/2v2 rows get them.
+    // to build an archetype off of there; only 4v4/2v2 rows get them. Shows every
+    // archetype the player has, not just a capped top-3 — with badges now sitting
+    // inline beside the name (wrapping as needed) instead of always dropping to a
+    // new line below it, there's no longer a space reason to hide any of them, and
+    // picking "favorites" just meant something real (like Fortress) could get
+    // buried behind two similar OBJ badges. Still sorted by priority for a sensible
+    // left-to-right order, just no longer sliced down to 3.
     let archBadgesHtml='';
     if(!is1v1){
       const archResult=getPlayerArchetypes(players,p);
       if(archResult){
-        const rowTags=archResult.tags.slice().sort((a,b)=>ARCHETYPE_ROW_PRIORITY.indexOf(a)-ARCHETYPE_ROW_PRIORITY.indexOf(b)).slice(0,3);
+        const rowTags=archResult.tags.slice().sort((a,b)=>ARCHETYPE_ROW_PRIORITY.indexOf(a)-ARCHETYPE_ROW_PRIORITY.indexOf(b));
         archBadgesHtml=`<div class="arch-badges-row">${rowTags.map(t=>archetypeBadgeHtml(t)).join('')}</div>`;
       }
     }
     // Award chips — this player's own lifetime win count per award, compact icon+number
     // form to fit a table row (full labels are on the player page instead). Skips
     // whichever awards they haven't won rather than padding the row with zeroes.
+    // Kept as its own row below the name (unlike archetype badges) since stacking
+    // every award chip inline too would start crowding the name itself.
     const awardMiniHtml=AWARD_MINI_DEFS
       .filter(a=>(p[a.key]||0)>0)
       .map(a=>`<span class="award-mini award-mini-${a.color}">${a.icon}${p[a.key]}</span>`)
@@ -833,7 +845,7 @@ function render(){
     const awardBadgesHtml=awardMiniHtml?`<div class="award-mini-row">${awardMiniHtml}</div>`:'';
     html+=`<tr data-player="${String(p.displayName).toLowerCase().replace(/"/g,'&quot;')}">
       <td class="rank-cell ${rankClass}">${rank}</td>
-      <td class="player-cell"><a href="player.html?p=${encodeURIComponent(p.displayName)}" class="player-link">${p.displayName}</a>${archBadgesHtml}${awardBadgesHtml}</td>
+      <td class="player-cell"><div class="player-name-archs"><a href="player.html?p=${encodeURIComponent(p.displayName)}" class="player-link">${p.displayName}</a>${archBadgesHtml}</div>${awardBadgesHtml}</td>
       <td>${recordCell}</td>
       <td>${p.seriesPlayed}</td>
       <td>${p.kills}</td><td>${p.deaths}</td>
@@ -908,8 +920,11 @@ function toggleArchLegend(){
 
 // Pulls the full, unfiltered stats for every player in every mode straight from the
 // same /leaderboard endpoint the page itself uses, and bundles it into one JSON file.
-// No password needed — this is exactly the data already visible in the table, just
-// in raw form so it's easy to hand off for debugging instead of screenshotting rows.
+// Lives behind the admin password now (moved out of the public top bar) so a bulk
+// export isn't just sitting in plain view for anyone who opens the page — though
+// note the underlying /leaderboard endpoint itself is still a public read endpoint
+// (same as the leaderboard table itself), so this is about not inviting casual
+// bulk-export use rather than a hard access-control boundary.
 async function exportAllData(){
   const btn=document.getElementById('exportAllBtn');
   const originalLabel=btn.innerHTML;
@@ -930,6 +945,36 @@ async function exportAllData(){
     URL.revokeObjectURL(url);
   }catch(e){
     alert('Export failed: '+e.message);
+  }finally{
+    btn.disabled=false;btn.innerHTML=originalLabel;
+  }
+}
+
+// Exports every individual series ever recorded — dates, squads, per-game stats —
+// using the same /history endpoint the page already calls for the Best Duo
+// callout (so no worker.js changes needed here). This is the half of the data
+// that Export All Stats does NOT cover: that export only has aggregate totals,
+// which can rebuild the leaderboard's current numbers but can't reconstruct the
+// series-by-series record of how they got there (needed for Awards Backfill,
+// rename-in-history, and any old shared report links still floating around).
+async function exportFullHistory(){
+  const btn=document.getElementById('exportHistoryBtn');
+  const originalLabel=btn.innerHTML;
+  btn.disabled=true;btn.innerHTML='Exporting…';
+  try{
+    const resp=await fetch(WORKER_URL+'/history');
+    if(!resp.ok)throw new Error('Failed to load history');
+    const data=await resp.json();
+    const bundle={exportedAt:new Date().toISOString(),entries:data.entries||[]};
+    const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const dateStr=new Date().toISOString().slice(0,10);
+    const a=document.createElement('a');
+    a.href=url;a.download=`lockinh3-history-export-${dateStr}.json`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert('History export failed: '+e.message);
   }finally{
     btn.disabled=false;btn.innerHTML=originalLabel;
   }
