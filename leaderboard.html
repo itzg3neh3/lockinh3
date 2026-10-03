@@ -84,20 +84,18 @@
   .arch-muted  { background: rgba(107,114,128,0.12); color: var(--muted); border: 1px solid rgba(107,114,128,0.3); }
   .arch-pink   { background: rgba(236,72,153,0.12); color: #ec4899; border: 1px solid rgba(236,72,153,0.3); }
   .arch-cyan   { background: rgba(34,211,238,0.12); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
-  .player-cell { white-space: normal; min-width: 200px; }
-  /* player-name-archs holds the name + the badge strip on ONE line, always — the
-     name is flex-shrink:0 (never squished), and the badge strip takes whatever
-     space is left and scrolls horizontally within itself if there isn't room for
-     every badge. This means row height never grows no matter how many archetypes
-     a player has, and the table itself never needs to get wider to accommodate
-     them — the overflow is handled locally, inside this one small strip. */
-  .player-name-archs { display: flex; align-items: center; gap: 8px; max-width: 340px; }
-  .player-name-archs .player-link { flex-shrink: 0; }
-  .arch-badges-row { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; padding-bottom: 3px; scrollbar-width: thin; }
-  .arch-badges-row::-webkit-scrollbar { height: 4px; }
-  .arch-badges-row::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-  .arch-badges-row::-webkit-scrollbar-track { background: transparent; }
-  .arch-badges-row .arch-badge { flex-shrink: 0; }
+  .player-cell { white-space: normal; }
+  /* Each player now spans TWO <tr> rows sharing one data-player value: a header
+     row (rank + name + badges, free to wrap onto multiple lines since it's the
+     only thing in that row — nothing else to misalign) sitting directly above a
+     normal stats row with the exact same columns the table has always had,
+     completely unaffected by however tall the header row needs to be. */
+  .player-header-row td { border-bottom: none; padding: 10px 14px 2px; white-space: normal; }
+  .player-header-cell { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+  .player-header-rank { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 13px; color: var(--muted); }
+  .arch-badges-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .player-stats-row td { padding-top: 2px; }
+  .player-stats-row td:first-child { text-align: left; }
   .award-mini-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .award-mini { display: inline-flex; align-items: center; gap: 3px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
   .award-mini-purple { background: var(--s1-dim); color: var(--s1); }
@@ -854,9 +852,25 @@ function render(){
       .map(a=>`<span class="award-mini award-mini-${a.color}">${a.icon}${p[a.key]}</span>`)
       .join('');
     const awardBadgesHtml=awardMiniHtml?`<div class="award-mini-row">${awardMiniHtml}</div>`:'';
-    html+=`<tr data-player="${String(p.displayName).toLowerCase().replace(/"/g,'&quot;')}">
-      <td class="rank-cell ${rankClass}">${rank}</td>
-      <td class="player-cell"><div class="player-name-archs"><a href="player.html?p=${encodeURIComponent(p.displayName)}" class="player-link">${p.displayName}</a>${archBadgesHtml}</div>${awardBadgesHtml}</td>
+    const playerKey=String(p.displayName).toLowerCase().replace(/"/g,'&quot;');
+    // Header row: rank + name + every archetype badge, free to wrap across
+    // multiple lines since this row contains nothing else that needs to align —
+    // however tall it gets has zero effect on the stats row directly below it.
+    html+=`<tr class="player-header-row" data-player="${playerKey}">
+      <td class="player-cell" colspan="99">
+        <div class="player-header-cell">
+          <span class="player-header-rank ${rankClass}">${rank}</span>
+          <a href="player.html?p=${encodeURIComponent(p.displayName)}" class="player-link">${p.displayName}</a>
+          ${archBadgesHtml}
+        </div>
+        ${awardBadgesHtml}
+      </td>
+    </tr>`;
+    // Stats row: identical columns/order to every row before any archetype work —
+    // the first two header columns (# and Player) are already covered above, so
+    // this row leaves that space blank and picks up from W/L onward.
+    html+=`<tr class="player-stats-row" data-player="${playerKey}">
+      <td colspan="2"></td>
       <td>${recordCell}</td>
       <td>${p.seriesPlayed}</td>
       <td>${p.kills}</td><td>${p.deaths}</td>
@@ -891,27 +905,38 @@ function applySearchHighlight(jumpToFirst){
   const rows=[...document.querySelectorAll('#content tbody tr')];
   rows.forEach(r=>r.classList.remove('row-match','row-match-active'));
   if(!q){countEl.textContent='';countEl.className='search-count';return;}
-  const matches=rows.filter(r=>(r.dataset.player||'').includes(q));
-  matches.forEach(r=>r.classList.add('row-match'));
-  countEl.textContent=matches.length?`${matches.length} match${matches.length>1?'es':''}`:'No matches';
-  countEl.className='search-count '+(matches.length?'has-matches':'no-matches');
-  if(matches.length){
+  // Each player now spans two <tr> (header + stats row) sharing one data-player
+  // value, so matches are counted and cycled by unique player, not by row —
+  // otherwise every player would count twice.
+  const matchNames=[...new Set(rows.filter(r=>(r.dataset.player||'').includes(q)).map(r=>r.dataset.player))];
+  rows.forEach(r=>{if(matchNames.includes(r.dataset.player))r.classList.add('row-match');});
+  countEl.textContent=matchNames.length?`${matchNames.length} match${matchNames.length>1?'es':''}`:'No matches';
+  countEl.className='search-count '+(matchNames.length?'has-matches':'no-matches');
+  if(matchNames.length){
     if(jumpToFirst)searchMatchIndex=0;
-    const active=matches[searchMatchIndex]||matches[0];
-    active.classList.add('row-match-active');
-    if(jumpToFirst)active.scrollIntoView({behavior:'smooth',block:'center'});
+    const activeName=matchNames[searchMatchIndex]||matchNames[0];
+    const activeRows=rows.filter(r=>r.dataset.player===activeName);
+    activeRows.forEach(r=>r.classList.add('row-match-active'));
+    if(jumpToFirst){
+      const headerRow=activeRows.find(r=>r.classList.contains('player-header-row'))||activeRows[0];
+      headerRow.scrollIntoView({behavior:'smooth',block:'center'});
+    }
   }
 }
 document.getElementById('playerSearchInput').addEventListener('input',()=>{searchMatchIndex=0;applySearchHighlight(true);});
 document.getElementById('playerSearchInput').addEventListener('keydown',e=>{
   if(e.key==='Enter'){
     e.preventDefault();
-    const matches=[...document.querySelectorAll('#content tbody tr.row-match')];
-    if(!matches.length)return;
-    searchMatchIndex=(searchMatchIndex+1)%matches.length;
-    matches.forEach(r=>r.classList.remove('row-match-active'));
-    matches[searchMatchIndex].classList.add('row-match-active');
-    matches[searchMatchIndex].scrollIntoView({behavior:'smooth',block:'center'});
+    const matchRows=[...document.querySelectorAll('#content tbody tr.row-match')];
+    const names=[...new Set(matchRows.map(r=>r.dataset.player))];
+    if(!names.length)return;
+    searchMatchIndex=(searchMatchIndex+1)%names.length;
+    matchRows.forEach(r=>r.classList.remove('row-match-active'));
+    const activeName=names[searchMatchIndex];
+    const activeRows=matchRows.filter(r=>r.dataset.player===activeName);
+    activeRows.forEach(r=>r.classList.add('row-match-active'));
+    const headerRow=activeRows.find(r=>r.classList.contains('player-header-row'))||activeRows[0];
+    headerRow.scrollIntoView({behavior:'smooth',block:'center'});
   }else if(e.key==='Escape'){
     input_clearSearch();
   }
