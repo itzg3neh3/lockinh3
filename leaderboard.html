@@ -84,9 +84,20 @@
   .arch-muted  { background: rgba(107,114,128,0.12); color: var(--muted); border: 1px solid rgba(107,114,128,0.3); }
   .arch-pink   { background: rgba(236,72,153,0.12); color: #ec4899; border: 1px solid rgba(236,72,153,0.3); }
   .arch-cyan   { background: rgba(34,211,238,0.12); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
-  .player-cell { white-space: normal; }
-  .player-name-archs { display: flex; align-items: center; flex-wrap: wrap; column-gap: 8px; row-gap: 6px; }
-  .arch-badges-row { display: contents; }
+  .player-cell { white-space: normal; min-width: 200px; }
+  /* player-name-archs holds the name + the badge strip on ONE line, always — the
+     name is flex-shrink:0 (never squished), and the badge strip takes whatever
+     space is left and scrolls horizontally within itself if there isn't room for
+     every badge. This means row height never grows no matter how many archetypes
+     a player has, and the table itself never needs to get wider to accommodate
+     them — the overflow is handled locally, inside this one small strip. */
+  .player-name-archs { display: flex; align-items: center; gap: 8px; }
+  .player-name-archs .player-link { flex-shrink: 0; }
+  .arch-badges-row { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; padding-bottom: 3px; scrollbar-width: thin; }
+  .arch-badges-row::-webkit-scrollbar { height: 4px; }
+  .arch-badges-row::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .arch-badges-row::-webkit-scrollbar-track { background: transparent; }
+  .arch-badges-row .arch-badge { flex-shrink: 0; }
   .award-mini-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .award-mini { display: inline-flex; align-items: center; gap: 3px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
   .award-mini-purple { background: var(--s1-dim); color: var(--s1); }
