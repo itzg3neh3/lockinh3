@@ -97,7 +97,7 @@
   .player-stats-row td { padding-top: 2px; }
   .player-stats-row td:first-child { text-align: left; }
   .award-mini-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-  .award-mini { display: inline-flex; align-items: center; gap: 3px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
+  .award-mini { display: inline-flex; align-items: center; gap: 3px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; white-space: nowrap; border: none; cursor: pointer; -webkit-appearance: none; appearance: none; line-height: inherit; }
   .award-mini-purple { background: var(--s1-dim); color: var(--s1); }
   .award-mini-gold   { background: rgba(245,158,11,0.12); color: var(--gold); }
   .award-mini-blue   { background: var(--accent-dim); color: var(--accent); }
@@ -430,6 +430,46 @@ const AWARD_MINI_DEFS=[
   {key:'objMVPCount',icon:'🎯',color:'green'},
   {key:'topShitterCount',icon:'🍆',color:'red'}
 ];
+// What each award chip means, shown in the same tap-to-open popup the archetype
+// badges use. Wording mirrors how each award is actually calculated in the report.
+const AWARD_INFO={
+  seriesMVPCount:{label:'Series MVP',desc:'Awarded to the best overall performer of a series, scored on KDA, plus/minus, K/D and objective play. 4v4 only.'},
+  topFraggerCount:{label:'Top Fragger',desc:'Most kills in a series.'},
+  assistKingCount:{label:'Assist King',desc:'Most assists in a series.'},
+  objMVPCount:{label:'OBJ MVP',desc:'Biggest contributor on the objective in a series: the largest share of flag caps, hill time and ball time across the games played. 4v4 only.'},
+  topShitterCount:{label:'Top Shitter',desc:'The dubious honor of the lowest overall score in a series, using the same formula as Series MVP.'}
+};
+// Self-contained popup for the award chips — reuses only the existing .arch-popup
+// styling and leaves the archetype popup code completely alone. Only one popup is
+// ever open at a time: opening this one closes an archetype popup, and a capture-phase
+// click listener closes this one when an archetype badge (or anything else) is tapped.
+function hideAwardPopup(){const p=document.getElementById('awardPopup');if(p)p.classList.remove('visible');}
+function showAwardPopup(evt,key,count){
+  evt.stopPropagation();
+  const def=AWARD_MINI_DEFS.find(a=>a.key===key),info=AWARD_INFO[key];
+  if(!def||!info)return;
+  if(typeof hideArchPopup==='function')hideArchPopup();
+  let popup=document.getElementById('awardPopup');
+  if(!popup){popup=document.createElement('div');popup.id='awardPopup';popup.className='arch-popup';document.body.appendChild(popup);}
+  popup.innerHTML=`<button type="button" class="arch-popup-close" onclick="hideAwardPopup()">×</button>
+    <div class="arch-popup-title">${def.icon} ${count}× ${info.label}</div>
+    <div class="arch-popup-desc">${info.desc}</div>`;
+  const rect=evt.currentTarget.getBoundingClientRect();
+  const popupWidth=260,viewportWidth=document.documentElement.clientWidth;
+  let left=rect.left+window.scrollX;
+  left=Math.min(left,window.scrollX+viewportWidth-popupWidth-12);
+  left=Math.max(left,window.scrollX+12);
+  popup.style.left=left+'px';
+  popup.style.top=(rect.bottom+window.scrollY+6)+'px';
+  popup.classList.add('visible');
+}
+document.addEventListener('click',e=>{
+  const p=document.getElementById('awardPopup');
+  if(p&&p.classList.contains('visible')&&!p.contains(e.target)&&!e.target.closest('.award-mini'))hideAwardPopup();
+},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideAwardPopup();});
+window.addEventListener('scroll',hideAwardPopup,true);
+window.addEventListener('resize',hideAwardPopup);
 function getQualifiedPool(){
   const qualified=leaderboardData.filter(p=>p.seriesPlayed>=MIN_SERIES);
   return qualified.length?qualified:leaderboardData;
@@ -849,7 +889,7 @@ function render(){
     // every award chip inline too would start crowding the name itself.
     const awardMiniHtml=AWARD_MINI_DEFS
       .filter(a=>(p[a.key]||0)>0)
-      .map(a=>`<span class="award-mini award-mini-${a.color}">${a.icon}${p[a.key]}</span>`)
+      .map(a=>`<button type="button" class="award-mini award-mini-${a.color}" onclick="showAwardPopup(event,'${a.key}',${p[a.key]})">${a.icon}${p[a.key]}</button>`)
       .join('');
     const awardBadgesHtml=awardMiniHtml?`<div class="award-mini-row">${awardMiniHtml}</div>`:'';
     const playerKey=String(p.displayName).toLowerCase().replace(/"/g,'&quot;');
