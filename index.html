@@ -723,9 +723,50 @@ function calcSeriesExtremes(players,games){
   return{best,worst};
 }
 function buildSquads(games){
-  if(!games.length)return{squad1:new Set(),squad2:new Set()};
-  const g1=games[0];
-  return{squad1:new Set((g1.redTeam||[]).map(p=>p.name).filter(Boolean)),squad2:new Set((g1.blueTeam||[]).map(p=>p.name).filter(Boolean))};
+  if(!games.length)return{squad1:new Set(),squad2:new Set(),sideMap:[]};
+  // Squads are worked out from the whole series, not just game 1, so a player who gets
+  // moved to the other team mid-series (e.g. a swap after game 1) doesn't break the report.
+  // Game 1 seeds the squads; then for every game we find which colour is "Squad 1" (the side
+  // holding most Squad 1 members), and every player ends up in the squad they played for most.
+  const lc=s=>(s||'').trim().toLowerCase();
+  const display={};
+  const sides=games.map(g=>{
+    const grab=arr=>{const set=new Set();(arr||[]).forEach(p=>{const n=lc(p&&p.name);if(!n)return;set.add(n);if(!display[n])display[n]=p.name;});return set;};
+    return{Red:grab(g.redTeam),Blue:grab(g.blueTeam)};
+  });
+  let s1=new Set(sides[0].Red),s2=new Set(sides[0].Blue);
+  let sideMap=sides.map(()=> 'Red');
+  for(let pass=0;pass<6;pass++){
+    const newMap=sides.map((sd,i)=>{
+      let redIsS1=0,blueIsS1=0;
+      sd.Red.forEach(n=>{if(s1.has(n))redIsS1++;else if(s2.has(n))blueIsS1++;});
+      sd.Blue.forEach(n=>{if(s1.has(n))blueIsS1++;else if(s2.has(n))redIsS1++;});
+      if(redIsS1===blueIsS1)return sideMap[i];
+      return redIsS1>blueIsS1?'Red':'Blue';
+    });
+    const tally={};
+    sides.forEach((sd,i)=>{
+      ['Red','Blue'].forEach(col=>{
+        const sq=newMap[i]===col?1:2;
+        sd[col].forEach(n=>{(tally[n]=tally[n]||{1:0,2:0})[sq]++;});
+      });
+    });
+    const n1=new Set(),n2=new Set();
+    Object.keys(tally).forEach(n=>{
+      const t=tally[n];
+      if(t[1]>t[2])n1.add(n);else if(t[2]>t[1])n2.add(n);
+      else if(s1.has(n))n1.add(n);else n2.add(n);
+    });
+    const same=newMap.every((v,i)=>v===sideMap[i])&&n1.size===s1.size&&[...n1].every(n=>s1.has(n));
+    s1=n1;s2=n2;sideMap=newMap;
+    if(same)break;
+  }
+  return{squad1:new Set([...s1].map(n=>display[n])),squad2:new Set([...s2].map(n=>display[n])),sideMap};
+}
+// Which squad won a given game, based on which colour was Squad 1 in that game.
+function gameWinnerSquad(g,i,sideMap){
+  if(!g||g.winner==='Tie'||(g.winner!=='Red'&&g.winner!=='Blue'))return 0;
+  return (sideMap[i]||'Red')===g.winner?1:2;
 }
 function getSquad(name,squad1,squad2){
   if(squad1.has(name))return 1;if(squad2.has(name))return 2;
@@ -807,12 +848,12 @@ window.saveStatEdits=function(gi){
 function renderReport(games,errors,mode){
   _editorGames=games.map(g=>({...g}));_editorMode=mode;
   games=games.map(g=>({...g,winner:verifyWinner(g,mode)}));
-  const {squad1,squad2}=buildSquads(games);
+  const {squad1,squad2,sideMap}=buildSquads(games);
   let s1Wins=0,s2Wins=0;
-  games.forEach(g=>{
+  games.forEach((g,gi)=>{
     if(g.winner==='Tie')return;
     const wt=g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
-    if(wt.length>0){let s1v=0,s2v=0;wt.forEach(p=>{if(getSquad(p.name,squad1,squad2)===1)s1v++;else s2v++;});if(s1v>s2v)s1Wins++;else s2Wins++;}
+    if(wt.length>0){if(gameWinnerSquad(g,gi,sideMap)===1)s1Wins++;else s2Wins++;}
   });
   const winner=s1Wins>s2Wins?1:s2Wins>s1Wins?2:0;
   const agg={};
@@ -856,13 +897,12 @@ function renderReport(games,errors,mode){
     const gOdd=isOddball(g.gameType)&&mode==='4v4',gCTF=isCTF(g.gameType)&&mode==='4v4',gKOTH=isKOTH(g.gameType)&&mode==='4v4';
     const isTiedGame=g.winner==='Tie';
     const wt=isTiedGame?[]:(g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]));
-    let ws1=0,ws2=0;wt.forEach(p=>{if(getSquad(p.name,squad1,squad2)===1)ws1++;else ws2++;});
-    const ws=ws1>=ws2?1:2;
+    const ws=gameWinnerSquad(g,gi,sideMap)||1;
     const winBadge=isTiedGame?'<div class="game-win-badge badge-tie">Tied</div>':`<div class="game-win-badge badge-s${ws}">Squad ${ws} Wins</div>`;
     const redNames=new Set((g.redTeam||[]).map(p=>p.name));
     html+=`<div class="game-card"><div class="game-card-header"><div class="game-card-title">Game ${g.gameNumber} — ${g.gameType||'Unknown'}</div><div style="display:flex;align-items:center;gap:8px;">${winBadge}<button class="edit-stats-btn" onclick="openStatEditor(${gi})">✏ Edit Stats</button></div></div><div class="game-card-table-wrap"><table><thead><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Assists</th><th>K/D</th><th>KDA</th><th>+/-</th>${gOdd?'<th>Ball Time</th>':''}${gCTF?'<th>Flag Caps</th>':''}${gKOTH?'<th>Hill Time</th>':''}</tr></thead><tbody>`;
     [1,2].forEach(sq=>{
-      const sqP=sq===1?[...squad1]:[...squad2];const sqColor=sqP.some(n=>redNames.has(n))?'Red':'Blue';
+      const sqColor=sq===1?(sideMap[gi]||'Red'):((sideMap[gi]||'Red')==='Red'?'Blue':'Red');
       const pts=sqColor==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
       html+=`<tr class="team-divider divider-s${sq}"><td colspan="20">Squad ${sq} <span class="color-tag color-tag-${sqColor.toLowerCase()}">${sqColor}</span></td></tr>`;
       pts.forEach(p=>{html+=`<tr class="row-s${sq}"><td class="player-name-cell">${p.name||'?'}</td><td>${p.kills||0}</td><td>${p.deaths||0}</td><td>${p.assists||0}</td><td class="${kdClass(p.kills||0,p.deaths||0)}">${kd(p.kills||0,p.deaths||0)}</td><td class="${kdClass((p.kills||0)+(p.assists||0),p.deaths||0)}">${kd((p.kills||0)+(p.assists||0),p.deaths||0)}</td><td class="${pmClass(p.kills||0,p.deaths||0)}">${pm(p.kills||0,p.deaths||0)}</td>${gOdd?`<td>${fmtHillOrBall(p.ballTime)}</td>`:''}${gCTF?`<td>${p.flagCaps!=null?p.flagCaps:'—'}</td>`:''}${gKOTH?`<td>${fmtHillOrBall(p.hillTime)}</td>`:''}</tr>`;});
@@ -916,14 +956,14 @@ function buildDiscordShareText(games,mode,url){
     const scoreLine=p1Wins===p2Wins?`Series tied ${p1Wins}-${p2Wins}`:(p1Wins>p2Wins?`🏆 ${p1} wins ${p1Wins}-${p2Wins}`:`🏆 ${p2} wins ${p2Wins}-${p1Wins}`);
     return`🔒 Lock In H3 — Series Report\n\n${p1} vs ${p2}\n\n${scoreLine}\n\n${url}`;
   }
-  const{squad1,squad2}=buildSquads(games);
+  const{squad1,squad2,sideMap}=buildSquads(games);
   const s1=[...squad1].join(', ')||'—';
   const s2=[...squad2].join(', ')||'—';
   let s1Wins=0,s2Wins=0;
-  games.forEach(g=>{
+  games.forEach((g,gi)=>{
     if(g.winner==='Tie')return;
     const wt=g.winner==='Red'?(g.redTeam||[]):(g.blueTeam||[]);
-    if(wt.length>0){let s1v=0,s2v=0;wt.forEach(p=>{if(getSquad(p.name,squad1,squad2)===1)s1v++;else s2v++;});if(s1v>s2v)s1Wins++;else s2Wins++;}
+    if(wt.length>0){if(gameWinnerSquad(g,gi,sideMap)===1)s1Wins++;else s2Wins++;}
   });
   const scoreLine=s1Wins===s2Wins?`Series tied ${s1Wins}-${s2Wins}`:(s1Wins>s2Wins?`🏆 Squad 1 wins ${s1Wins}-${s2Wins}`:`🏆 Squad 2 wins ${s2Wins}-${s1Wins}`);
   return`🔒 Lock In H3 — Series Report\n\nSquad 1: ${s1}\nSquad 2: ${s2}\n\n${scoreLine}\n\n${url}`;
