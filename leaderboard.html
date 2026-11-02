@@ -198,7 +198,8 @@
   .removed-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); background: rgba(255,255,255,0.05); border: 1px solid var(--border2); padding: 3px 10px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
   .callout-top10-link { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; margin-top: 6px; display: inline-block; text-decoration: underline; text-underline-offset: 2px; opacity: 0.85; }
   .callout-top10-link:hover { opacity: 1; }
-  .swindler-banner { background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.02)); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 0.75rem; display: flex; justify-content: center; align-items: center; }
+  .swindler-banner { background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.02)); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 1rem 1.5rem; display: flex; justify-content: center; align-items: center; }
+  .swindler-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
   .swindler-content { display: flex; align-items: center; gap: 0.75rem; text-align: center; }
   .swindler-icon { font-size: 24px; flex-shrink: 0; }
   .swindler-label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 2px; }
@@ -225,7 +226,7 @@
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .modal-cancel { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 9px 18px; cursor: pointer; transition: all 0.15s; }
   .modal-cancel:hover { color: var(--text); }
-  @media (max-width: 600px) { .alltime-grid { grid-template-columns: 1fr; } .mvp-grid-2col { grid-template-columns: 1fr; } .merge-form { grid-template-columns: 1fr; } .modal-grid { grid-template-columns: 1fr; } .modal-field.full { grid-column: 1; } .modal-section-label { grid-column: 1; } .modal-divider { grid-column: 1; } .snapshot-row { flex-direction: column; align-items: flex-start; } }
+  @media (max-width: 600px) { .swindler-row { grid-template-columns: 1fr; } .alltime-grid { grid-template-columns: 1fr; } .mvp-grid-2col { grid-template-columns: 1fr; } .merge-form { grid-template-columns: 1fr; } .modal-grid { grid-template-columns: 1fr; } .modal-field.full { grid-column: 1; } .modal-section-label { grid-column: 1; } .modal-divider { grid-column: 1; } .snapshot-row { flex-direction: column; align-items: flex-start; } }
 </style>
 </head>
 <body>
@@ -793,7 +794,7 @@ function render(){
 
   // A permanent joke callout — always shows the same player regardless of mode or
   // actual stats, so it's built separately from the real data-driven callouts above.
-  const swindlerBannerHtml = `<div class="swindler-banner"><div class="swindler-content"><span class="swindler-icon">💩</span><div><div class="swindler-label">Absolute Dog Shit</div><div class="swindler-name">Vospyrnatu</div></div></div></div>`;
+  const swindlerBannerHtml = `<div class="swindler-row"><div class="swindler-banner"><div class="swindler-content"><span class="swindler-icon">💩</span><div><div class="swindler-label">Absolute Dog Shit</div><div class="swindler-name">Vospyrnatu</div></div></div></div><div class="swindler-banner"><div class="swindler-content"><span class="swindler-icon">🚫</span><div><div class="swindler-label">NO CALLOUTS</div><div class="swindler-name">EDDYMARZ</div></div></div></div></div>`;
 
   let calloutsHtml='';
   if(is1v1){
