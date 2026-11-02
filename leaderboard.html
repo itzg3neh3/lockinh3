@@ -413,6 +413,7 @@
 </div>
 
 <script src="archetypes.js?v=5"></script>
+<script src="playerinsights.js?v=1"></script>
 <script>
 const WORKER_URL='https://lockinh3.gmil88.workers.dev';
 
@@ -455,6 +456,25 @@ function showAwardPopup(evt,key,count){
   popup.innerHTML=`<button type="button" class="arch-popup-close" onclick="hideAwardPopup()">×</button>
     <div class="arch-popup-title">${def.icon} ${count}× ${info.label}</div>
     <div class="arch-popup-desc">${info.desc}</div>`;
+  const rect=evt.currentTarget.getBoundingClientRect();
+  const popupWidth=260,viewportWidth=document.documentElement.clientWidth;
+  let left=rect.left+window.scrollX;
+  left=Math.min(left,window.scrollX+viewportWidth-popupWidth-12);
+  left=Math.max(left,window.scrollX+12);
+  popup.style.left=left+'px';
+  popup.style.top=(rect.bottom+window.scrollY+6)+'px';
+  popup.classList.add('visible');
+}
+// Popup for the On Fire / Ice Cold chip — same self-contained approach as the award popup.
+function showStreakPopup(evt,type,count){
+  evt.stopPropagation();
+  if(typeof hideArchPopup==='function')hideArchPopup();
+  let popup=document.getElementById('awardPopup');
+  if(!popup){popup=document.createElement('div');popup.id='awardPopup';popup.className='arch-popup';document.body.appendChild(popup);}
+  const hot=type==='win';
+  popup.innerHTML=`<button type="button" class="arch-popup-close" onclick="hideAwardPopup()">×</button>
+    <div class="arch-popup-title">${hot?'🔥 On Fire':'🥶 Ice Cold'} · ${count} in a row</div>
+    <div class="arch-popup-desc">${hot?`Has won the last ${count} series in a row.`:`Has lost the last ${count} series in a row.`} Shows once a streak reaches ${PI_STREAK_MIN} and goes away when it's broken or the player hasn't played in ${PI_STREAK_MAX_AGE_DAYS} days.</div>`;
   const rect=evt.currentTarget.getBoundingClientRect();
   const popupWidth=260,viewportWidth=document.documentElement.clientWidth;
   let left=rect.left+window.scrollX;
@@ -717,6 +737,8 @@ function render(){
   const assistKingRanking = !is1v1 ? getAwardRanking(pool,'assistKingCount') : [];
   const assistKing = assistKingRanking[0]||null;
   const duoRanking = !is1v1 ? getDuoRanking(historyEntries,currentMode) : [];
+  // Current win/loss streaks from History (fills in once History finishes loading).
+  const streakMap = historyLoaded ? piStreaks(historyEntries,currentMode) : {};
   const bestDuo = duoRanking[0]||null;
   const topShitterRanking = !is1v1 ? getAwardRanking(pool,'topShitterCount') : [];
   let topShitter=null;
@@ -892,7 +914,10 @@ function render(){
       .filter(a=>(p[a.key]||0)>0)
       .map(a=>`<button type="button" class="award-mini award-mini-${a.color}" onclick="showAwardPopup(event,'${a.key}',${p[a.key]})">${a.icon}${p[a.key]}</button>`)
       .join('');
-    const awardBadgesHtml=awardMiniHtml?`<div class="award-mini-row">${awardMiniHtml}</div>`:'';
+    // On Fire / Ice Cold: a current streak of 4+ series in a row (only while recent).
+    const streak=piStreakFor(streakMap,p.displayName);
+    const streakChip=streak?`<button type="button" class="award-mini award-mini-${streak.type==='win'?'gold':'blue'}" onclick="showStreakPopup(event,'${streak.type}',${streak.count})">${streak.type==='win'?'🔥':'🥶'}${streak.count}</button>`:'';
+    const awardBadgesHtml=(streakChip||awardMiniHtml)?`<div class="award-mini-row">${streakChip}${awardMiniHtml}</div>`:'';
     const playerKey=String(p.displayName).toLowerCase().replace(/"/g,'&quot;');
     // Header row: rank + name + every archetype badge, free to wrap across
     // multiple lines since this row contains nothing else that needs to align —

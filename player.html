@@ -181,6 +181,7 @@
 </div>
 
 <script src="archetypes.js?v=5"></script>
+<script src="playerinsights.js?v=1"></script>
 <script>
 const WORKER_URL = 'https://lockinh3.gmil88.workers.dev';
 
@@ -209,6 +210,9 @@ const OPP_LIMIT = 8;
 // tab is active. If either fetch fails, archetypes are just skipped for that mode
 // rather than breaking the rest of the profile page.
 let archetypePools = { '4v4': null, '2v2': null };
+// Series History, used for the streak badge and the Ride or Die / Nemesis cards. If it
+// fails to load those sections are simply left out.
+let playerHistoryEntries = [];
 
 async function load() {
   const params = new URLSearchParams(window.location.search);
@@ -230,7 +234,8 @@ async function load() {
     const [resp] = await Promise.all([
       fetch(`${WORKER_URL}/player?name=${encodeURIComponent(playerName)}`),
       loadPool('4v4'),
-      loadPool('2v2')
+      loadPool('2v2'),
+      fetch(`${WORKER_URL}/history`).then(r => r.ok ? r.json() : null).then(h => { playerHistoryEntries = (h && h.entries) || []; }).catch(() => { playerHistoryEntries = []; })
     ]);
     if (resp.status === 404) {
       document.getElementById('content').innerHTML = `<div class="not-found"><h2>Player not found</h2><p>"${playerName}" doesn't exist in the leaderboard yet.</p></div>`;
@@ -267,6 +272,38 @@ function renderAwardsSection(stats) {
   if (!entries.length) return '';
   const chips = entries.map(a => `<div class="award-chip award-${a.color}"><span class="award-icon">${a.icon}</span><span class="award-count">${stats[a.key]}×</span><span class="award-label">${a.label}</span></div>`).join('');
   return `<div class="section-title">Awards</div><div class="awards-wrap">${chips}</div>`;
+}
+
+// "Form & Rivals": the current streak (On Fire / Ice Cold) plus this player's best
+// teammate (Ride or Die) and toughest opponent (Nemesis), all computed from History
+// by playerinsights.js. Shows nothing at all when none of it applies yet.
+function renderFormRivalsSection(displayName, mode) {
+  if (!playerHistoryEntries.length || typeof piRelations !== 'function') return '';
+  const streak = piStreakFor(piStreaks(playerHistoryEntries, mode), displayName);
+  const rel = piRelations(playerHistoryEntries, mode, displayName);
+  if (!streak && !rel.rideOrDie && !rel.nemesis) return '';
+  const link = n => `<a href="player.html?p=${encodeURIComponent(n)}" style="color:inherit;text-decoration:none;border-bottom:1px dotted currentColor">${n}</a>`;
+  let html = `<div class="section-title">Form &amp; Rivals</div>`;
+  if (streak) {
+    const hot = streak.type === 'win';
+    html += `<div class="awards-wrap" style="margin-bottom:0.75rem"><div class="award-chip award-${hot ? 'gold' : 'blue'}"><span class="award-icon">${hot ? '🔥' : '🥶'}</span><span class="award-count">${streak.count}×</span><span class="award-label">${hot ? 'On Fire — series wins in a row' : 'Ice Cold — series losses in a row'}</span></div></div>`;
+  }
+  const card = (icon, title, who, record, note, color) => `<div style="flex:1;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">${icon} ${title}</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${color}">${link(who)}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">${record} · ${note}</div>
+    </div>`;
+  const cards = [];
+  if (rel.rideOrDie) {
+    const r = rel.rideOrDie;
+    cards.push(card('🤝', 'Ride or Die', r.name, `${r.wins}-${r.losses} together`, `${Math.round(r.wins / r.n * 100)}% win rate as teammates`, 'var(--green)'));
+  }
+  if (rel.nemesis) {
+    const r = rel.nemesis;
+    cards.push(card('😈', 'Nemesis', r.name, `${r.wins}-${r.losses} against`, `only ${Math.round(r.wins / r.n * 100)}% wins as opponents`, 'var(--red)'));
+  }
+  if (cards.length) html += `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1.5rem">${cards.join('')}</div>`;
+  return html;
 }
 
 function setMode(mode) {
@@ -405,6 +442,9 @@ function render() {
 
     // Awards
     html += renderAwardsSection(stats);
+
+    // Streak + Ride or Die / Nemesis
+    html += renderFormRivalsSection(displayName, currentMode);
 
     // Stats grid
     html += `<div class="section-title">Combat Stats</div>
