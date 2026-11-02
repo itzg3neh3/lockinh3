@@ -13,12 +13,16 @@ function piNorm(n) { return (n || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
 // Same eligibility the leaderboard uses: skip removed series, ties, and entries whose
 // squad sizes don't match the mode label (e.g. 2-player squads saved into the 4v4 pool).
+// Pass mode 'all' to include every mode together (as the Head to Head page does); then
+// only the basics are checked: not removed, not tied, and both squads the same size.
 function piEligible(entries, mode) {
   const size = mode === '1v1' ? 1 : mode === '2v2' ? 2 : 4;
   return (entries || [])
-    .filter(e => e && !e.removedFromLeaderboard && e.mode === mode &&
-      (e.squad1 || []).length === size && (e.squad2 || []).length === size &&
-      (e.seriesWinner === 1 || e.seriesWinner === 2))
+    .filter(e => e && !e.removedFromLeaderboard &&
+      (e.seriesWinner === 1 || e.seriesWinner === 2) &&
+      (mode === 'all'
+        ? (e.squad1 || []).length > 0 && (e.squad1 || []).length === (e.squad2 || []).length
+        : e.mode === mode && (e.squad1 || []).length === size && (e.squad2 || []).length === size))
     .slice()
     .sort((a, b) => String(a.playedAt).localeCompare(String(b.playedAt)));
 }
