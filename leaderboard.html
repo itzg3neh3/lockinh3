@@ -344,6 +344,16 @@
         <div class="admin-msg" id="debugPlayerMsg"></div>
       </div>
       <div class="admin-section">
+        <div class="admin-section-title">✏️ Rename a Player</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Changes a player's name everywhere in one step: their leaderboard entry in every mode, every series in History, and every saved report. Their stats and awards move over unchanged. If the new name already exists as its own entry, use Merge instead.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0.75rem">
+          <div><label style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">Current Name</label><input type="text" class="admin-input" id="renamePlayerOld" placeholder="e.g. A Wild Mew" style="margin-bottom:0"></div>
+          <div><label style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">New Name</label><input type="text" class="admin-input" id="renamePlayerNew" placeholder="e.g. llLokey" style="margin-bottom:0"></div>
+        </div>
+        <button class="admin-btn" onclick="renamePlayer()" id="renamePlayerBtn">Rename Player</button>
+        <div class="admin-msg" id="renamePlayerMsg"></div>
+      </div>
+      <div class="admin-section">
         <div class="admin-section-title">🔀 Merge Duplicate Players</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Select the incorrect duplicate and the correct name to merge into.</p>
         <div class="merge-form">
@@ -1216,6 +1226,28 @@ async function renameInHistory(){
     findOrphanedNames();
   }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
   btn.disabled=false;btn.textContent='Rename in History';
+}
+
+async function renamePlayer(){
+  const msgEl=document.getElementById('renamePlayerMsg');msgEl.className='admin-msg';msgEl.style.display='none';
+  const btn=document.getElementById('renamePlayerBtn');
+  const oldName=(document.getElementById('renamePlayerOld').value||'').trim();
+  const newName=(document.getElementById('renamePlayerNew').value||'').trim();
+  if(!oldName||!newName){msgEl.textContent='Enter both the current name and the new name.';msgEl.className='admin-msg error';return;}
+  const call=dryRun=>fetch(WORKER_URL+'/leaderboard/rename-player',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({oldName,newName,dryRun})}).then(r=>r.json()).then(r=>{if(r.error)throw new Error(r.error);return r;});
+  btn.disabled=true;btn.textContent='Checking...';
+  try{
+    const pre=await call(true);
+    const where=pre.leaderboardModes.length?pre.leaderboardModes.join(', ')+' leaderboard'+(pre.leaderboardModes.length>1?'s':''):'no leaderboard entry';
+    if(!confirm(`Rename "${oldName}" to "${newName}"?\n\nThis will update: ${where}, and ${pre.historyEntries} series in History (plus their saved reports).\n\nA restore-point snapshot is saved first. Continue?`)){btn.disabled=false;btn.textContent='Rename Player';return;}
+    btn.textContent='Renaming — this may take a moment...';
+    const r=await call(false);
+    msgEl.textContent=`✓ Renamed "${oldName}" → "${r.newName}": ${r.leaderboardModes.length} leaderboard${r.leaderboardModes.length===1?'':'s'}, ${r.historyEntriesRenamed} History entries, ${r.reportsUpdated} saved reports${r.reportsNotFound?` (${r.reportsNotFound} expired)`:''}. Refreshing...`;
+    msgEl.className='admin-msg success';
+    document.getElementById('renamePlayerOld').value='';document.getElementById('renamePlayerNew').value='';
+    setTimeout(()=>load(),1500);
+  }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
+  btn.disabled=false;btn.textContent='Rename Player';
 }
 
 async function debugPlayer(){

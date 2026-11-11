@@ -1127,6 +1127,101 @@ export default {
       }
     }
 
+    // ── POST /leaderboard/rename-player ──────────────────────────────────
+    // One-step rename of a player everywhere: the leaderboard entry in EVERY mode they
+    // appear in (key + display name), every History entry, and every saved game report.
+    // Totals and award counts move over untouched — nothing is recalculated. If the new
+    // name already exists as a separate leaderboard entry in any mode it refuses (that
+    // is a merge, not a rename) and changes nothing. A restore-point snapshot of each
+    // affected leaderboard is saved before any change. Send dryRun:true to just get the
+    // counts without writing anything.
+    if (request.method === 'POST' && url.pathname === '/leaderboard/rename-player') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { oldName, newName: rawNewName, dryRun } = await request.json();
+        const newName = (rawNewName || '').trim();
+        if (!oldName || !newName) throw new Error('oldName and newName required');
+        const oldKey = normalizeName(oldName);
+        const newKey = normalizeName(newName);
+        if (!oldKey || !newKey) throw new Error('Invalid name(s)');
+
+        // 1. Leaderboards — check everything first, write nothing until it all checks out.
+        const modes = ['4v4', '2v2', '1v1'];
+        const boards = {};
+        for (const m of modes) {
+          const raw = await env.REPORTS.get(lbKey(m));
+          const lb = raw ? JSON.parse(raw) : {};
+          if (!lb[oldKey]) continue;
+          if (oldKey !== newKey && lb[newKey]) {
+            throw new Error(`"${lb[newKey].displayName}" already exists on the ${m} leaderboard — use Merge Duplicate Players instead of Rename.`);
+          }
+          boards[m] = lb;
+        }
+        const leaderboardModes = Object.keys(boards);
+
+        // 2. History entries (all modes) that mention the old name.
+        const list = await listAllKeys(env, 'history:');
+        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const toUpdate = [];
+        list.forEach((k, idx) => {
+          const raw = rawResults[idx];
+          if (!raw) return;
+          let entry;
+          try { entry = JSON.parse(raw); } catch (e) { return; }
+          const names = [...(entry.squad1 || []), ...(entry.squad2 || [])];
+          if (names.some(n => normalizeName(n) === oldKey && n !== newName)) toUpdate.push({ histKey: k.name, entry });
+        });
+
+        if (!leaderboardModes.length && !toUpdate.length) throw new Error(`No player matching "${oldName}" found on any leaderboard or in History.`);
+
+        if (dryRun) {
+          return jsonResponse({ dryRun: true, oldName, newName, leaderboardModes, historyEntries: toUpdate.length }, 200, origin);
+        }
+
+        // 3. Leaderboards: restore-point snapshot, then move the entry to the new key.
+        for (const m of leaderboardModes) {
+          const lb = boards[m];
+          await saveSnapshot(lb, env, m);
+          const entry = lb[oldKey];
+          delete lb[oldKey];
+          entry.displayName = newName;
+          lb[newKey] = entry;
+          await env.REPORTS.put(lbKey(m), JSON.stringify(lb));
+        }
+
+        // 4. History entries + their saved game reports.
+        let historyEntriesRenamed = 0, reportsUpdated = 0, reportsNotFound = 0, reportsBadData = 0;
+        for (const { histKey, entry } of toUpdate) {
+          entry.squad1 = (entry.squad1 || []).map(n => normalizeName(n) === oldKey ? newName : n);
+          entry.squad2 = (entry.squad2 || []).map(n => normalizeName(n) === oldKey ? newName : n);
+          await env.REPORTS.put(histKey, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+          historyEntriesRenamed++;
+
+          const reportRaw = await env.REPORTS.get(entry.reportId);
+          if (!reportRaw) { reportsNotFound++; continue; }
+          let games;
+          try { games = JSON.parse(reportRaw); } catch (e) { reportsBadData++; continue; }
+          if (!Array.isArray(games)) { reportsBadData++; continue; }
+          let changed = false;
+          games.forEach(g => {
+            ['redTeam', 'blueTeam'].forEach(teamKey => {
+              (g[teamKey] || []).forEach(p => {
+                if (p.name && normalizeName(p.name) === oldKey && p.name !== newName) { p.name = newName; changed = true; }
+              });
+            });
+          });
+          if (changed) {
+            await env.REPORTS.put(entry.reportId, JSON.stringify(games), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+            reportsUpdated++;
+          }
+        }
+
+        return jsonResponse({ oldName, newName, leaderboardModes, historyEntriesRenamed, reportsUpdated, reportsNotFound, reportsBadData }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
     // ── GET /history ─────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history') {
       try {
