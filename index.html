@@ -984,10 +984,27 @@ document.getElementById('discordCopyBtn').addEventListener('click',()=>{
   btn.classList.add('copied');btn.textContent='Copied!';
   setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML=original;},2000);
 });
+// ── Prank report link ────────────────────────────────────────────────────
+// Opening ?r=<one of these ids> looks like a normal shared report, then plays the video.
+// Browsers often block autoplay-with-sound, so if that happens it falls back to a
+// "View series" button (a tap is allowed to start sound).
+const RICKROLL_IDS = ['w5n8qk'];
+async function playRickRollReport(){
+  await new Promise(r=>setTimeout(r,1400));
+  reportEl.innerHTML='<div style="max-width:720px;margin:0 auto"><video id="rrVideo" src="season-recap.mp4" playsinline preload="auto" style="width:100%;border-radius:12px;background:#000;display:none"></video><div id="rrGate" style="text-align:center;padding:2.5rem 1rem;background:var(--surface);border:1px solid var(--border2);border-radius:12px"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Series report ready</div><div style="color:var(--muted);margin-bottom:1.25rem">Tap to view the full series breakdown</div><button id="rrBtn" class="analyze-btn" style="display:inline-block;width:auto;padding:12px 32px">View Series</button></div><div id="rrEnd" style="display:none;text-align:center;margin-top:1rem;font-family:\'Barlow Condensed\',sans-serif;font-size:20px;letter-spacing:1px;text-transform:uppercase;color:var(--accent)">Never gonna give you up 🕺 — you just got rick rolled</div></div>';
+  const v=document.getElementById('rrVideo'),gate=document.getElementById('rrGate'),end=document.getElementById('rrEnd');
+  const start=()=>{gate.style.display='none';v.style.display='block';v.muted=false;v.volume=1;return v.play();};
+  v.addEventListener('ended',()=>{end.style.display='block';});
+  document.getElementById('rrBtn').addEventListener('click',()=>{start().catch(()=>{v.muted=true;v.play();});});
+  // Try to start straight away with sound; if the browser refuses, the button is already there.
+  v.muted=false;
+  v.play().then(()=>{gate.style.display='none';v.style.display='block';}).catch(()=>{});
+}
 (async function(){
   const id=new URLSearchParams(window.location.search).get('r');
   if(!id)return;
   document.getElementById('pwGate').style.display='none';
+  const isPrank = RICKROLL_IDS.indexOf(id) !== -1;
   document.getElementById('appContent').style.display='block';
   document.querySelector('.mode-select-wrap').style.display='none';
   document.querySelector('.upload-zone').style.display='none';
@@ -997,6 +1014,7 @@ document.getElementById('discordCopyBtn').addEventListener('click',()=>{
   const banner=document.createElement('div');banner.className='view-only-banner';
   banner.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>&nbsp; Viewing shared series report &mdash; <strong style="margin-left:4px">Lock in H3</strong>';
   document.querySelector('.container').insertBefore(banner,document.getElementById('appContent'));
+  if(isPrank){ await playRickRollReport(); return; }
   try{
     const games=await loadReport(id);
     if(!games){reportEl.innerHTML='<div class="not-found-msg"><h2>Report not found</h2><p>This link may have expired — reports are stored for 90 days.</p></div>';return;}
