@@ -795,6 +795,7 @@ function render(){
       case'kd':return(b.deaths?b.kills/b.deaths:b.kills)-(a.deaths?a.kills/a.deaths:a.kills);
       case'kda':return((b.kills+b.assists)/(b.deaths||1))-((a.kills+a.assists)/(a.deaths||1));
       case'assists':return b.assists-a.assists;
+      case'assists_s':return (b.seriesPlayed?b.assists/b.seriesPlayed:0)-(a.seriesPlayed?a.assists/a.seriesPlayed:0);
       case'deaths':return b.deaths-a.deaths;
       case'wins':{
         const diff=b.seriesWon-a.seriesWon;if(diff!==0)return diff;
@@ -874,7 +875,7 @@ function render(){
     <button class="sort-btn ${currentSort==='kills'?'active':''}" onclick="setSort('kills')">Kills</button>
     <button class="sort-btn ${currentSort==='kd'?'active':''}" onclick="setSort('kd')">K/D</button>
     ${!is1v1?`<button class="sort-btn ${currentSort==='kda'?'active':''}" onclick="setSort('kda')">KDA</button>`:''}
-    ${!is1v1?`<button class="sort-btn ${currentSort==='assists'?'active':''}" onclick="setSort('assists')">Assists</button>`:''}
+    ${!is1v1?`<button class="sort-btn ${currentSort==='assists'?'active':''}" onclick="setSort('assists')">Assists</button><button class="sort-btn ${currentSort==='assists_s'?'active':''}" onclick="setSort('assists_s')">Ast/Series</button>`:''}
     <button class="sort-btn ${currentSort==='deaths'?'active':''}" onclick="setSort('deaths')">Deaths</button>
     <button class="sort-btn ${currentSort==='wins'?'active':''}" onclick="setSort('wins')">${seriesLabel} Wins</button>
     ${is1v1?`<button class="sort-btn ${currentSort==='ties'?'active':''}" onclick="setSort('ties')">Ties</button>`:''}
@@ -889,7 +890,7 @@ function render(){
       <th>${seriesLabel}</th>
       <th class="${currentSort==='kills'?'sorted':''}" onclick="setSort('kills')">Kills</th>
       <th class="${currentSort==='deaths'?'sorted':''}" onclick="setSort('deaths')">Deaths</th>
-      ${!is1v1?`<th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th>`:''}
+      ${!is1v1?`<th class="${currentSort==='assists'?'sorted':''}" onclick="setSort('assists')">Assists</th><th class="obj-per ${currentSort==='assists_s'?'sorted':''}" onclick="setSort('assists_s')" title="Average assists per series played">Ast/S</th>`:''}
       <th class="${currentSort==='kd'?'sorted':''}" onclick="setSort('kd')">K/D</th>
       ${!is1v1?`<th class="${currentSort==='kda'?'sorted':''}" onclick="setSort('kda')">KDA</th>`:''}
       ${hasCaps?`<th class="${currentSort==='caps'?'sorted':''}" onclick="setSort('caps')">Flag Caps</th><th class="obj-per ${currentSort==='caps_s'?'sorted':''}" onclick="setSort('caps_s')" title="Per series that actually had a CTF game — not total series played. Shows — if fewer than 3 such series are on record.">Caps/S</th>`:''}
@@ -956,7 +957,7 @@ function render(){
       <td>${recordCell}</td>
       <td>${p.seriesPlayed}</td>
       <td>${p.kills}</td><td>${p.deaths}</td>
-      ${!is1v1?`<td>${p.assists}</td>`:''}
+      ${!is1v1?`<td>${p.assists}</td><td class="obj-per-val">${p.seriesPlayed?(p.assists/p.seriesPlayed).toFixed(1):'—'}</td>`:''}
       <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
       ${!is1v1?`<td class="${kdaClass(p.kills,p.assists,p.deaths)}">${kda(p.kills,p.assists,p.deaths)}</td>`:''}
       ${hasCaps?`<td>${p.flagCaps||0}</td><td class="obj-per-val">${(p.capsSeriesCount||0)>=OBJ_MIN_SAMPLE?capsPS.toFixed(2):'—'}</td>`:''}
