@@ -778,6 +778,17 @@ async function submitToLeaderboard(force=false){
   if(!appUnlocked)return;
   const btn=document.getElementById('lbBtn'),forceBtn=document.getElementById('lbForceBtn');
   if(!window._lastGames||window._seriesWinner===undefined)return;
+  // Guard: make sure the mode matches how many players are actually on each team, so a 2v2
+  // can't be saved to the 4v4 leaderboard (or vice versa) by accident.
+  {
+    const g1=window._lastGames[0]||{};
+    const teamSize=Math.max((g1.redTeam||[]).length,(g1.blueTeam||[]).length);
+    const detected=teamSize<=1?'1v1':teamSize<=2?'2v2':'4v4';
+    if(teamSize>0&&detected!==window._seriesMode){
+      if(!confirm(`This series has ${teamSize} player${teamSize===1?'':'s'} per team, which looks like ${detected}, but it's set to ${window._seriesMode}.\n\nOK = save it to the ${detected} leaderboard\nCancel = don't save yet (change the mode and try again)`))return;
+      window._seriesMode=detected;
+    }
+  }
   if(window._seriesWinner===0&&window._seriesMode!=='1v1'){btn.className='lb-btn duplicate';btn.innerHTML='— Tied series not added to leaderboard';btn.disabled=true;return;}
   btn.disabled=true;forceBtn.style.display='none';btn.innerHTML='<span class="spinner" style="border-top-color:currentColor"></span> Saving...';
   try{

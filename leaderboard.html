@@ -317,6 +317,12 @@
         <div class="admin-player-list" id="removeSeriesList"><div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading recent series...</div></div>
         <div class="admin-msg" id="removeSeriesMsg"></div>
       </div>
+      <div class="admin-section" id="mislabeledSection">
+        <div class="admin-section-title">🔧 Fix Series Saved as the Wrong Mode</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Lists series saved as <strong>4v4</strong> that only had <strong>2 players per side</strong> — really 2v2. <strong>Move to 2v2</strong> takes the series' stats, record and awards off the 4v4 leaderboard, adds them to the 2v2 leaderboard, and relabels it in History. It works from the saved report, so no screenshots needed, and a restore-point snapshot is saved first. (Download a backup before moving a lot of series — snapshots only keep the latest 10.)</p>
+        <div class="admin-player-list" id="mislabeledList"><div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading...</div></div>
+        <div class="admin-msg" id="mislabeledMsg"></div>
+      </div>
       <div class="admin-section" id="orphanedNamesSection">
         <div class="admin-section-title">👻 Find Orphaned Names</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Scans every series in History for the <strong id="orphanedModeLabel">4v4</strong> leaderboard and lists any player name that doesn't match a current leaderboard entry — usually an old gamertag left behind after a name change that was later merged, whose History entries are now invisible to any lookup under the current name.</p>
@@ -1131,7 +1137,44 @@ async function runAwardsBackfill(){
   btn.disabled=false;btn.textContent='Run Awards Backfill';
 }
 
+function renderMislabeledList(){
+  const listEl=document.getElementById('mislabeledList');
+  if(!listEl)return;
+  if(!historyLoaded){listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading...</div>';return;}
+  const bad=historyEntries
+    .filter(e=>(e.mode||'4v4')==='4v4'&&!e.removedFromLeaderboard&&(e.squad1||[]).length===2&&(e.squad2||[]).length===2)
+    .sort((a,b)=>new Date(b.playedAt)-new Date(a.playedAt));
+  if(!bad.length){listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">✓ No mislabeled series found — nothing saved as 4v4 has only 2 players per side.</div>';return;}
+  listEl.innerHTML=bad.map(e=>{
+    const histKey='history:'+e.playedAt+':'+e.reportId;
+    const safeKey=histKey.replace(/'/g,"&#39;");
+    return `<div class="admin-player-row">
+      <div class="admin-player-info">
+        <div class="admin-player-name">${(e.squad1||[]).join(', ')} <span style="color:var(--muted);font-weight:400;">vs</span> ${(e.squad2||[]).join(', ')}</div>
+        <div class="admin-player-key">${(e.squad1Wins??'?')}-${(e.squad2Wins??'?')} &middot; ${fmtDateTime(e.playedAt)}</div>
+      </div>
+      <div class="admin-action-btns"><button class="admin-btn" style="margin-bottom:0;padding:6px 12px;font-size:11px" onclick="moveSeriesTo2v2('${safeKey}')">Move to 2v2</button></div>
+    </div>`;
+  }).join('');
+}
+
+async function moveSeriesTo2v2(historyKey){
+  const msgEl=document.getElementById('mislabeledMsg');msgEl.className='admin-msg';msgEl.style.display='none';
+  const call=dryRun=>fetch(WORKER_URL+'/leaderboard/move-series-mode',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},body:JSON.stringify({historyKey,dryRun})}).then(r=>r.json()).then(r=>{if(r.error)throw new Error(r.error);return r;});
+  try{
+    const pre=await call(true);
+    if(!confirm(`Move this series from the 4v4 leaderboard to the 2v2 leaderboard?\n\nPlayers: ${pre.players.join(', ')}\n\nTheir stats, record and awards from this series come off 4v4 and go onto 2v2. A restore-point snapshot is saved first. Continue?`))return;
+    const r=await call(false);
+    const entry=historyEntries.find(e=>('history:'+e.playedAt+':'+e.reportId)===historyKey);
+    if(entry)entry.mode='2v2';
+    msgEl.textContent=`✓ Moved to 2v2 — ${r.playersAffected} player(s) updated. Refreshing...`;msgEl.className='admin-msg success';
+    renderMislabeledList();
+    setTimeout(()=>load(),1500);
+  }catch(e){msgEl.textContent=`Error: ${e.message}`;msgEl.className='admin-msg error';}
+}
+
 function renderRemoveSeriesList(){
+  renderMislabeledList();
   const listEl=document.getElementById('removeSeriesList');
   if(!listEl)return;
   if(currentMode==='1v1'){listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Not applicable to 1v1.</div>';return;}

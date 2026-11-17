@@ -300,6 +300,64 @@ function bumpAwardCount(leaderboard, name, field, delta = 1) {
   leaderboard[key][field] = Math.max(0, leaderboard[key][field] + delta);
 }
 
+// Exact inverse of mergeSeriesIntoLeaderboard for one series: takes the stats, series
+// record, objective-series counts and awards that series added back OUT of a leaderboard
+// object (in memory — the caller saves it). Used by the "move series to another mode" tool.
+function subtractSeriesFromLeaderboard(leaderboard, games, seriesWinner, mode) {
+  const g1 = games[0];
+  const squad1Names = new Set((g1.redTeam || []).map(p => normalizeName(p.name)).filter(Boolean));
+  const squad2Names = new Set((g1.blueTeam || []).map(p => normalizeName(p.name)).filter(Boolean));
+  const winningSquadNames = seriesWinner === 1 ? squad1Names : squad2Names;
+  const losingSquadNames = seriesWinner === 1 ? squad2Names : squad1Names;
+  const hasHillGame = games.some(g => isKOTHW(g.gameType));
+  const hasBallGame = games.some(g => isOddballW(g.gameType));
+  const hasCapsGame = games.some(g => isCTFW(g.gameType));
+
+  const playerStats = {};
+  games.forEach(g => {
+    [...(g.redTeam || []), ...(g.blueTeam || [])].forEach(p => {
+      if (!p || !p.name) return;
+      const pKey = normalizeName(p.name);
+      const s = playerStats[pKey] || (playerStats[pKey] = { kills: 0, deaths: 0, assists: 0, flagCaps: 0, hillSecs: 0, ballSecs: 0 });
+      s.kills += p.kills || 0;
+      s.deaths += p.deaths || 0;
+      s.assists += p.assists || 0;
+      s.flagCaps += p.flagCaps || 0;
+      s.hillSecs += parseTimeSecs(p.hillTime);
+      s.ballSecs += parseTimeSecs(p.ballTime);
+    });
+  });
+
+  let playersAffected = 0;
+  const dec = (lb, f, n = 1) => { lb[f] = Math.max(0, (lb[f] || 0) - n); };
+  Object.entries(playerStats).forEach(([pKey, st]) => {
+    const lb = leaderboard[pKey];
+    if (!lb) return;
+    playersAffected++;
+    dec(lb, 'kills', st.kills); dec(lb, 'deaths', st.deaths); dec(lb, 'assists', st.assists);
+    dec(lb, 'flagCaps', st.flagCaps); dec(lb, 'hillSecs', st.hillSecs); dec(lb, 'ballSecs', st.ballSecs);
+    dec(lb, 'seriesPlayed');
+    if (mode === '1v1' && seriesWinner === 0) dec(lb, 'seriesTied');
+    else if (winningSquadNames.has(pKey)) dec(lb, 'seriesWon');
+    else if (losingSquadNames.has(pKey)) dec(lb, 'seriesLost');
+    if (hasHillGame) dec(lb, 'hillSeriesCount');
+    if (hasBallGame) dec(lb, 'ballSeriesCount');
+    if (hasCapsGame) dec(lb, 'capsSeriesCount');
+  });
+
+  if (mode !== '1v1') {
+    const awards = computeAwardsForSeries(games, mode);
+    if (mode === '4v4') {
+      bumpAwardCount(leaderboard, awards.seriesMVP, 'seriesMVPCount', -1);
+      bumpAwardCount(leaderboard, awards.objMVP, 'objMVPCount', -1);
+    }
+    bumpAwardCount(leaderboard, awards.topFragger, 'topFraggerCount', -1);
+    bumpAwardCount(leaderboard, awards.topShitter, 'topShitterCount', -1);
+    bumpAwardCount(leaderboard, awards.assistKing, 'assistKingCount', -1);
+  }
+  return playersAffected;
+}
+
 async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
   const key = lbKey(mode);
   const lbRaw = await env.REPORTS.get(key);
@@ -1217,6 +1275,66 @@ export default {
         }
 
         return jsonResponse({ oldName, newName, leaderboardModes, historyEntriesRenamed, reportsUpdated, reportsNotFound, reportsBadData }, 200, origin);
+      } catch (err) {
+        return jsonResponse({ error: err.message }, 500, origin);
+      }
+    }
+
+    // ── POST /leaderboard/move-series-mode ───────────────────────────────
+    // Fixes a series that was saved under the wrong mode — currently 4v4 → 2v2 (a series
+    // with 2 players per side that got uploaded as 4v4). In one step it: takes the series'
+    // stats / record / awards back off the 4v4 leaderboard, adds them to the 2v2
+    // leaderboard exactly as a normal 2v2 save would, re-labels the History entry as 2v2
+    // and moves its duplicate-detection fingerprint. Uses the saved report, so no
+    // screenshots are needed. A restore-point snapshot of both leaderboards is saved first,
+    // and everything is validated before anything is written. dryRun:true only checks.
+    if (request.method === 'POST' && url.pathname === '/leaderboard/move-series-mode') {
+      if (!await validateAdminToken(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401, origin);
+      try {
+        const { historyKey, dryRun } = await request.json();
+        if (!historyKey) throw new Error('historyKey required');
+        const histRaw = await env.REPORTS.get(historyKey);
+        if (!histRaw) throw new Error('History entry not found');
+        const entry = JSON.parse(histRaw);
+        if (entry.removedFromLeaderboard) throw new Error('This series was removed from the leaderboard — nothing to move');
+        if ((entry.mode || '4v4') !== '4v4') throw new Error(`This series is already saved as ${entry.mode}`);
+        if ((entry.squad1 || []).length !== 2 || (entry.squad2 || []).length !== 2) {
+          throw new Error('Only series with exactly 2 players per side can be moved to 2v2');
+        }
+        const reportRaw = await env.REPORTS.get(entry.reportId);
+        if (!reportRaw) throw new Error('Original series data not found — it may have expired');
+        const games = JSON.parse(reportRaw);
+        if (!Array.isArray(games) || !games.length) throw new Error('Invalid series data');
+        if ((games[0].redTeam || []).length !== 2 || (games[0].blueTeam || []).length !== 2) {
+          throw new Error('The saved game data does not have 2 players per side — not moving it');
+        }
+        const seriesWinner = entry.seriesWinner;
+        if (seriesWinner !== 1 && seriesWinner !== 2) throw new Error('Tied series are not on the leaderboard — nothing to move');
+
+        const hash = await hashString(await createFingerprint(games));
+        if (await env.REPORTS.get(`fp:2v2:${hash}`)) throw new Error('This series is already counted on the 2v2 leaderboard');
+
+        const raw4 = await env.REPORTS.get(lbKey('4v4'));
+        const lb4 = raw4 ? JSON.parse(raw4) : {};
+        const playerKeys = new Set();
+        games.forEach(g => [...(g.redTeam || []), ...(g.blueTeam || [])].forEach(p => { if (p && p.name) playerKeys.add(normalizeName(p.name)); }));
+        const players = [...playerKeys].map(k => (lb4[k] && lb4[k].displayName) || k);
+        if (dryRun) return jsonResponse({ dryRun: true, players }, 200, origin);
+
+        const raw2 = await env.REPORTS.get(lbKey('2v2'));
+        await saveSnapshot(lb4, env, '4v4');
+        await saveSnapshot(raw2 ? JSON.parse(raw2) : {}, env, '2v2');
+
+        const playersAffected = subtractSeriesFromLeaderboard(lb4, games, seriesWinner, '4v4');
+        await env.REPORTS.put(lbKey('4v4'), JSON.stringify(lb4));
+        await mergeSeriesIntoLeaderboard(games, seriesWinner, env, '2v2');
+
+        entry.mode = '2v2';
+        await env.REPORTS.put(historyKey, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+        await env.REPORTS.delete(`fp:4v4:${hash}`);
+        await env.REPORTS.put(`fp:2v2:${hash}`, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+
+        return jsonResponse({ status: 'moved', playersAffected, players }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
       }
