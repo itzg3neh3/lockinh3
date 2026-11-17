@@ -1,6 +1,52 @@
 // Lock in H3 — Cloudflare Worker
-const ALLOWED_ORIGIN = 'https://itzg3neh3.github.io';
+// Serves the site's pages (bundled from the repo's HTML/JS/media, see
+// scripts/build-assets.mjs) and its API, all on lockinh3.com.
+import SITE_FILES from './assets.gen.js';
+
+const SITE_ORIGIN = 'https://lockinh3.com';
+const ALLOWED_ORIGIN = SITE_ORIGIN;
+// The old GitHub Pages copy forwards visitors to lockinh3.com, but a tab left open
+// there can still call the API, so it stays allowed.
+const ALLOWED_ORIGINS = new Set([SITE_ORIGIN, 'https://www.lockinh3.com', 'https://itzg3neh3.github.io']);
+const OLD_REPORT_BASE = 'https://itzg3neh3.github.io/lockinh3/';
+const REPORT_BASE = `${SITE_ORIGIN}/`;
 const MAX_SNAPSHOTS = 10;
+
+// History entries saved before the move point at the GitHub Pages copy; show them
+// with lockinh3.com links instead (the stored data is left as-is).
+function withCurrentReportUrls(raw) {
+  return raw && raw.includes(OLD_REPORT_BASE) ? raw.split(OLD_REPORT_BASE).join(REPORT_BASE) : raw;
+}
+
+const FILE_TYPES = {
+  html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8',
+  png: 'image/png', mp4: 'video/mp4',
+};
+
+function serveSiteFile(request, path) {
+  const file = SITE_FILES[path];
+  const ext = path.split('.').pop();
+  const headers = new Headers({
+    'Content-Type': FILE_TYPES[ext] || 'application/octet-stream',
+    'Cache-Control': ext === 'html' || ext === 'js' ? 'no-cache' : 'public, max-age=86400',
+    'X-Content-Type-Options': 'nosniff',
+    'Accept-Ranges': 'bytes',
+  });
+  const body = file.text !== undefined ? new TextEncoder().encode(file.text) : file.bytes;
+  // Video playback (Safari especially) needs byte-range support.
+  const range = request.headers.get('Range');
+  const m = range && /^bytes=(\d*)-(\d*)$/.exec(range);
+  if (m && (m[1] || m[2])) {
+    let start = m[1] ? +m[1] : body.length - +m[2];
+    let end = m[1] && m[2] ? +m[2] : body.length - 1;
+    end = Math.min(end, body.length - 1);
+    if (start < 0) start = 0;
+    if (start > end) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${body.length}` } });
+    headers.set('Content-Range', `bytes ${start}-${end}/${body.length}`);
+    return new Response(request.method === 'HEAD' ? null : body.slice(start, end + 1), { status: 206, headers });
+  }
+  return new Response(request.method === 'HEAD' ? null : body, { status: 200, headers });
+}
 
 function cors(origin) {
   return {
@@ -32,6 +78,58 @@ async function listAllKeys(env, prefix) {
     cursor = result.list_complete ? undefined : result.cursor;
   } while (cursor);
   return allKeys;
+}
+
+// ── History storage ─────────────────────────────────────────────────────
+// Each 'history:' key stores the full entry as its value (unchanged) AND a copy
+// in the key's KV metadata. KV's list() returns metadata alongside the keys, so
+// pages that need every History entry get them all from a single list call
+// instead of one read per series. Without this, every History / Player /
+// Head-to-Head load cost one KV read per saved series, which was burning through
+// the free plan's 100k reads/day. Metadata is capped at 1024 bytes by Cloudflare;
+// an entry too large for that is stored without it and simply read the old way.
+// Always save History entries with putHistory() so the copy stays in sync.
+const HISTORY_TTL = 60 * 60 * 24 * 365 * 2;
+
+function historyMetadata(entry) {
+  const meta = { entry };
+  const bytes = new TextEncoder().encode(JSON.stringify(meta)).length;
+  return bytes <= 1024 ? meta : null;
+}
+
+async function putHistory(env, key, entry, options = { expirationTtl: HISTORY_TTL }) {
+  const opts = { ...options };
+  const meta = historyMetadata(entry);
+  if (meta) opts.metadata = meta;
+  await env.REPORTS.put(key, JSON.stringify(entry), opts);
+}
+
+// Returns every History key plus its raw JSON value, in list order — the same
+// shape the old "list, then get each key" code produced. Entries saved before
+// metadata existed are read individually once, then quietly re-saved with
+// metadata (same value, same expiry) so later loads don't need to read them.
+async function loadHistory(env, ctx) {
+  const list = await listAllKeys(env, 'history:');
+  const raws = await Promise.all(list.map(async k => {
+    if (k.metadata && k.metadata.entry) return withCurrentReportUrls(JSON.stringify(k.metadata.entry));
+    const raw = await env.REPORTS.get(k.name);
+    if (raw && ctx) ctx.waitUntil(addHistoryMetadata(env, k, raw));
+    return withCurrentReportUrls(raw);
+  }));
+  return { list, raws };
+}
+
+async function addHistoryMetadata(env, k, raw) {
+  try {
+    const meta = historyMetadata(JSON.parse(raw));
+    if (!meta) return;
+    const opts = { metadata: meta };
+    if (k.expiration) {
+      if (k.expiration < Date.now() / 1000 + 120) return; // about to expire anyway
+      opts.expiration = k.expiration;
+    }
+    await env.REPORTS.put(k.name, raw, opts);
+  } catch (e) { /* non-fatal: the entry still reads fine without metadata */ }
 }
 
 function randomId(len = 6) {
@@ -138,7 +236,7 @@ async function saveHistoryEntry(games, seriesWinner, mode, reportId, playedAt, e
   const historyKey = `history:${timestamp}:${reportId}`;
   const entry = {
     reportId,
-    reportUrl: `https://itzg3neh3.github.io/lockinh3/?r=${reportId}`,
+    reportUrl: `${REPORT_BASE}?r=${reportId}`,
     playedAt: timestamp,
     mode: mode || '4v4',
     squad1,
@@ -150,9 +248,7 @@ async function saveHistoryEntry(games, seriesWinner, mode, reportId, playedAt, e
     gameTypes: games.map(g => g.gameType || 'Unknown'),
   };
 
-  await env.REPORTS.put(historyKey, JSON.stringify(entry), {
-    expirationTtl: 60 * 60 * 24 * 365 * 2,
-  });
+  await putHistory(env, historyKey, entry);
 
   return entry;
 }
@@ -460,15 +556,32 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || '';
     const url = new URL(request.url);
 
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: cors(origin) });
+    if (url.hostname === 'www.lockinh3.com') {
+      url.hostname = 'lockinh3.com';
+      return Response.redirect(url.toString(), 301);
     }
 
-    if (origin !== ALLOWED_ORIGIN) {
+    // Site pages and media (e.g. /, /leaderboard.html, /season-recap.mp4).
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      const path = url.pathname === '/' ? '/index.html' : url.pathname;
+      if (SITE_FILES[path]) return serveSiteFile(request, path);
+      if (path === '/index.html/' || path === '/lockinh3/' || path === '/lockinh3') {
+        return Response.redirect(`${SITE_ORIGIN}/${url.search}`, 301);
+      }
+    }
+
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: cors(ALLOWED_ORIGINS.has(origin) ? origin : ALLOWED_ORIGIN) });
+    }
+
+    // API calls must come from the site itself. Browsers omit the Origin header on
+    // same-origin GET requests, so those are recognised by Sec-Fetch-Site instead.
+    const sameOrigin = !origin && request.headers.get('Sec-Fetch-Site') === 'same-origin';
+    if (!ALLOWED_ORIGINS.has(origin) && !sameOrigin) {
       return new Response('Forbidden', { status: 403 });
     }
 
@@ -775,8 +888,7 @@ export default {
           p.capsSeriesCount = 0;
         });
 
-        const list = await listAllKeys(env, 'history:');
-        const rawHistoryResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawHistoryResults } = await loadHistory(env, ctx);
 
         let processed = 0, skippedNoReport = 0, skippedOtherMode = 0, skippedBadData = 0, skippedRemoved = 0;
 
@@ -937,9 +1049,7 @@ export default {
         // Flag (don't delete) the History entry so there's an audit trail
         histEntry.removedFromLeaderboard = true;
         histEntry.removedAt = new Date().toISOString();
-        await env.REPORTS.put(historyKey, JSON.stringify(histEntry), {
-          expirationTtl: 60 * 60 * 24 * 365 * 2,
-        });
+        await putHistory(env, historyKey, histEntry);
 
         return jsonResponse({ status: 'removed', mode: resolvedMode, playersAffected }, 200, origin);
       } catch (err) {
@@ -966,8 +1076,7 @@ export default {
         const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
         const currentEntry = leaderboard[pk] || null;
 
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const entries = [];
         list.forEach((k, idx) => {
           const raw = rawResults[idx];
@@ -1074,8 +1183,7 @@ export default {
         const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
         const currentKeys = new Set(Object.keys(leaderboard));
 
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
 
         const nameStats = {};
         rawResults.forEach(raw => {
@@ -1129,8 +1237,7 @@ export default {
         const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
         const canonicalNewName = leaderboard[newKeyNorm] ? leaderboard[newKeyNorm].displayName : newName;
 
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
 
         const toUpdate = [];
         list.forEach((k, idx) => {
@@ -1150,7 +1257,7 @@ export default {
         for (const { histKey, entry } of toUpdate) {
           entry.squad1 = (entry.squad1 || []).map(n => normalizeName(n) === oldKey ? canonicalNewName : n);
           entry.squad2 = (entry.squad2 || []).map(n => normalizeName(n) === oldKey ? canonicalNewName : n);
-          await env.REPORTS.put(histKey, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+          await putHistory(env, histKey, entry);
           historyEntriesRenamed++;
 
           const reportRaw = await env.REPORTS.get(entry.reportId);
@@ -1218,8 +1325,7 @@ export default {
         const leaderboardModes = Object.keys(boards);
 
         // 2. History entries (all modes) that mention the old name.
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const toUpdate = [];
         list.forEach((k, idx) => {
           const raw = rawResults[idx];
@@ -1252,7 +1358,7 @@ export default {
         for (const { histKey, entry } of toUpdate) {
           entry.squad1 = (entry.squad1 || []).map(n => normalizeName(n) === oldKey ? newName : n);
           entry.squad2 = (entry.squad2 || []).map(n => normalizeName(n) === oldKey ? newName : n);
-          await env.REPORTS.put(histKey, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+          await putHistory(env, histKey, entry);
           historyEntriesRenamed++;
 
           const reportRaw = await env.REPORTS.get(entry.reportId);
@@ -1330,7 +1436,7 @@ export default {
         await mergeSeriesIntoLeaderboard(games, seriesWinner, env, '2v2');
 
         entry.mode = '2v2';
-        await env.REPORTS.put(historyKey, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+        await putHistory(env, historyKey, entry);
         await env.REPORTS.delete(`fp:4v4:${hash}`);
         await env.REPORTS.put(`fp:2v2:${hash}`, '1', { expirationTtl: 60 * 60 * 24 * 365 * 2 });
 
@@ -1343,11 +1449,7 @@ export default {
     // ── GET /history ─────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history') {
       try {
-        const list = await listAllKeys(env, 'history:');
-        // Fetch every entry in parallel rather than one at a time — with a large
-        // History log, sequential reads here were the main cause of slow leaderboard
-        // and history load times.
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const entries = [];
         rawResults.forEach(raw => {
           if (raw) { try { entries.push(JSON.parse(raw)); } catch(e) {} }
@@ -1416,7 +1518,7 @@ export default {
       try {
         const { key } = await request.json();
         if (!key) throw new Error('key required');
-        const raw = await env.REPORTS.get(key);
+        const raw = withCurrentReportUrls(await env.REPORTS.get(key));
         if (!raw) throw new Error('Entry not found');
         return jsonResponse({ entry: JSON.parse(raw) }, 200, origin);
       } catch (err) {
@@ -1433,9 +1535,7 @@ export default {
         await env.REPORTS.delete(key);
         const newKey = `history:${newPlayedAt}:${entry.reportId}`;
         const updatedEntry = { ...entry, playedAt: newPlayedAt };
-        await env.REPORTS.put(newKey, JSON.stringify(updatedEntry), {
-          expirationTtl: 60 * 60 * 24 * 365 * 2,
-        });
+        await putHistory(env, newKey, updatedEntry);
         return jsonResponse({ status: 'updated' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
@@ -1445,8 +1545,7 @@ export default {
     // ── GET /history/players ─────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history/players') {
       try {
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const playerSet = new Set();
         rawResults.forEach(raw => {
           if (raw) {
@@ -1469,8 +1568,7 @@ export default {
         const p1 = url.searchParams.get('p1');
         const p2 = url.searchParams.get('p2');
         if (!p1 || !p2) throw new Error('p1 and p2 required');
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const asOpponents = { p1Wins: 0, p2Wins: 0, series: [] };
         const asTeammates = { wins: 0, losses: 0, series: [] };
         list.forEach((k, idx) => {
@@ -1535,8 +1633,7 @@ export default {
         if (!stats4v4 && !stats2v2 && !stats1v1) {
           return jsonResponse({ error: 'Player not found' }, 404, origin);
         }
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const seriesHistory = [];
         list.forEach((k, idx) => {
           const raw = rawResults[idx];
