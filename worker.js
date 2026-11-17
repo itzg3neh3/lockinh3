@@ -34,6 +34,57 @@ async function listAllKeys(env, prefix) {
   return allKeys;
 }
 
+// ── History storage ─────────────────────────────────────────────────────
+// Each 'history:' key stores the full entry as its value (unchanged) AND a copy
+// in the key's KV metadata. KV's list() returns metadata alongside the keys, so
+// pages that need every History entry get them all from a single list call
+// instead of one read per series. Without this, every History / Player /
+// Head-to-Head load cost one KV read per saved series, which was burning through
+// the free plan's 100k reads/day. Metadata is capped at 1024 bytes by Cloudflare;
+// an entry too large for that is stored without it and simply read the old way.
+const HISTORY_TTL = 60 * 60 * 24 * 365 * 2;
+
+function historyMetadata(entry) {
+  const meta = { entry };
+  const bytes = new TextEncoder().encode(JSON.stringify(meta)).length;
+  return bytes <= 1024 ? meta : null;
+}
+
+async function putHistory(env, key, entry, options = { expirationTtl: HISTORY_TTL }) {
+  const opts = { ...options };
+  const meta = historyMetadata(entry);
+  if (meta) opts.metadata = meta;
+  await env.REPORTS.put(key, JSON.stringify(entry), opts);
+}
+
+// Returns every History key plus its raw JSON value, in list order — the same
+// shape the old "list, then get each key" code produced. Entries saved before
+// metadata existed are read individually once, then quietly re-saved with
+// metadata (same value, same expiry) so later loads don't need to read them.
+async function loadHistory(env, ctx) {
+  const list = await listAllKeys(env, 'history:');
+  const raws = await Promise.all(list.map(async k => {
+    if (k.metadata && k.metadata.entry) return JSON.stringify(k.metadata.entry);
+    const raw = await env.REPORTS.get(k.name);
+    if (raw && ctx) ctx.waitUntil(addHistoryMetadata(env, k, raw));
+    return raw;
+  }));
+  return { list, raws };
+}
+
+async function addHistoryMetadata(env, k, raw) {
+  try {
+    const meta = historyMetadata(JSON.parse(raw));
+    if (!meta) return;
+    const opts = { metadata: meta };
+    if (k.expiration) {
+      if (k.expiration < Date.now() / 1000 + 120) return; // about to expire anyway
+      opts.expiration = k.expiration;
+    }
+    await env.REPORTS.put(k.name, raw, opts);
+  } catch (e) { /* non-fatal: the entry still reads fine without metadata */ }
+}
+
 function randomId(len = 6) {
   const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
   let id = '';
@@ -150,9 +201,7 @@ async function saveHistoryEntry(games, seriesWinner, mode, reportId, playedAt, e
     gameTypes: games.map(g => g.gameType || 'Unknown'),
   };
 
-  await env.REPORTS.put(historyKey, JSON.stringify(entry), {
-    expirationTtl: 60 * 60 * 24 * 365 * 2,
-  });
+  await putHistory(env, historyKey, entry);
 
   return entry;
 }
@@ -402,7 +451,7 @@ async function mergeSeriesIntoLeaderboard(games, seriesWinner, env, mode) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || '';
     const url = new URL(request.url);
 
@@ -717,8 +766,7 @@ export default {
           p.capsSeriesCount = 0;
         });
 
-        const list = await listAllKeys(env, 'history:');
-        const rawHistoryResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawHistoryResults } = await loadHistory(env, ctx);
 
         let processed = 0, skippedNoReport = 0, skippedOtherMode = 0, skippedBadData = 0, skippedRemoved = 0;
 
@@ -879,9 +927,7 @@ export default {
         // Flag (don't delete) the History entry so there's an audit trail
         histEntry.removedFromLeaderboard = true;
         histEntry.removedAt = new Date().toISOString();
-        await env.REPORTS.put(historyKey, JSON.stringify(histEntry), {
-          expirationTtl: 60 * 60 * 24 * 365 * 2,
-        });
+        await putHistory(env, historyKey, histEntry);
 
         return jsonResponse({ status: 'removed', mode: resolvedMode, playersAffected }, 200, origin);
       } catch (err) {
@@ -908,8 +954,7 @@ export default {
         const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
         const currentEntry = leaderboard[pk] || null;
 
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const entries = [];
         list.forEach((k, idx) => {
           const raw = rawResults[idx];
@@ -1016,8 +1061,7 @@ export default {
         const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
         const currentKeys = new Set(Object.keys(leaderboard));
 
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
 
         const nameStats = {};
         rawResults.forEach(raw => {
@@ -1071,8 +1115,7 @@ export default {
         const leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
         const canonicalNewName = leaderboard[newKeyNorm] ? leaderboard[newKeyNorm].displayName : newName;
 
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
 
         const toUpdate = [];
         list.forEach((k, idx) => {
@@ -1092,7 +1135,7 @@ export default {
         for (const { histKey, entry } of toUpdate) {
           entry.squad1 = (entry.squad1 || []).map(n => normalizeName(n) === oldKey ? canonicalNewName : n);
           entry.squad2 = (entry.squad2 || []).map(n => normalizeName(n) === oldKey ? canonicalNewName : n);
-          await env.REPORTS.put(histKey, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+          await putHistory(env, histKey, entry);
           historyEntriesRenamed++;
 
           const reportRaw = await env.REPORTS.get(entry.reportId);
@@ -1160,8 +1203,7 @@ export default {
         const leaderboardModes = Object.keys(boards);
 
         // 2. History entries (all modes) that mention the old name.
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const toUpdate = [];
         list.forEach((k, idx) => {
           const raw = rawResults[idx];
@@ -1194,7 +1236,7 @@ export default {
         for (const { histKey, entry } of toUpdate) {
           entry.squad1 = (entry.squad1 || []).map(n => normalizeName(n) === oldKey ? newName : n);
           entry.squad2 = (entry.squad2 || []).map(n => normalizeName(n) === oldKey ? newName : n);
-          await env.REPORTS.put(histKey, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 365 * 2 });
+          await putHistory(env, histKey, entry);
           historyEntriesRenamed++;
 
           const reportRaw = await env.REPORTS.get(entry.reportId);
@@ -1225,11 +1267,7 @@ export default {
     // ── GET /history ─────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history') {
       try {
-        const list = await listAllKeys(env, 'history:');
-        // Fetch every entry in parallel rather than one at a time — with a large
-        // History log, sequential reads here were the main cause of slow leaderboard
-        // and history load times.
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const entries = [];
         rawResults.forEach(raw => {
           if (raw) { try { entries.push(JSON.parse(raw)); } catch(e) {} }
@@ -1315,9 +1353,7 @@ export default {
         await env.REPORTS.delete(key);
         const newKey = `history:${newPlayedAt}:${entry.reportId}`;
         const updatedEntry = { ...entry, playedAt: newPlayedAt };
-        await env.REPORTS.put(newKey, JSON.stringify(updatedEntry), {
-          expirationTtl: 60 * 60 * 24 * 365 * 2,
-        });
+        await putHistory(env, newKey, updatedEntry);
         return jsonResponse({ status: 'updated' }, 200, origin);
       } catch (err) {
         return jsonResponse({ error: err.message }, 500, origin);
@@ -1327,8 +1363,7 @@ export default {
     // ── GET /history/players ─────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history/players') {
       try {
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const playerSet = new Set();
         rawResults.forEach(raw => {
           if (raw) {
@@ -1351,8 +1386,7 @@ export default {
         const p1 = url.searchParams.get('p1');
         const p2 = url.searchParams.get('p2');
         if (!p1 || !p2) throw new Error('p1 and p2 required');
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const asOpponents = { p1Wins: 0, p2Wins: 0, series: [] };
         const asTeammates = { wins: 0, losses: 0, series: [] };
         list.forEach((k, idx) => {
@@ -1417,8 +1451,7 @@ export default {
         if (!stats4v4 && !stats2v2 && !stats1v1) {
           return jsonResponse({ error: 'Player not found' }, 404, origin);
         }
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
+        const { list, raws: rawResults } = await loadHistory(env, ctx);
         const seriesHistory = [];
         list.forEach((k, idx) => {
           const raw = rawResults[idx];
