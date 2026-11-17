@@ -1177,7 +1177,6 @@ function renderRemoveSeriesList(){
   renderMislabeledList();
   const listEl=document.getElementById('removeSeriesList');
   if(!listEl)return;
-  if(currentMode==='1v1'){listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Not applicable to 1v1.</div>';return;}
   if(!historyLoaded){listEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:0.5rem 0">Loading recent series...</div>';return;}
   const filterVal=(document.getElementById('removeSeriesFilter')?.value||'').toLowerCase().trim();
   const filtered=historyEntries
@@ -1203,6 +1202,7 @@ function renderRemoveSeriesList(){
         <div class="admin-player-key">${scoreStr} &middot; ${dateStr}</div>
       </div>
       <div class="admin-action-btns">
+        <a class="admin-btn" href="${e.reportUrl||('index.html?r='+encodeURIComponent(e.reportId))}" target="_blank" rel="noopener" style="margin-bottom:0;padding:6px 12px;font-size:11px;text-decoration:none;display:inline-block">View</a>
         ${removed?'<span class="removed-badge">Removed</span>':`<button class="admin-delete-btn" onclick="removeSeries('${safeKey}')">Remove</button>`}
       </div>
     </div>`;
