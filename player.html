@@ -307,42 +307,6 @@ function renderFormRivalsSection(displayName, mode) {
   return html;
 }
 
-// "Top Shitter Teammates": in how many of this player's series did one of their TEAMMATES
-// (not themselves) end up as the series' Top Shitter, and where that ranks among players.
-// The worker works it out from the saved reports and caches it, so it's fetched after the
-// page has already rendered and just fills in when ready.
-const shitterTeamCache = {};
-async function loadShitterTeammates(mode) {
-  const wrap = () => document.getElementById('shitterTeamWrap');
-  try {
-    if (!shitterTeamCache[mode]) {
-      if (wrap()) wrap().innerHTML = `<div class="section-title">Top Shitter Teammates</div><div style="color:var(--muted);font-size:13px;margin-bottom:1.5rem">Crunching every series…</div>`;
-      const r = await fetch(`${WORKER_URL}/leaderboard/shitter-teammates?mode=${encodeURIComponent(mode)}`);
-      const data = await r.json();
-      if (data.error) throw new Error(data.error);
-      shitterTeamCache[mode] = data;
-    }
-    if (mode !== currentMode || !wrap()) return;
-    const data = shitterTeamCache[mode];
-    const norm = n => (n || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const me = data.rows.find(x => norm(x.name) === norm(playerData.displayName));
-    if (!me || !me.seriesPlayed) { wrap().innerHTML = ''; return; }
-    const ranked = data.rows.filter(x => x.seriesPlayed >= 10)
-      .sort((a, b) => b.withShitter - a.withShitter || (b.withShitter / b.seriesPlayed) - (a.withShitter / a.seriesPlayed));
-    const idx = ranked.findIndex(x => norm(x.name) === norm(me.name));
-    const pct = Math.round(me.withShitter / me.seriesPlayed * 100);
-    const rankTxt = idx >= 0 ? `#${idx + 1} of ${ranked.length} players` : '';
-    wrap().innerHTML = `<div class="section-title">Top Shitter Teammates</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:1.5rem">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">🍆 Had a teammate as Top Shitter</div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;letter-spacing:1px;color:var(--red)">${me.withShitter} of ${me.seriesPlayed} series <span style="font-size:18px;color:var(--text)">(${pct}%)</span></div>
-        <div style="font-size:13px;color:var(--muted);margin-top:2px">${idx >= 0 ? `Rank ${rankTxt} (10+ series) · ` : ''}Counts series with a saved report only; the player themself being Top Shitter (${me.wasShitter}×) isn't included</div>
-      </div>`;
-  } catch (e) {
-    if (wrap()) wrap().innerHTML = '';
-  }
-}
-
 function setMode(mode) {
   currentMode = mode;
   showAllSeries = false;
@@ -483,9 +447,6 @@ function render() {
     // Streak + Ride or Die / Nemesis
     html += renderFormRivalsSection(displayName, currentMode);
 
-    // Top Shitter teammates (filled in after the page is up — it reads every saved report)
-    if (currentMode === '4v4' || currentMode === '2v2') html += `<div id="shitterTeamWrap"></div>`;
-
     // Stats grid
     html += `<div class="section-title">Combat Stats</div>
     <div class="stats-grid">
@@ -602,7 +563,6 @@ function render() {
   }
 
   document.getElementById('content').innerHTML = html;
-  if (document.getElementById('shitterTeamWrap')) loadShitterTeammates(currentMode);
 }
 
 load();

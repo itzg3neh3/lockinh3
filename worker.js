@@ -1222,68 +1222,6 @@ export default {
       }
     }
 
-    // ── GET /leaderboard/shitter-teammates ───────────────────────────────
-    // For every player: in how many series did one of THEIR TEAMMATES (not themselves)
-    // end up as that series' Top Shitter? Top Shitter isn't stored in History, so each
-    // series is rebuilt from its saved report with the same award formula the leaderboard
-    // uses. Series whose report has expired are left out of both numbers. The result is
-    // cached for 30 minutes since it reads every report.
-    if (request.method === 'GET' && url.pathname === '/leaderboard/shitter-teammates') {
-      try {
-        const mode = url.searchParams.get('mode') === '2v2' ? '2v2' : '4v4';
-        const cacheKey = `cache:shitter-teammates:${mode}`;
-        const cached = await env.REPORTS.get(cacheKey);
-        if (cached) return jsonResponse(JSON.parse(cached), 200, origin);
-
-        const list = await listAllKeys(env, 'history:');
-        const rawResults = await Promise.all(list.map(k => env.REPORTS.get(k.name)));
-        const entries = [];
-        rawResults.forEach(raw => {
-          if (!raw) return;
-          let e; try { e = JSON.parse(raw); } catch (err) { return; }
-          if ((e.mode || '4v4') !== mode || e.removedFromLeaderboard || !e.reportId) return;
-          entries.push(e);
-        });
-        const reportRaws = await Promise.all(entries.map(e => env.REPORTS.get(e.reportId)));
-
-        const tally = {}; // key -> { name, seriesPlayed, withShitter, wasShitter }
-        const touch = (name) => {
-          const k = normalizeName(name);
-          if (!k) return null;
-          return tally[k] || (tally[k] = { name, seriesPlayed: 0, withShitter: 0, wasShitter: 0 });
-        };
-        let counted = 0, skippedNoReport = 0;
-        entries.forEach((e, i) => {
-          if (!reportRaws[i]) { skippedNoReport++; return; }
-          let games; try { games = JSON.parse(reportRaws[i]); } catch (err) { skippedNoReport++; return; }
-          if (!Array.isArray(games) || !games.length) { skippedNoReport++; return; }
-          const shitter = computeAwardsForSeries(games, mode).topShitter;
-          const shitterKey = normalizeName(shitter);
-          counted++;
-          [e.squad1 || [], e.squad2 || []].forEach(squad => {
-            const keys = squad.map(normalizeName);
-            const shitterOnThisSquad = !!shitterKey && keys.includes(shitterKey);
-            squad.forEach((n, idx) => {
-              const t = touch(n);
-              if (!t) return;
-              t.seriesPlayed++;
-              if (shitterOnThisSquad) {
-                if (keys[idx] === shitterKey) t.wasShitter++;
-                else t.withShitter++;
-              }
-            });
-          });
-        });
-
-        const rows = Object.keys(tally).map(k => ({ key: k, ...tally[k] }));
-        const result = { mode, seriesCounted: counted, skippedNoReport, computedAt: new Date().toISOString(), rows };
-        await env.REPORTS.put(cacheKey, JSON.stringify(result), { expirationTtl: 60 * 30 });
-        return jsonResponse(result, 200, origin);
-      } catch (err) {
-        return jsonResponse({ error: err.message }, 500, origin);
-      }
-    }
-
     // ── GET /history ─────────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/history') {
       try {
