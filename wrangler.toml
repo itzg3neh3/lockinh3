@@ -1,6 +1,9 @@
 name = "lockinh3"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+# Keep the old workers.dev address: open github.io tabs and old bookmarks still call it.
+workers_dev = true
+preview_urls = false
 
 # The Worker serves the site's pages too: bundle them before every deploy/dev run.
 [build]
