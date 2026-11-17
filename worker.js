@@ -1,6 +1,52 @@
 // Lock in H3 — Cloudflare Worker
-const ALLOWED_ORIGIN = 'https://itzg3neh3.github.io';
+// Serves the site's pages (bundled from the repo's HTML/JS/media, see
+// scripts/build-assets.mjs) and its API, all on lockinh3.com.
+import SITE_FILES from './assets.gen.js';
+
+const SITE_ORIGIN = 'https://lockinh3.com';
+const ALLOWED_ORIGIN = SITE_ORIGIN;
+// The old GitHub Pages copy forwards visitors to lockinh3.com, but a tab left open
+// there can still call the API, so it stays allowed.
+const ALLOWED_ORIGINS = new Set([SITE_ORIGIN, 'https://www.lockinh3.com', 'https://itzg3neh3.github.io']);
+const OLD_REPORT_BASE = 'https://itzg3neh3.github.io/lockinh3/';
+const REPORT_BASE = `${SITE_ORIGIN}/`;
 const MAX_SNAPSHOTS = 10;
+
+// History entries saved before the move point at the GitHub Pages copy; show them
+// with lockinh3.com links instead (the stored data is left as-is).
+function withCurrentReportUrls(raw) {
+  return raw && raw.includes(OLD_REPORT_BASE) ? raw.split(OLD_REPORT_BASE).join(REPORT_BASE) : raw;
+}
+
+const FILE_TYPES = {
+  html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8',
+  png: 'image/png', mp4: 'video/mp4',
+};
+
+function serveSiteFile(request, path) {
+  const file = SITE_FILES[path];
+  const ext = path.split('.').pop();
+  const headers = new Headers({
+    'Content-Type': FILE_TYPES[ext] || 'application/octet-stream',
+    'Cache-Control': ext === 'html' || ext === 'js' ? 'no-cache' : 'public, max-age=86400',
+    'X-Content-Type-Options': 'nosniff',
+    'Accept-Ranges': 'bytes',
+  });
+  const body = file.text !== undefined ? new TextEncoder().encode(file.text) : file.bytes;
+  // Video playback (Safari especially) needs byte-range support.
+  const range = request.headers.get('Range');
+  const m = range && /^bytes=(\d*)-(\d*)$/.exec(range);
+  if (m && (m[1] || m[2])) {
+    let start = m[1] ? +m[1] : body.length - +m[2];
+    let end = m[1] && m[2] ? +m[2] : body.length - 1;
+    end = Math.min(end, body.length - 1);
+    if (start < 0) start = 0;
+    if (start > end) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${body.length}` } });
+    headers.set('Content-Range', `bytes ${start}-${end}/${body.length}`);
+    return new Response(request.method === 'HEAD' ? null : body.slice(start, end + 1), { status: 206, headers });
+  }
+  return new Response(request.method === 'HEAD' ? null : body, { status: 200, headers });
+}
 
 function cors(origin) {
   return {
@@ -64,10 +110,10 @@ async function putHistory(env, key, entry, options = { expirationTtl: HISTORY_TT
 async function loadHistory(env, ctx) {
   const list = await listAllKeys(env, 'history:');
   const raws = await Promise.all(list.map(async k => {
-    if (k.metadata && k.metadata.entry) return JSON.stringify(k.metadata.entry);
+    if (k.metadata && k.metadata.entry) return withCurrentReportUrls(JSON.stringify(k.metadata.entry));
     const raw = await env.REPORTS.get(k.name);
     if (raw && ctx) ctx.waitUntil(addHistoryMetadata(env, k, raw));
-    return raw;
+    return withCurrentReportUrls(raw);
   }));
   return { list, raws };
 }
@@ -189,7 +235,7 @@ async function saveHistoryEntry(games, seriesWinner, mode, reportId, playedAt, e
   const historyKey = `history:${timestamp}:${reportId}`;
   const entry = {
     reportId,
-    reportUrl: `https://itzg3neh3.github.io/lockinh3/?r=${reportId}`,
+    reportUrl: `${REPORT_BASE}?r=${reportId}`,
     playedAt: timestamp,
     mode: mode || '4v4',
     squad1,
@@ -455,11 +501,28 @@ export default {
     const origin = request.headers.get('Origin') || '';
     const url = new URL(request.url);
 
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: cors(origin) });
+    if (url.hostname === 'www.lockinh3.com') {
+      url.hostname = 'lockinh3.com';
+      return Response.redirect(url.toString(), 301);
     }
 
-    if (origin !== ALLOWED_ORIGIN) {
+    // Site pages and media (e.g. /, /leaderboard.html, /season-recap.mp4).
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      const path = url.pathname === '/' ? '/index.html' : url.pathname;
+      if (SITE_FILES[path]) return serveSiteFile(request, path);
+      if (path === '/index.html/' || path === '/lockinh3/' || path === '/lockinh3') {
+        return Response.redirect(`${SITE_ORIGIN}/${url.search}`, 301);
+      }
+    }
+
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: cors(ALLOWED_ORIGINS.has(origin) ? origin : ALLOWED_ORIGIN) });
+    }
+
+    // API calls must come from the site itself. Browsers omit the Origin header on
+    // same-origin GET requests, so those are recognised by Sec-Fetch-Site instead.
+    const sameOrigin = !origin && request.headers.get('Sec-Fetch-Site') === 'same-origin';
+    if (!ALLOWED_ORIGINS.has(origin) && !sameOrigin) {
       return new Response('Forbidden', { status: 403 });
     }
 
@@ -1336,7 +1399,7 @@ export default {
       try {
         const { key } = await request.json();
         if (!key) throw new Error('key required');
-        const raw = await env.REPORTS.get(key);
+        const raw = withCurrentReportUrls(await env.REPORTS.get(key));
         if (!raw) throw new Error('Entry not found');
         return jsonResponse({ entry: JSON.parse(raw) }, 200, origin);
       } catch (err) {

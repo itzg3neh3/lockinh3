@@ -2,6 +2,18 @@ name = "lockinh3"
 main = "worker.js"
 compatibility_date = "2024-01-01"
 
+# The Worker serves the site's pages too: bundle them before every deploy/dev run.
+[build]
+command = "node scripts/build-assets.mjs"
+
 [[kv_namespaces]]
 binding = "REPORTS"
 id = "c169e383eb3e4392abe19149be406650"
+
+[[routes]]
+pattern = "lockinh3.com"
+custom_domain = true
+
+[[routes]]
+pattern = "www.lockinh3.com"
+custom_domain = true
