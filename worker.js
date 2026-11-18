@@ -23,16 +23,35 @@ const FILE_TYPES = {
   png: 'image/png', mp4: 'video/mp4',
 };
 
+// Browser caching: pages are re-checked on every visit (a tiny 304 reply when
+// unchanged, so updates show up straight away); scripts and images are reused for
+// 10 minutes like GitHub Pages did; the video for a day.
+const CACHE_RULES = { html: 'public, max-age=0, must-revalidate', js: 'public, max-age=600', png: 'public, max-age=600', mp4: 'public, max-age=86400' };
+const fileBytes = new Map();
+function siteFileBytes(path, file) {
+  let bytes = fileBytes.get(path);
+  if (!bytes) {
+    bytes = file.text !== undefined ? new TextEncoder().encode(file.text) : Uint8Array.from(atob(file.base64), c => c.charCodeAt(0));
+    fileBytes.set(path, bytes);
+  }
+  return bytes;
+}
+
 function serveSiteFile(request, path) {
   const file = SITE_FILES[path];
   const ext = path.split('.').pop();
   const headers = new Headers({
     'Content-Type': FILE_TYPES[ext] || 'application/octet-stream',
-    'Cache-Control': ext === 'html' || ext === 'js' ? 'no-cache' : 'public, max-age=86400',
+    'Cache-Control': CACHE_RULES[ext] || 'public, max-age=600',
+    'ETag': file.etag,
     'X-Content-Type-Options': 'nosniff',
     'Accept-Ranges': 'bytes',
   });
-  const body = file.text !== undefined ? new TextEncoder().encode(file.text) : file.bytes;
+  const inm = request.headers.get('If-None-Match');
+  if (inm && inm.split(',').some(t => t.trim().replace(/^W\//, '') === file.etag)) {
+    return new Response(null, { status: 304, headers });
+  }
+  const body = siteFileBytes(path, file);
   // Video playback (Safari especially) needs byte-range support.
   const range = request.headers.get('Range');
   const m = range && /^bytes=(\d*)-(\d*)$/.exec(range);
