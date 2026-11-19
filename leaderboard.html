@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>/* Moved to lockinh3.com: send old GitHub Pages links (incl. shared report links) there */if(location.hostname==='itzg3neh3.github.io'){location.replace('https://lockinh3.com'+location.pathname.replace(/^\/lockinh3/,'')+location.search+location.hash);}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lock in H3 — Leaderboard</title>
@@ -234,7 +233,7 @@
 <div class="container">
   <header>
     <a href="index.html" style="display:flex;align-items:center;text-decoration:none;">
-      <img src="stat_tracker_logo-sm.png" alt="Lock in H3" style="height:52px;width:auto;display:block;">
+      <img src="https://itzg3neh3.github.io/lockinh3/stat_tracker_logo.png" alt="Lock in H3" style="height:52px;width:auto;display:block;">
     </a>
     <div class="nav-links">
       <a href="index.html" class="nav-link">Report</a>
@@ -432,7 +431,7 @@
 <script src="archetypes.js?v=5"></script>
 <script src="playerinsights.js?v=1"></script>
 <script>
-const WORKER_URL = ''; // same origin: the lockinh3 Worker serves both these pages and the API
+const WORKER_URL='https://lockinh3.gmil88.workers.dev';
 
 let adminToken=null;
 let allPlayersData={};
@@ -781,7 +780,7 @@ function render(){
     // OBJ rate, which produces a wildly misleading number — so those three columns also
     // require their own gametype-specific sample size before qualifying as "above the fold".
     const aQualified=a.seriesPlayed>=MIN_SERIES, bQualified=b.seriesPlayed>=MIN_SERIES;
-    const RATE_SORTS=new Set(['kd','kda','caps_s','hill_s','ball_s']);
+    const RATE_SORTS=new Set(['kd','kda','assists_s','caps_s','hill_s','ball_s']);
     const OBJ_RATE_FIELD={caps_s:'capsSeriesCount',hill_s:'hillSeriesCount',ball_s:'ballSeriesCount'};
     if(RATE_SORTS.has(currentSort)){
       const objField=OBJ_RATE_FIELD[currentSort];
@@ -958,7 +957,7 @@ function render(){
       <td>${recordCell}</td>
       <td>${p.seriesPlayed}</td>
       <td>${p.kills}</td><td>${p.deaths}</td>
-      ${!is1v1?`<td>${p.assists}</td><td class="obj-per-val">${p.seriesPlayed?(p.assists/p.seriesPlayed).toFixed(1):'—'}</td>`:''}
+      ${!is1v1?`<td>${p.assists}</td><td class="obj-per-val">${p.seriesPlayed>=MIN_SERIES?(p.assists/p.seriesPlayed).toFixed(1):'—'}</td>`:''}
       <td class="${kdClass(p.kills,p.deaths)}">${kd(p.kills,p.deaths)}</td>
       ${!is1v1?`<td class="${kdaClass(p.kills,p.assists,p.deaths)}">${kda(p.kills,p.assists,p.deaths)}</td>`:''}
       ${hasCaps?`<td>${p.flagCaps||0}</td><td class="obj-per-val">${(p.capsSeriesCount||0)>=OBJ_MIN_SAMPLE?capsPS.toFixed(2):'—'}</td>`:''}
